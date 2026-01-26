@@ -1,8 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
+using System.Collections.Generic; // Cần thiết cho List<>
 using System.Reflection;
 using Autodesk.Revit.UI;
-// using System.Windows.Media.Imaging; // Requires PresentationCore reference
+// using System.Windows.Media.Imaging; // Uncomment nếu bạn có icon
 
 namespace Arctool.Core
 {
@@ -11,30 +11,45 @@ namespace Arctool.Core
         public Result OnStartup(UIControlledApplication application)
         {
             string tabName = "ArcTool";
-            string panelName = "Graphics Tools";
 
+            // Tạo Tab nếu chưa có
             try { application.CreateRibbonTab(tabName); } catch { }
 
-            RibbonPanel panel = GetOrCreatePanel(application, tabName, panelName);
             string assemblyPath = Assembly.GetExecutingAssembly().Location;
 
-            // ĐỔI TÊN NÚT: Từ Wall Filter thành Filter Manager
+            // --- PANEL 1: GRAPHICS TOOLS (Cũ) ---
+            RibbonPanel panelGraphics = GetOrCreatePanel(application, tabName, "Graphics Tools");
+
             PushButtonData btnFilterData = new PushButtonData(
                 "btnFilterManager",
-                "Filter\nManager", 
+                "Filter\nManager",
                 assemblyPath,
-                "Arctool.Core.Commands.FilterManagerCommand"); // Chú ý tên Class lệnh ở đây
+                "Arctool.Core.Commands.FilterManagerCommand");
 
             btnFilterData.ToolTip = "Tạo, quản lý và Copy Filters giữa các View/Templates.";
+            // btnFilterData.LargeImage = ...
+            panelGraphics.AddItem(btnFilterData);
 
-            // Thêm icon 32x32 (Đảm bảo file ảnh có Build Action là 'Resource')
-            // btnFilterData.LargeImage = new BitmapImage(new Uri("pack://application:,,,/Arctool.Core;component/Resources/FilterIcon_32.png"));
-            
-            panel.AddItem(btnFilterData);
+
+            // --- PANEL 2: MODELING TOOLS (Mới) ---
+            RibbonPanel panelModeling = GetOrCreatePanel(application, tabName, "Modeling Tools");
+
+            PushButtonData btnVoidData = new PushButtonData(
+                "btnCreateVoidLink",
+                "Create Void\nFrom Link",
+                assemblyPath,
+                "Arctool.Core.Commands.CreateVoidFromLinkCommand"); // Namespace và tên class phải chính xác
+
+            btnVoidData.ToolTip = "Tạo khối Void cắt tường dựa trên dầm trong file Link.";
+            // Nếu có icon, thêm ở đây:
+            // btnVoidData.LargeImage = new BitmapImage(new Uri("pack://application:,,,/Arctool.Core;component/Resources/VoidIcon_32.png"));
+
+            panelModeling.AddItem(btnVoidData);
 
             return Result.Succeeded;
         }
 
+        // Hàm helper giữ nguyên như cũ
         private RibbonPanel GetOrCreatePanel(UIControlledApplication app, string tabName, string panelName)
         {
             List<RibbonPanel> panels = app.GetRibbonPanels(tabName);

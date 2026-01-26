@@ -1,108 +1,65 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using Autodesk.Revit.Attributes;
-using Autodesk.Revit.DB;
+using System.Collections.Generic; // Cần thiết cho List<>
+using System.Reflection;
 using Autodesk.Revit.UI;
-using Arctool.UI;
-using Autodesk.Revit.UI.Events;
+// using System.Windows.Media.Imaging; // Uncomment nếu bạn có icon
 
-namespace Arctool.Core.Commands
+namespace Arctool.Core
 {
-    [Transaction(TransactionMode.Manual)]
-    public class FilterManagerCommand : IExternalCommand
+    public class App : IExternalApplication
     {
-        // Giữ instance tĩnh để cửa sổ không bị giải phóng bộ nhớ khi lệnh kết thúc
-        private static FilterWindow _ui;
-
-        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        public Result OnStartup(UIControlledApplication application)
         {
-            UIApplication uiapp = commandData.Application;
-            Document doc = uiapp.ActiveUIDocument.Document;
+            string tabName = "Arctool";
 
-            // Nếu cửa sổ đang mở thì chỉ cần đưa lên trên cùng
-            if (_ui != null && _ui.IsVisible)
-            {
-                _ui.Focus();
-                return Result.Succeeded;
-            }
+            // Tạo Tab nếu chưa có
+            try { application.CreateRibbonTab(tabName); } catch { }
 
-            _ui = new FilterWindow();
+            string assemblyPath = Assembly.GetExecutingAssembly().Location;
 
-            // Load dữ liệu lần đầu
-            RefreshAllData(doc);
+            // --- PANEL 1: GRAPHICS TOOLS (Cũ) ---
+            RibbonPanel panelGraphics = GetOrCreatePanel(application, tabName, "Graphics Tools");
 
-            // Đăng ký sự kiện Idling để cập nhật Real-time
-            uiapp.Idling += OnIdling;
+            PushButtonData btnFilterData = new PushButtonData(
+                "btnFilterManager",
+                "Filter\nManager",
+                assemblyPath,
+                "Arctool.Core.Commands.FilterManagerCommand");
 
-            // Thiết lập cửa sổ Modeless (.Show)
-            var helper = new System.Windows.Interop.WindowInteropHelper(_ui);
-            helper.Owner = Autodesk.Windows.ComponentManager.ApplicationWindow;
+            btnFilterData.ToolTip = "Tạo, quản lý và Copy Filters giữa các View/Templates.";
+            // btnFilterData.LargeImage = ...
+            panelGraphics.AddItem(btnFilterData);
 
-            _ui.Closed += (s, e) => {
-                uiapp.Idling -= OnIdling; // Hủy đăng ký khi đóng
-                _ui = null;
-            };
 
-            _ui.Show();
+            // --- PANEL 2: MODELING TOOLS (Mới) ---
+            RibbonPanel panelModeling = GetOrCreatePanel(application, tabName, "Modeling Tools");
+
+            PushButtonData btnVoidData = new PushButtonData(
+                "btnCreateVoidLink",
+                "Create Void\nFrom Link",
+                assemblyPath,
+                "Arctool.Core.Commands.CreateVoidFromLinkCommand"); // Namespace và tên class phải chính xác
+
+            btnVoidData.ToolTip = "Tạo khối Void cắt tường dựa trên dầm trong file Link.";
+            // Nếu có icon, thêm ở đây:
+            // btnVoidData.LargeImage = new BitmapImage(new Uri("pack://application:,,,/Arctool.Core;component/Resources/VoidIcon_32.png"));
+
+            panelModeling.AddItem(btnVoidData);
+
             return Result.Succeeded;
         }
 
-        // Sự kiện quét thay đổi mỗi khi Revit rảnh
-        private void OnIdling(object sender, IdlingEventArgs e)
+        // Hàm helper giữ nguyên như cũ
+        private RibbonPanel GetOrCreatePanel(UIControlledApplication app, string tabName, string panelName)
         {
-            UIApplication uiapp = sender as UIApplication;
-            if (uiapp.ActiveUIDocument == null) return;
-
-            Document doc = uiapp.ActiveUIDocument.Document;
-            View activeView = doc.ActiveView;
-
-            // 1. Cập nhật tên View Real-time nếu có thay đổi
-            if (_ui != null && _ui.ActiveViewName != activeView.Name)
+            List<RibbonPanel> panels = app.GetRibbonPanels(tabName);
+            foreach (RibbonPanel p in panels)
             {
-                _ui.UpdateActiveViewInfo(activeView.Name);
+                if (p.Name == panelName) return p;
             }
-
-            // 2. Tự động cập nhật danh sách Filter nếu số lượng thay đổi (Ví dụ bạn vừa thêm Filter mới)
-            int currentFilterCount = new FilteredElementCollector(doc).OfClass(typeof(ParameterFilterElement)).Count();
-            if (_ui != null && _ui.FiltersSource.Count != currentFilterCount)
-            {
-                RefreshAllData(doc);
-            }
+            return app.CreateRibbonPanel(tabName, panelName);
         }
 
-        private void RefreshAllData(Document doc)
-        {
-            // Lọc trùng Filter toàn dự án
-            var filters = new FilteredElementCollector(doc)
-                .OfClass(typeof(ParameterFilterElement))
-                .Cast<ParameterFilterElement>()
-                .GroupBy(f => f.Name)
-                .Select(g => g.First())
-                .OrderBy(x => x.Name)
-                .ToList();
-
-            _ui.Dispatcher.Invoke(() => {
-                _ui.FiltersSource.Clear();
-                foreach (var f in filters)
-                {
-                    _ui.FiltersSource.Add(new FilterItem { Name = f.Name, IsEnabled = true, IsVisible = true, Data = f });
-                }
-
-                // Cập nhật danh sách View/Sheet
-                var views = new FilteredElementCollector(doc)
-                    .OfClass(typeof(View))
-                    .Cast<View>()
-                    .Where(v => !v.IsTemplate && (v.ViewType == ViewType.DrawingSheet || v.CanUseTemporaryVisibilityModes()))
-                    .OrderBy(v => v.Name)
-                    .ToList();
-
-                _ui.ViewsSource.Clear();
-                foreach (var v in views)
-                {
-                    _ui.ViewsSource.Add(new ViewItem { ViewName = v.Name, FilterCount = v.GetFilters().Count, IsSelected = false, Data = v });
-                }
-            });
-        }
+        public Result OnShutdown(UIControlledApplication application) => Result.Succeeded;
     }
 }

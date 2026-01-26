@@ -6,8 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace ArcTool.Core.Commands
@@ -23,7 +21,6 @@ namespace ArcTool.Core.Commands
             try
             {
                 // --- BƯỚC 1: HIỆN FORM CHỌN FAMILY VOID ---
-                // Lấy tất cả Generic Model Family Symbols
                 var genericModelSymbols = new FilteredElementCollector(doc)
                     .OfClass(typeof(FamilySymbol))
                     .OfCategory(BuiltInCategory.OST_GenericModel)
@@ -38,7 +35,6 @@ namespace ArcTool.Core.Commands
                 }
 
                 FamilySymbol selectedVoidSymbol = null;
-                // Gọi Form UI (được định nghĩa bên dưới)
                 using (var form = new FamilySelectionForm(genericModelSymbols))
                 {
                     if (form.ShowDialog() == System.Windows.Forms.DialogResult.OK)
@@ -51,14 +47,6 @@ namespace ArcTool.Core.Commands
                     }
                 }
 
-                // --- BƯỚC 2: VALIDATE FAMILY (Kiểm tra tiêu chuẩn) ---
-                if (!ValidateVoidFamily(selectedVoidSymbol, out string errorMsg))
-                {
-                    Autodesk.Revit.UI.TaskDialog.Show("ArcTool Warning", $"Family '{selectedVoidSymbol.FamilyName}' không đạt chuẩn ArcTool.\n{errorMsg}\nVui lòng sửa Family và thử lại.");
-                    return Result.Failed;
-                }
-
-                // Kích hoạt Symbol
                 using (Transaction t = new Transaction(doc, "Activate Symbol"))
                 {
                     t.Start();
@@ -66,15 +54,45 @@ namespace ArcTool.Core.Commands
                     t.Commit();
                 }
 
-                // --- BƯỚC 3: CHỌN DẦM LINK & LẤY THÔNG SỐ ---
-                Reference linkRef = uidoc.Selection.PickObject(ObjectType.LinkedElement, "ArcTool: Chọn dầm (Structural Framing) từ file Link");
+                // --- BƯỚC 2: CHỌN DẦM TỪ LINK ---
+                Reference linkRef = uidoc.Selection.PickObject(ObjectType.LinkedElement, "Chọn dầm (Structural Framing) từ file Link");
                 RevitLinkInstance linkInstance = doc.GetElement(linkRef.ElementId) as RevitLinkInstance;
                 Document linkDoc = linkInstance.GetLinkDocument();
                 Element linkedBeam = linkDoc.GetElement(linkRef.LinkedElementId);
 
-                // A. Lấy hình học & vị trí
+                // --- BƯỚC 3: LẤY THÔNG SỐ (ĐÃ SỬA ĐỔI MẠNH MẼ) ---
+
+                // 1. Width (Rộng): Tìm tên "b", "Width"... HOẶC BuiltInParameter tương ứng
+                double beamWidth = GetParamValue(linkedBeam,
+                    new[] { "b", "Width", "B", "Rộng" });
+
+                // 2. Height (Cao): Tìm tên "h", "Height"... HOẶC BuiltInParameter tương ứng
+                double beamHeight = GetParamValue(linkedBeam,
+                    new[] { "h", "Height", "H", "Depth", "Cao" });
+
+                // 3. Length (Dài): Tìm "Cut Length"... HOẶC BuiltInParameter chuẩn
+                double beamCutLength = GetParamValue(linkedBeam,
+                    new[] { "Cut Length", "Length", "Chiều dài" });
+
+                // Kiểm tra kỹ và báo lỗi chi tiết nếu thiếu
+                if (beamWidth == 0 || beamHeight == 0 || beamCutLength == 0)
+                {
+                    Autodesk.Revit.UI.TaskDialog.Show("ArcTool Error",
+                        $"Không lấy được đủ thông số từ dầm (ID: {linkedBeam.Id}).\n" +
+                        $"Hãy kiểm tra Family dầm trong file Link.\n\n" +
+                        $"- Width: {beamWidth} (Cần: b, Width, hoặc API Structural_Width)\n" +
+                        $"- Height: {beamHeight} (Cần: h, Height, hoặc API Structural_Height)\n" +
+                        $"- Length: {beamCutLength} (Cần: Cut Length hoặc API Cut_Length)");
+                    return Result.Failed;
+                }
+
+                // --- BƯỚC 4: LẤY VỊ TRÍ & HÌNH HỌC ---
                 LocationCurve locCurve = linkedBeam.Location as LocationCurve;
-                if (locCurve == null) return Result.Failed;
+                if (locCurve == null)
+                {
+                    Autodesk.Revit.UI.TaskDialog.Show("Error", "Dầm chọn không phải là dầm thẳng (Line based).");
+                    return Result.Failed;
+                }
 
                 Transform linkTransform = linkInstance.GetTotalTransform();
                 Curve beamCurve = locCurve.Curve;
@@ -82,51 +100,29 @@ namespace ArcTool.Core.Commands
                 XYZ endPoint = linkTransform.OfPoint(beamCurve.GetEndPoint(1));
                 XYZ midPoint = (startPoint + endPoint) / 2.0;
 
-                // B. Lấy thông số (Type & Instance)
-                ElementType beamType = linkDoc.GetElement(linkedBeam.GetTypeId()) as ElementType;
-
-                // Lấy Width/Height từ Type
-                double beamWidth = GetParamValue(beamType, new[] { "Width", "b", "B" });
-                double beamHeight = GetParamValue(beamType, new[] { "Height", "h", "H", "Depth" });
-
-                // Lấy Cut Length từ Instance (QUAN TRỌNG)
-                double beamCutLength = GetParamValue(linkedBeam, new[] { "Cut Length", "Length" });
-
-                // Kiểm tra dữ liệu đầu vào
-                string missingParams = "";
-                if (beamWidth == 0) missingParams += "Width/b, ";
-                if (beamHeight == 0) missingParams += "Height/h, ";
-                if (beamCutLength == 0) missingParams += "Cut Length, ";
-
-                if (!string.IsNullOrEmpty(missingParams))
-                {
-                    Autodesk.Revit.UI.TaskDialog.Show("ArcTool Error", $"Không lấy được thông số từ dầm Link: {missingParams}. Kiểm tra lại Properties của dầm.");
-                    return Result.Failed;
-                }
-
-                // --- BƯỚC 4: CHỌN TƯỜNG & THỰC HIỆN ---
-                Reference wallRef = uidoc.Selection.PickObject(ObjectType.Element, new WallSelectionFilter(), "ArcTool: Chọn Tường cần cắt");
+                // --- BƯỚC 5: CHỌN TƯỜNG & THỰC HIỆN CẮT ---
+                Reference wallRef = uidoc.Selection.PickObject(ObjectType.Element, new WallSelectionFilter(), "Chọn Tường cần cắt");
                 Element wall = doc.GetElement(wallRef);
 
-                using (Transaction t = new Transaction(doc, "ArcTool: Create Void & Cut"))
+                using (Transaction t = new Transaction(doc, "ArcTool: Place Void & Cut"))
                 {
                     t.Start();
 
-                    // 1. Đặt Void tại tâm
+                    // Đặt Void
                     FamilyInstance voidInst = doc.Create.NewFamilyInstance(midPoint, selectedVoidSymbol, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
 
-                    // 2. Xoay theo hướng dầm
+                    // Xoay Void
                     XYZ beamDir = (endPoint - startPoint).Normalize();
                     RotateInstanceToVector(doc, voidInst, beamDir, midPoint);
 
-                    // 3. Gán kích thước (Map Parameters)
+                    // Gán kích thước cho Void
                     SetParam(voidInst, "Width", beamWidth);
                     SetParam(voidInst, "Height", beamHeight);
                     SetParam(voidInst, "Length", beamCutLength);
 
                     doc.Regenerate();
 
-                    // 4. Cắt Tường
+                    // Cắt Tường
                     try
                     {
                         if (InstanceVoidCutUtils.CanBeCutWithVoid(wall))
@@ -135,12 +131,12 @@ namespace ArcTool.Core.Commands
                         }
                         else
                         {
-                            Autodesk.Revit.UI.TaskDialog.Show("Warning", "Tường không hỗ trợ cắt hoặc Void chưa chạm tường.");
+                            Autodesk.Revit.UI.TaskDialog.Show("Warning", "Tường không hỗ trợ cắt hoặc khối Void không giao cắt với tường.");
                         }
                     }
                     catch (Exception ex)
                     {
-                        Autodesk.Revit.UI.TaskDialog.Show("Cut Error", ex.Message);
+                        Autodesk.Revit.UI.TaskDialog.Show("Cut Error", "Lỗi khi thực hiện cắt: " + ex.Message);
                     }
 
                     t.Commit();
@@ -163,32 +159,45 @@ namespace ArcTool.Core.Commands
         //              CÁC HÀM HỖ TRỢ (HELPER METHODS)
         // ====================================================
 
-        private bool ValidateVoidFamily(FamilySymbol symbol, out string error)
-        {
-            error = "";
-            bool isValid = true;
-            if (symbol.LookupParameter("Width") == null) { error += "- Thiếu tham số 'Width'\n"; isValid = false; }
-            if (symbol.LookupParameter("Height") == null) { error += "- Thiếu tham số 'Height'\n"; isValid = false; }
-            if (symbol.LookupParameter("Length") == null) { error += "- Thiếu tham số 'Length'\n"; isValid = false; }
-            if (!isValid) error += "Yêu cầu người vẽ sửa Family ngay!";
-            return isValid;
-        }
-
         private double GetParamValue(Element elem, string[] paramNames)
         {
-            foreach (string name in paramNames)
+            if (elem == null) return 0;
+
+            // Use ParameterSet for consistent parameter retrieval
+            try
             {
-                Parameter p = elem.LookupParameter(name);
-                if (p != null && p.StorageType == StorageType.Double && p.HasValue)
-                    return p.AsDouble();
+                ParameterSet paramSet = elem.Parameters;
+                
+                foreach (Parameter param in paramSet)
+                {
+                    string paramName = param.Definition.Name;
+                    
+                    // Check if this parameter name matches any of our search names (case-insensitive)
+                    foreach (string searchName in paramNames)
+                    {
+                        if (paramName.Equals(searchName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (param.StorageType == StorageType.Double && param.HasValue)
+                                return param.AsDouble();
+                        }
+                    }
+                }
             }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error getting parameter value: {ex.Message}");
+            }
+
             return 0;
         }
 
         private void SetParam(Element elem, string paramName, double value)
         {
             Parameter p = elem.LookupParameter(paramName);
-            if (p != null && !p.IsReadOnly) p.Set(value);
+            if (p != null && !p.IsReadOnly)
+            {
+                p.Set(value);
+            }
         }
 
         private void RotateInstanceToVector(Document doc, FamilyInstance inst, XYZ targetDir, XYZ center)
@@ -204,69 +213,63 @@ namespace ArcTool.Core.Commands
                 ElementTransformUtils.RotateElement(doc, inst.Id, axis, angle);
             }
         }
-    }
 
-    // ====================================================
-    //              BỘ LỌC CHỌN TƯỜNG
-    // ====================================================
-    public class WallSelectionFilter : ISelectionFilter
-    {
-        public bool AllowElement(Element elem) => elem.Category.Id.Value == (int)BuiltInCategory.OST_Walls;
-        public bool AllowReference(Reference reference, XYZ position) => false;
-    }
-
-    // ====================================================
-    //              FORM GIAO DIỆN (UI)
-    // ====================================================
-    public class FamilySelectionForm : System.Windows.Forms.Form
-    {
-        public FamilySymbol SelectedSymbol { get; private set; }
-        private System.Windows.Forms.ComboBox cmbFamilies;
-        private System.Windows.Forms.Button btnOk;
-        private System.Windows.Forms.Button btnCancel;
-        private List<FamilySymbol> _symbols;
-
-        public FamilySelectionForm(List<FamilySymbol> symbols)
+        public class WallSelectionFilter : ISelectionFilter
         {
-            _symbols = symbols;
-            InitializeComponent();
+            public bool AllowElement(Element elem) => elem.Category.Id.Value == (int)BuiltInCategory.OST_Walls;
+            public bool AllowReference(Reference reference, XYZ position) => false;
         }
 
-        private void InitializeComponent()
+        public class FamilySelectionForm : System.Windows.Forms.Form
         {
-            this.Text = "ArcTool - Chọn Void Family";
-            this.Size = new System.Drawing.Size(350, 180);
-            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
+            public FamilySymbol SelectedSymbol { get; private set; }
+            private System.Windows.Forms.ComboBox cmbFamilies;
+            private System.Windows.Forms.Button btnOk;
+            private System.Windows.Forms.Button btnCancel;
+            private List<FamilySymbol> _symbols;
 
-            System.Windows.Forms.Label lbl = new System.Windows.Forms.Label() { Text = "Vui lòng chọn Family Void chuẩn:", Location = new System.Drawing.Point(20, 20), AutoSize = true };
-
-            cmbFamilies = new System.Windows.Forms.ComboBox();
-            cmbFamilies.Location = new System.Drawing.Point(20, 50);
-            cmbFamilies.Size = new System.Drawing.Size(290, 30);
-            cmbFamilies.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-
-            foreach (var sym in _symbols)
+            public FamilySelectionForm(List<FamilySymbol> symbols)
             {
-                cmbFamilies.Items.Add($"{sym.FamilyName} : {sym.Name}");
+                _symbols = symbols;
+                InitializeComponent();
             }
-            if (cmbFamilies.Items.Count > 0) cmbFamilies.SelectedIndex = 0;
 
-            btnOk = new System.Windows.Forms.Button() { Text = "OK", Location = new System.Drawing.Point(130, 100), DialogResult = System.Windows.Forms.DialogResult.OK };
-            btnOk.Click += (s, e) => {
-                if (cmbFamilies.SelectedIndex >= 0) SelectedSymbol = _symbols[cmbFamilies.SelectedIndex];
-            };
+            private void InitializeComponent()
+            {
+                this.Text = "ArcTool - Chọn Void Family";
+                this.Size = new System.Drawing.Size(350, 180);
+                this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+                this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
+                this.MaximizeBox = false;
+                this.MinimizeBox = false;
 
-            btnCancel = new System.Windows.Forms.Button() { Text = "Cancel", Location = new System.Drawing.Point(220, 100), DialogResult = System.Windows.Forms.DialogResult.Cancel };
+                System.Windows.Forms.Label lbl = new System.Windows.Forms.Label() { Text = "Vui lòng chọn Family Void chuẩn:", Location = new System.Drawing.Point(20, 20), AutoSize = true };
 
-            this.Controls.Add(lbl);
-            this.Controls.Add(cmbFamilies);
-            this.Controls.Add(btnOk);
-            this.Controls.Add(btnCancel);
-            this.AcceptButton = btnOk;
-            this.CancelButton = btnCancel;
+                cmbFamilies = new System.Windows.Forms.ComboBox();
+                cmbFamilies.Location = new System.Drawing.Point(20, 50);
+                cmbFamilies.Size = new System.Drawing.Size(290, 30);
+                cmbFamilies.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+
+                foreach (var sym in _symbols)
+                {
+                    cmbFamilies.Items.Add($"{sym.FamilyName} : {sym.Name}");
+                }
+                if (cmbFamilies.Items.Count > 0) cmbFamilies.SelectedIndex = 0;
+
+                btnOk = new System.Windows.Forms.Button() { Text = "OK", Location = new System.Drawing.Point(130, 100), DialogResult = System.Windows.Forms.DialogResult.OK };
+                btnOk.Click += (s, e) => {
+                    if (cmbFamilies.SelectedIndex >= 0) SelectedSymbol = _symbols[cmbFamilies.SelectedIndex];
+                };
+
+                btnCancel = new System.Windows.Forms.Button() { Text = "Cancel", Location = new System.Drawing.Point(220, 100), DialogResult = System.Windows.Forms.DialogResult.Cancel };
+
+                this.Controls.Add(lbl);
+                this.Controls.Add(cmbFamilies);
+                this.Controls.Add(btnOk);
+                this.Controls.Add(btnCancel);
+                this.AcceptButton = btnOk;
+                this.CancelButton = btnCancel;
+            }
         }
     }
 }

@@ -4,7 +4,7 @@ using System.Reflection;
 using Autodesk.Revit.UI;
 // using System.Windows.Media.Imaging; // Uncomment nếu bạn có icon
 
-namespace Arctool.Core
+namespace ArcTool.Core
 {
     public class App : IExternalApplication
     {
@@ -24,7 +24,7 @@ namespace Arctool.Core
                 "btnFilterManager",
                 "Filter\nManager",
                 assemblyPath,
-                "Arctool.Core.Commands.FilterManagerCommand");
+                "ArcTool.Core.Commands.FilterManagerCommand");
 
             btnFilterData.ToolTip = "Tạo, quản lý và Copy Filters giữa các View/Templates.";
             // btnFilterData.LargeImage = ...
@@ -38,11 +38,11 @@ namespace Arctool.Core
                 "btnCreateVoidLink",
                 "Create Void\nFrom Link",
                 assemblyPath,
-                "Arctool.Core.Commands.CreateVoidFromLinkCommand"); // Namespace và tên class phải chính xác
+                "ArcTool.Core.Commands.CreateVoidFromLinkCommand"); // Namespace và tên class phải chính xác
 
             btnVoidData.ToolTip = "Tạo khối Void cắt tường dựa trên dầm trong file Link.";
             // Nếu có icon, thêm ở đây:
-            // btnVoidData.LargeImage = new BitmapImage(new Uri("pack://application:,,,/Arctool.Core;component/Resources/VoidIcon_32.png"));
+            // btnVoidData.LargeImage = new BitmapImage(new Uri("pack://application:,,,/ArcTool.Core;component/Resources/VoidIcon_32.png"));
 
             panelModeling.AddItem(btnVoidData);
 

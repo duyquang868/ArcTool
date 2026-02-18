@@ -1,0 +1,40 @@
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.csproj.AssemblyReference.cache
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.AssemblyInfoInputs.cache
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.AssemblyInfo.cs
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.csproj.CoreCompileInputs.cache
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\ArcTool.Core.deps.json
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\ArcTool.Core.dll
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\ArcTool.Core.pdb
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\ArcTool.UI.dll
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\ArcTool.UI.pdb
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool..CD9FCD4B.Up2Date
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.dll
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\refint\ArcTool.Core.dll
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.pdb
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ref\ArcTool.Core.dll
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\ArcTool.Core.dll.config
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.csproj.ResolveComReference.cache
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.Properties.Resources.resources
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.csproj.GenerateResource.cache
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\ArcTool.Core.dll.config
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\ArcTool.Core.deps.json
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\ArcTool.Core.dll
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\ArcTool.Core.pdb
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.csproj.AssemblyReference.cache
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\Interop.Microsoft.Office.Interop.Excel.dll
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.csproj.ResolveComReference.cache
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\UI\FilterWindow.baml
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\UI\FilterWindow.g.cs
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core_MarkupCompile.cache
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.g.resources
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.Properties.Resources.resources
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.csproj.GenerateResource.cache
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.GeneratedMSBuildEditorConfig.editorconfig
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.AssemblyInfoInputs.cache
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.AssemblyInfo.cs
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.csproj.CoreCompileInputs.cache
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.dll
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\refint\ArcTool.Core.dll
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.pdb
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ref\ArcTool.Core.dll

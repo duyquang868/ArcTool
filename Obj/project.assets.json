@@ -1,0 +1,540 @@
+{
+  "version": 3,
+  "targets": {
+    "net8.0-windows7.0": {
+      "Autodesk.Revit.SDK/2026.0.0.9999": {
+        "type": "package",
+        "compile": {
+          "ref/net8.0/AdWindows.dll": {},
+          "ref/net8.0/RevitAPI.dll": {
+            "related": ".xml"
+          },
+          "ref/net8.0/RevitAPIBrowserUtils.dll": {},
+          "ref/net8.0/RevitAPIFoundation.dll": {},
+          "ref/net8.0/RevitAPIIFC.dll": {
+            "related": ".xml"
+          },
+          "ref/net8.0/RevitAPILink.dll": {},
+          "ref/net8.0/RevitAPIMacros.dll": {
+            "related": ".xml"
+          },
+          "ref/net8.0/RevitAPIMacrosInterop.dll": {},
+          "ref/net8.0/RevitAPIMacrosInteropAPI.dll": {},
+          "ref/net8.0/RevitAPISteel.dll": {},
+          "ref/net8.0/RevitAPIUI.dll": {
+            "related": ".xml"
+          },
+          "ref/net8.0/RevitAPIUILink.dll": {},
+          "ref/net8.0/RevitAPIUIMacros.dll": {
+            "related": ".xml"
+          },
+          "ref/net8.0/RevitAPIUIMacrosInterop.dll": {},
+          "ref/net8.0/RevitAPIUIMacrosInteropAPI.dll": {},
+          "ref/net8.0/RevitAddInUtility.dll": {
+            "related": ".xml"
+          },
+          "ref/net8.0/RevitDB.dll": {},
+          "ref/net8.0/RevitDBAPI.dll": {},
+          "ref/net8.0/RevitDBCore.dll": {},
+          "ref/net8.0/RevitDBCoreAPI.dll": {},
+          "ref/net8.0/RevitMFC.dll": {},
+          "ref/net8.0/RevitMFCAPI.dll": {},
+          "ref/net8.0/RevitMaterialUI3.dll": {},
+          "ref/net8.0/RevitNET.dll": {},
+          "ref/net8.0/RevitUI.dll": {},
+          "ref/net8.0/RevitUIAPI.dll": {}
+        }
+      },
+      "ExCSS/4.3.1": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/ExCSS.dll": {}
+        },
+        "runtime": {
+          "lib/net8.0/ExCSS.dll": {}
+        }
+      },
+      "Microsoft.Office.Interop.Excel/16.0.18925.20022": {
+        "type": "package",
+        "compile": {
+          "lib/net5.0/Microsoft.Office.Interop.Excel.dll": {}
+        },
+        "runtime": {
+          "lib/net5.0/Microsoft.Office.Interop.Excel.dll": {}
+        }
+      },
+      "ShimSkiaSharp/3.4.1": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/ShimSkiaSharp.dll": {}
+        },
+        "runtime": {
+          "lib/net8.0/ShimSkiaSharp.dll": {}
+        }
+      },
+      "SkiaSharp/3.119.2": {
+        "type": "package",
+        "dependencies": {
+          "SkiaSharp.NativeAssets.Win32": "3.119.2",
+          "SkiaSharp.NativeAssets.macOS": "3.119.2"
+        },
+        "compile": {
+          "ref/net8.0/SkiaSharp.dll": {}
+        },
+        "runtime": {
+          "lib/net8.0/SkiaSharp.dll": {
+            "related": ".pdb"
+          }
+        }
+      },
+      "SkiaSharp.NativeAssets.macOS/3.119.2": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/_._": {}
+        },
+        "runtime": {
+          "lib/net8.0/_._": {}
+        },
+        "runtimeTargets": {
+          "runtimes/osx/native/libSkiaSharp.dylib": {
+            "assetType": "native",
+            "rid": "osx"
+          }
+        }
+      },
+      "SkiaSharp.NativeAssets.Win32/3.119.2": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/_._": {}
+        },
+        "runtime": {
+          "lib/net8.0/_._": {}
+        },
+        "runtimeTargets": {
+          "runtimes/win-arm64/native/libSkiaSharp.dll": {
+            "assetType": "native",
+            "rid": "win-arm64"
+          },
+          "runtimes/win-arm64/native/libSkiaSharp.pdb": {
+            "assetType": "native",
+            "rid": "win-arm64"
+          },
+          "runtimes/win-x64/native/libSkiaSharp.dll": {
+            "assetType": "native",
+            "rid": "win-x64"
+          },
+          "runtimes/win-x64/native/libSkiaSharp.pdb": {
+            "assetType": "native",
+            "rid": "win-x64"
+          },
+          "runtimes/win-x86/native/libSkiaSharp.dll": {
+            "assetType": "native",
+            "rid": "win-x86"
+          },
+          "runtimes/win-x86/native/libSkiaSharp.pdb": {
+            "assetType": "native",
+            "rid": "win-x86"
+          }
+        }
+      },
+      "Svg.Custom/3.4.1": {
+        "type": "package",
+        "dependencies": {
+          "ExCSS": "4.3.1"
+        },
+        "compile": {
+          "lib/net8.0/Svg.Custom.dll": {}
+        },
+        "runtime": {
+          "lib/net8.0/Svg.Custom.dll": {}
+        }
+      },
+      "Svg.Model/3.4.1": {
+        "type": "package",
+        "dependencies": {
+          "ShimSkiaSharp": "3.4.1",
+          "Svg.Custom": "3.4.1"
+        },
+        "compile": {
+          "lib/net8.0/Svg.Model.dll": {}
+        },
+        "runtime": {
+          "lib/net8.0/Svg.Model.dll": {}
+        }
+      },
+      "Svg.Skia/3.4.1": {
+        "type": "package",
+        "dependencies": {
+          "SkiaSharp": "2.88.9",
+          "Svg.Custom": "3.4.1",
+          "Svg.Model": "3.4.1"
+        },
+        "compile": {
+          "lib/net8.0/Svg.Skia.dll": {}
+        },
+        "runtime": {
+          "lib/net8.0/Svg.Skia.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Autodesk.Revit.SDK/2026.0.0.9999": {
+      "sha512": "UqiJAkhOGDuJbjN9s5zKlo5VMEEfyKScdEGw/v6PSeqeePbb+R45sAp+gZkysIbowAURd7X1LHAMKchkZeEozw==",
+      "type": "package",
+      "path": "autodesk.revit.sdk/2026.0.0.9999",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.txt",
+        "Revit.png",
+        "autodesk.revit.sdk.2026.0.0.9999.nupkg.sha512",
+        "autodesk.revit.sdk.nuspec",
+        "ref/net8.0/AdWindows.dll",
+        "ref/net8.0/RevitAPI.dll",
+        "ref/net8.0/RevitAPI.xml",
+        "ref/net8.0/RevitAPIBrowserUtils.dll",
+        "ref/net8.0/RevitAPIFoundation.dll",
+        "ref/net8.0/RevitAPIIFC.dll",
+        "ref/net8.0/RevitAPIIFC.xml",
+        "ref/net8.0/RevitAPILink.dll",
+        "ref/net8.0/RevitAPIMacros.dll",
+        "ref/net8.0/RevitAPIMacros.xml",
+        "ref/net8.0/RevitAPIMacrosInterop.dll",
+        "ref/net8.0/RevitAPIMacrosInteropAPI.dll",
+        "ref/net8.0/RevitAPISteel.dll",
+        "ref/net8.0/RevitAPIUI.dll",
+        "ref/net8.0/RevitAPIUI.xml",
+        "ref/net8.0/RevitAPIUILink.dll",
+        "ref/net8.0/RevitAPIUIMacros.dll",
+        "ref/net8.0/RevitAPIUIMacros.xml",
+        "ref/net8.0/RevitAPIUIMacrosInterop.dll",
+        "ref/net8.0/RevitAPIUIMacrosInteropAPI.dll",
+        "ref/net8.0/RevitAddInUtility.dll",
+        "ref/net8.0/RevitAddInUtility.xml",
+        "ref/net8.0/RevitDB.dll",
+        "ref/net8.0/RevitDBAPI.dll",
+        "ref/net8.0/RevitDBCore.dll",
+        "ref/net8.0/RevitDBCoreAPI.dll",
+        "ref/net8.0/RevitMFC.dll",
+        "ref/net8.0/RevitMFCAPI.dll",
+        "ref/net8.0/RevitMaterialUI3.dll",
+        "ref/net8.0/RevitNET.dll",
+        "ref/net8.0/RevitUI.dll",
+        "ref/net8.0/RevitUIAPI.dll"
+      ]
+    },
+    "ExCSS/4.3.1": {
+      "sha512": "A8UtcghHQlWxPJhJF5bsfEYO7068JHGTuJ7tzyyMjd5fE/N/xY1cVOUhzuLLFwMOCJVnM4mqSQc93W9fGfZ1kA==",
+      "type": "package",
+      "path": "excss/4.3.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "excss.4.3.1.nupkg.sha512",
+        "excss.nuspec",
+        "lib/net48/ExCSS.dll",
+        "lib/net6.0/ExCSS.dll",
+        "lib/net7.0/ExCSS.dll",
+        "lib/net8.0/ExCSS.dll",
+        "lib/netcoreapp3.1/ExCSS.dll",
+        "lib/netstandard2.0/ExCSS.dll",
+        "lib/netstandard2.1/ExCSS.dll",
+        "readme.md"
+      ]
+    },
+    "Microsoft.Office.Interop.Excel/16.0.18925.20022": {
+      "sha512": "Wlhtqu3QfLnDRHc77bJewv5k27VASgcINA3eDAljfZQX9iTuM+12Mt7EJYZpxn+2gBw9dlK7q6riUxuXd4cviw==",
+      "type": "package",
+      "path": "microsoft.office.interop.excel/16.0.18925.20022",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "docs/readme.md",
+        "lib/net40/Microsoft.Office.Interop.Excel.dll",
+        "lib/net5.0/Microsoft.Office.Interop.Excel.dll",
+        "lib/netstandard2.0/Microsoft.Office.Interop.Excel.dll",
+        "microsoft.office.interop.excel.16.0.18925.20022.nupkg.sha512",
+        "microsoft.office.interop.excel.nuspec",
+        "nuget.exe"
+      ]
+    },
+    "ShimSkiaSharp/3.4.1": {
+      "sha512": "ab3J5OGdwYLyXnom90OghS9NyRPH9dtsRtW5B3mL+F43YTlxido3nUtiR9NjB/sI3jvG/J744C29bsSBQ28AfQ==",
+      "type": "package",
+      "path": "shimskiasharp/3.4.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/net10.0/ShimSkiaSharp.dll",
+        "lib/net461/ShimSkiaSharp.dll",
+        "lib/net6.0/ShimSkiaSharp.dll",
+        "lib/net8.0/ShimSkiaSharp.dll",
+        "lib/netstandard2.0/ShimSkiaSharp.dll",
+        "shimskiasharp.3.4.1.nupkg.sha512",
+        "shimskiasharp.nuspec"
+      ]
+    },
+    "SkiaSharp/3.119.2": {
+      "sha512": "nmy2dOFWPvQKMglfpjz8+/xQQcSrL9jzul3cUyzCJVSwrmSAw+6B1sEgU7jt6NZBptwGq2k/V0kjyu2GizMFtg==",
+      "type": "package",
+      "path": "skiasharp/3.119.2",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.txt",
+        "README.md",
+        "icon.png",
+        "interactive-extensions/dotnet/SkiaSharp.DotNet.Interactive.dll",
+        "lib/net462/SkiaSharp.dll",
+        "lib/net462/SkiaSharp.pdb",
+        "lib/net6.0/SkiaSharp.dll",
+        "lib/net6.0/SkiaSharp.pdb",
+        "lib/net8.0-android34.0/SkiaSharp.dll",
+        "lib/net8.0-android34.0/SkiaSharp.pdb",
+        "lib/net8.0-android34.0/SkiaSharp.xml",
+        "lib/net8.0-ios17.0/SkiaSharp.dll",
+        "lib/net8.0-ios17.0/SkiaSharp.pdb",
+        "lib/net8.0-maccatalyst17.0/SkiaSharp.dll",
+        "lib/net8.0-maccatalyst17.0/SkiaSharp.pdb",
+        "lib/net8.0-macos14.0/SkiaSharp.dll",
+        "lib/net8.0-macos14.0/SkiaSharp.pdb",
+        "lib/net8.0-tizen7.0/SkiaSharp.dll",
+        "lib/net8.0-tizen7.0/SkiaSharp.pdb",
+        "lib/net8.0-tvos17.0/SkiaSharp.dll",
+        "lib/net8.0-tvos17.0/SkiaSharp.pdb",
+        "lib/net8.0-windows10.0.19041/SkiaSharp.dll",
+        "lib/net8.0-windows10.0.19041/SkiaSharp.pdb",
+        "lib/net8.0/SkiaSharp.dll",
+        "lib/net8.0/SkiaSharp.pdb",
+        "lib/netstandard2.0/SkiaSharp.dll",
+        "lib/netstandard2.0/SkiaSharp.pdb",
+        "lib/netstandard2.1/SkiaSharp.dll",
+        "lib/netstandard2.1/SkiaSharp.pdb",
+        "ref/net462/SkiaSharp.dll",
+        "ref/net6.0/SkiaSharp.dll",
+        "ref/net8.0-android34.0/SkiaSharp.dll",
+        "ref/net8.0-ios17.0/SkiaSharp.dll",
+        "ref/net8.0-maccatalyst17.0/SkiaSharp.dll",
+        "ref/net8.0-macos14.0/SkiaSharp.dll",
+        "ref/net8.0-tizen7.0/SkiaSharp.dll",
+        "ref/net8.0-tvos17.0/SkiaSharp.dll",
+        "ref/net8.0-windows10.0.19041/SkiaSharp.dll",
+        "ref/net8.0/SkiaSharp.dll",
+        "ref/netstandard2.0/SkiaSharp.dll",
+        "ref/netstandard2.1/SkiaSharp.dll",
+        "skiasharp.3.119.2.nupkg.sha512",
+        "skiasharp.nuspec"
+      ]
+    },
+    "SkiaSharp.NativeAssets.macOS/3.119.2": {
+      "sha512": "I2jMGQ/26KOnc6iAoR+Mxh9vSJJ2vioJyj9aJ9OL5yEZyXothXJxf4vBMqnSaiXMqiiU1scG7KqtT0CLkmMmWA==",
+      "type": "package",
+      "path": "skiasharp.nativeassets.macos/3.119.2",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.txt",
+        "README.md",
+        "THIRD-PARTY-NOTICES.txt",
+        "build/net462/SkiaSharp.NativeAssets.macOS.targets",
+        "buildTransitive/net462/SkiaSharp.NativeAssets.macOS.targets",
+        "buildTransitive/net8.0-macos14.0/SkiaSharp.NativeAssets.macOS.targets",
+        "icon.png",
+        "lib/net462/_._",
+        "lib/net6.0/_._",
+        "lib/net8.0-macos14.0/_._",
+        "lib/net8.0/_._",
+        "lib/netstandard2.0/_._",
+        "lib/netstandard2.1/_._",
+        "runtimes/osx/native/libSkiaSharp.dylib",
+        "skiasharp.nativeassets.macos.3.119.2.nupkg.sha512",
+        "skiasharp.nativeassets.macos.nuspec"
+      ]
+    },
+    "SkiaSharp.NativeAssets.Win32/3.119.2": {
+      "sha512": "uYe+da6+GXVgPKkCopzvIZ83DmC8SXXKeUAPrNcztJNsg0SjPQAxfKMOPZqmVjbzznrq/QUIjLUlJSZV/e0IPA==",
+      "type": "package",
+      "path": "skiasharp.nativeassets.win32/3.119.2",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.txt",
+        "README.md",
+        "THIRD-PARTY-NOTICES.txt",
+        "build/net462/SkiaSharp.NativeAssets.Win32.targets",
+        "buildTransitive/net462/SkiaSharp.NativeAssets.Win32.targets",
+        "icon.png",
+        "lib/net462/_._",
+        "lib/net6.0-windows10.0.19041/_._",
+        "lib/net6.0/_._",
+        "lib/net8.0-windows10.0.19041/_._",
+        "lib/net8.0/_._",
+        "lib/netstandard2.0/_._",
+        "lib/netstandard2.1/_._",
+        "runtimes/win-arm64/native/libSkiaSharp.dll",
+        "runtimes/win-arm64/native/libSkiaSharp.pdb",
+        "runtimes/win-x64/native/libSkiaSharp.dll",
+        "runtimes/win-x64/native/libSkiaSharp.pdb",
+        "runtimes/win-x86/native/libSkiaSharp.dll",
+        "runtimes/win-x86/native/libSkiaSharp.pdb",
+        "skiasharp.nativeassets.win32.3.119.2.nupkg.sha512",
+        "skiasharp.nativeassets.win32.nuspec"
+      ]
+    },
+    "Svg.Custom/3.4.1": {
+      "sha512": "ksHa7Zv8X1InxSWAeM0sSSvZM2W6FWgneXjU0bdYrQ20Q6q0nl3g0uaSWe53i/CC1OmR+/JAxsp8E3/wigtcng==",
+      "type": "package",
+      "path": "svg.custom/3.4.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/net10.0/Svg.Custom.dll",
+        "lib/net6.0/Svg.Custom.dll",
+        "lib/net8.0/Svg.Custom.dll",
+        "lib/netstandard2.0/Svg.Custom.dll",
+        "svg.custom.3.4.1.nupkg.sha512",
+        "svg.custom.nuspec"
+      ]
+    },
+    "Svg.Model/3.4.1": {
+      "sha512": "Zn04CWWIwV+qlJ4x4vg8FdCYNew5dRcsvkcCpzZggFKHGExIn4WTBtJMuLH8htuiLnbbgF6woIYpUll+seHfjw==",
+      "type": "package",
+      "path": "svg.model/3.4.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/net10.0/Svg.Model.dll",
+        "lib/net461/Svg.Model.dll",
+        "lib/net6.0/Svg.Model.dll",
+        "lib/net8.0/Svg.Model.dll",
+        "lib/netstandard2.0/Svg.Model.dll",
+        "svg.model.3.4.1.nupkg.sha512",
+        "svg.model.nuspec"
+      ]
+    },
+    "Svg.Skia/3.4.1": {
+      "sha512": "fNGHIeIUtEDo41P4MYfVqjNL902t8EP5/tBY9vYDg8VbKSOD84ZlBfCL4KSxjf//HcJi1Uz4uZCUXuEAKJirCw==",
+      "type": "package",
+      "path": "svg.skia/3.4.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "lib/net10.0/Svg.Skia.dll",
+        "lib/net461/Svg.Skia.dll",
+        "lib/net6.0/Svg.Skia.dll",
+        "lib/net8.0/Svg.Skia.dll",
+        "lib/netstandard2.0/Svg.Skia.dll",
+        "svg.skia.3.4.1.nupkg.sha512",
+        "svg.skia.nuspec"
+      ]
+    }
+  },
+  "projectFileDependencyGroups": {
+    "net8.0-windows7.0": [
+      "Autodesk.Revit.SDK >= 2026.0.0.9999",
+      "Microsoft.Office.Interop.Excel >= 16.0.18925.20022",
+      "SkiaSharp >= 3.119.2",
+      "Svg.Skia >= 3.4.1"
+    ]
+  },
+  "packageFolders": {
+    "C:\\Users\\quangnguyen\\.nuget\\packages\\": {}
+  },
+  "project": {
+    "version": "1.0.0",
+    "restore": {
+      "projectUniqueName": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\ArcTool.Core.csproj",
+      "projectName": "ArcTool.Core",
+      "projectPath": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\ArcTool.Core.csproj",
+      "packagesPath": "C:\\Users\\quangnguyen\\.nuget\\packages\\",
+      "outputPath": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\obj\\",
+      "projectStyle": "PackageReference",
+      "configFilePaths": [
+        "C:\\Users\\quangnguyen\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+      ],
+      "originalTargetFrameworks": [
+        "net8.0-windows"
+      ],
+      "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "https://api.nuget.org/v3/index.json": {}
+      },
+      "frameworks": {
+        "net8.0-windows7.0": {
+          "targetAlias": "net8.0-windows",
+          "projectReferences": {}
+        }
+      },
+      "warningProperties": {
+        "warnAsError": [
+          "NU1605"
+        ]
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      },
+      "SdkAnalysisLevel": "10.0.100"
+    },
+    "frameworks": {
+      "net8.0-windows7.0": {
+        "targetAlias": "net8.0-windows",
+        "dependencies": {
+          "Autodesk.Revit.SDK": {
+            "target": "Package",
+            "version": "[2026.0.0.9999, )"
+          },
+          "Microsoft.Office.Interop.Excel": {
+            "target": "Package",
+            "version": "[16.0.18925.20022, )"
+          },
+          "SkiaSharp": {
+            "target": "Package",
+            "version": "[3.119.2, )"
+          },
+          "Svg.Skia": {
+            "target": "Package",
+            "version": "[3.4.1, )"
+          }
+        },
+        "imports": [
+          "net461",
+          "net462",
+          "net47",
+          "net471",
+          "net472",
+          "net48",
+          "net481"
+        ],
+        "assetTargetFallback": true,
+        "warn": true,
+        "downloadDependencies": [
+          {
+            "name": "Microsoft.AspNetCore.App.Ref",
+            "version": "[8.0.24, 8.0.24]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Ref",
+            "version": "[8.0.24, 8.0.24]"
+          },
+          {
+            "name": "Microsoft.WindowsDesktop.App.Ref",
+            "version": "[8.0.24, 8.0.24]"
+          }
+        ],
+        "frameworkReferences": {
+          "Microsoft.NETCore.App": {
+            "privateAssets": "all"
+          },
+          "Microsoft.WindowsDesktop.App": {
+            "privateAssets": "none"
+          }
+        },
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.103/PortableRuntimeIdentifierGraph.json"
+      }
+    }
+  }
+}

@@ -1,0 +1,128 @@
+﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
+using Autodesk.Revit.UI.Selection;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace ArcTool.Core.Commands
+{
+    [Transaction(TransactionMode.Manual)]
+    public class MultiCutCommand : IExternalCommand
+    {
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        {
+            UIDocument uidoc = commandData.Application.ActiveUIDocument;
+            Document doc = uidoc.Document;
+
+            try
+            {
+                // BƯỚC 1: CHỌN CÁC VOID (GENERIC MODEL)
+                // Cho phép quét chọn hàng loạt
+                IList<Reference> voidRefs = null;
+                try
+                {
+                    voidRefs = uidoc.Selection.PickObjects(ObjectType.Element, new VoidSelectionFilter(), "Bước 1: Quét chọn các Void cần dùng để cắt");
+                }
+                catch (Autodesk.Revit.Exceptions.OperationCanceledException) { return Result.Cancelled; }
+
+                if (voidRefs == null || voidRefs.Count == 0) return Result.Cancelled;
+
+                List<Element> voids = voidRefs.Select(r => doc.GetElement(r)).ToList();
+
+                // BƯỚC 2: CHỌN CÁC TƯỜNG CẦN CẮT
+                // Cho phép quét chọn toàn bộ tường trong view hoặc khu vực
+                IList<Reference> wallRefs = null;
+                try
+                {
+                    wallRefs = uidoc.Selection.PickObjects(ObjectType.Element, new WallSelectionFilter(), "Bước 2: Quét chọn các Tường sẽ bị cắt");
+                }
+                catch (Autodesk.Revit.Exceptions.OperationCanceledException) { return Result.Cancelled; }
+
+                if (wallRefs == null || wallRefs.Count == 0) return Result.Cancelled;
+
+                List<Element> walls = wallRefs.Select(r => doc.GetElement(r)).ToList();
+
+                // BƯỚC 3: XỬ LÝ CẮT (TỐI ƯU HÓA)
+                using (Transaction t = new Transaction(doc, "ArcTool: Multi-Cut"))
+                {
+                    t.Start();
+
+                    int successCount = 0;
+                    int totalVoids = voids.Count;
+
+                    // Dùng StatusBar để báo tiến độ
+                    string statusFormat = "Đang cắt... Void {0}/{1}";
+
+                    for (int i = 0; i < totalVoids; i++)
+                    {
+                        Element voidElem = voids[i];
+
+                        // Cập nhật trạng thái để ko tưởng máy bị treo
+                        uidoc.Application.Application.WriteJournalComment($"Cutting Void {i}/{totalVoids}", true);
+
+                        // --- THUẬT TOÁN TỐI ƯU ---
+                        // Thay vì thử cắt Void này với 1000 bức tường, ta lọc xem nó đang chạm tường nào
+
+                        BoundingBoxXYZ bb = voidElem.get_BoundingBox(null);
+                        if (bb == null) continue;
+
+                        Outline outline = new Outline(bb.Min, bb.Max);
+                        BoundingBoxIntersectsFilter bbFilter = new BoundingBoxIntersectsFilter(outline);
+
+                        // Chỉ lấy các tường nằm trong phạm vi của Void này
+                        // (Lọc từ danh sách walls người dùng đã chọn để nhanh hơn lọc toàn bộ doc)
+                        var nearbyWalls = walls.Where(w => bbFilter.PassesFilter(w)).ToList();
+
+                        bool voidUsed = false;
+                            foreach (Element wall in nearbyWalls)
+                            {
+                                if (InstanceVoidCutUtils.CanBeCutWithVoid(wall))
+                                {
+                                    try
+                                    {
+                                        InstanceVoidCutUtils.AddInstanceVoidCut(doc, wall, voidElem);
+                                        voidUsed = true;
+                                    }
+                                    catch { }
+                                }
+                            }
+
+                        if (voidUsed) successCount++;
+                    }
+
+                    doc.Regenerate();
+                    t.Commit();
+
+                    Autodesk.Revit.UI.TaskDialog.Show("Multi-Cut Result",
+                        $"Hoàn tất!\n- Đã xử lý {totalVoids} Void.\n- Thực hiện cắt thành công tại {successCount} vị trí.");
+                }
+
+                return Result.Succeeded;
+            }
+            catch (Exception ex)
+            {
+                message = ex.Message;
+                return Result.Failed;
+            }
+        }
+
+        // --- FILTERS ---
+        public class VoidSelectionFilter : ISelectionFilter
+        {
+            public bool AllowElement(Element elem)
+            {
+                // Chỉ cho chọn Generic Model (Void)
+                return elem.Category.Id.Value == (int)BuiltInCategory.OST_GenericModel;
+            }
+            public bool AllowReference(Reference reference, XYZ position) => false;
+        }
+
+        public class WallSelectionFilter : ISelectionFilter
+        {
+            public bool AllowElement(Element elem) => elem.Category.Id.Value == (int)BuiltInCategory.OST_Walls;
+            public bool AllowReference(Reference reference, XYZ position) => false;
+        }
+    }
+}

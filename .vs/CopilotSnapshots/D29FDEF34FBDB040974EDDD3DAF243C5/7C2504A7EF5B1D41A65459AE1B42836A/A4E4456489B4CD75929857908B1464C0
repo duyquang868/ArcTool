@@ -1,0 +1,289 @@
+﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
+using Autodesk.Revit.UI.Selection;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows.Forms;
+
+namespace ArcTool.Core.Commands
+{
+    [Transaction(TransactionMode.Manual)]
+    public class CreateVoidFromLinkCommand : IExternalCommand
+    {
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        {
+            UIDocument uidoc = commandData.Application.ActiveUIDocument;
+            Document doc = uidoc.Document;
+
+            try
+            {
+                // --- BƯỚC 1: HIỆN FORM CHỌN FAMILY VOID ---
+                var genericModelSymbols = new FilteredElementCollector(doc)
+                    .OfClass(typeof(FamilySymbol))
+                    .OfCategory(BuiltInCategory.OST_GenericModel)
+                    .Cast<FamilySymbol>()
+                    .OrderBy(x => x.FamilyName)
+                    .ToList();
+
+                if (genericModelSymbols.Count == 0)
+                {
+                    TaskDialog.Show("ArcTool Error", "Không tìm thấy Family Generic Model nào trong dự án.");
+                    return Result.Failed;
+                }
+
+                FamilySymbol selectedVoidSymbol = null;
+                using (var form = new FamilySelectionForm(genericModelSymbols))
+                {
+                    if (form.ShowDialog() == DialogResult.OK) selectedVoidSymbol = form.SelectedSymbol;
+                    else return Result.Cancelled;
+                }
+
+                using (Transaction t = new Transaction(doc, "Activate Symbol"))
+                {
+                    t.Start();
+                    if (!selectedVoidSymbol.IsActive) selectedVoidSymbol.Activate();
+                    t.Commit();
+                }
+
+                // --- BƯỚC 2: CHỌN DẦM TỪ LINK ---
+                Reference linkRef = uidoc.Selection.PickObject(ObjectType.LinkedElement, "Chọn dầm (Structural Framing) từ file Link");
+                RevitLinkInstance linkInstance = doc.GetElement(linkRef.ElementId) as RevitLinkInstance;
+                Document linkDoc = linkInstance.GetLinkDocument();
+                Element linkedBeam = linkDoc.GetElement(linkRef.LinkedElementId);
+
+                // --- BƯỚC 3: LẤY THÔNG SỐ (LOGIC MỚI) ---
+
+                // 1. Lấy b và h từ FamilySymbol -> ParameterSet (Theo yêu cầu)
+                // Ưu tiên tìm theo API trước, nếu không thấy thì tìm theo tên
+                double beamWidth = GetTypeParamFromSymbol(linkedBeam, BuiltInParameter.STRUCTURAL_SECTION_SHAPE_WIDTH, new[] { "b", "Width", "B", "Rộng" });
+                double beamHeight = GetTypeParamFromSymbol(linkedBeam, BuiltInParameter.STRUCTURAL_SECTION_SHAPE_HEIGHT, new[] { "h", "Height", "H", "Depth", "Cao" });
+
+                // 2. Lấy Cut Length từ AsValueString (Theo yêu cầu)
+                double beamCutLength = GetCutLengthValue(linkedBeam);
+
+                // Kiểm tra
+                if (beamWidth == 0 || beamHeight == 0 || beamCutLength == 0)
+                {
+                    TaskDialog.Show("ArcTool Error",
+                        $"Không lấy được thông số dầm (ID: {linkedBeam.Id}).\n" +
+                        $"- Width (Symbol): {beamWidth}\n" +
+                        $"- Height (Symbol): {beamHeight}\n" +
+                        $"- Length (AsValueString): {beamCutLength}\n\n" +
+                        "Vui lòng kiểm tra lại Family dầm.");
+                    return Result.Failed;
+                }
+
+                // --- BƯỚC 4: LẤY VỊ TRÍ & HÌNH HỌC ---
+                LocationCurve locCurve = linkedBeam.Location as LocationCurve;
+                if (locCurve == null) return Result.Failed;
+
+                Transform linkTransform = linkInstance.GetTotalTransform();
+                Curve beamCurve = locCurve.Curve;
+                XYZ startPoint = linkTransform.OfPoint(beamCurve.GetEndPoint(0));
+                XYZ endPoint = linkTransform.OfPoint(beamCurve.GetEndPoint(1));
+                XYZ midPoint = (startPoint + endPoint) / 2.0;
+
+                // --- BƯỚC 5: CHỌN TƯỜNG & CẮT ---
+                Reference wallRef = uidoc.Selection.PickObject(ObjectType.Element, new WallSelectionFilter(), "Chọn Tường cần cắt");
+                Element wall = doc.GetElement(wallRef);
+
+                using (Transaction t = new Transaction(doc, "ArcTool: Place Void & Cut"))
+                {
+                    t.Start();
+
+                    // Đặt Void
+                    FamilyInstance voidInst = doc.Create.NewFamilyInstance(midPoint, selectedVoidSymbol, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+
+                    // Xoay
+                    XYZ beamDir = (endPoint - startPoint).Normalize();
+                    RotateInstanceToVector(doc, voidInst, beamDir, midPoint);
+
+                    // Gán tham số
+                    SetParam(voidInst, "Width", beamWidth);
+                    SetParam(voidInst, "Height", beamHeight);
+                    SetParam(voidInst, "Length", beamCutLength);
+
+                    doc.Regenerate();
+
+                    // Cắt
+                    try
+                    {
+                        if (InstanceVoidCutUtils.CanBeCutWithVoid(wall))
+                        {
+                            InstanceVoidCutUtils.AddInstanceVoidCut(doc, wall, voidInst);
+                        }
+                        else
+                        {
+                            TaskDialog.Show("Warning", "Tường không hỗ trợ cắt hoặc Void chưa chạm tường.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        TaskDialog.Show("Cut Error", ex.Message);
+                    }
+
+                    t.Commit();
+                }
+
+                return Result.Succeeded;
+            }
+            catch (Autodesk.Revit.Exceptions.OperationCanceledException)
+            {
+                return Result.Cancelled;
+            }
+            catch (Exception ex)
+            {
+                message = ex.Message;
+                return Result.Failed;
+            }
+        }
+
+        // ====================================================
+        //              CÁC HÀM HỖ TRỢ ĐẶC BIỆT
+        // ====================================================
+
+        /// <summary>
+        /// Lấy tham số Type bằng cách duyệt qua ParameterSet của FamilySymbol.
+        /// </summary>
+        private double GetTypeParamFromSymbol(Element elem, BuiltInParameter bip, string[] names)
+        {
+            FamilyInstance fi = elem as FamilyInstance;
+            if (fi == null) return 0;
+
+            FamilySymbol symbol = fi.Symbol;
+            if (symbol == null) return 0;
+
+            // 1. Tìm trong ParameterSet bằng API (BuiltInParameter)
+            // Duyệt thủ công qua Set thay vì dùng get_Parameter để đảm bảo tìm thấy
+            foreach (Parameter p in symbol.Parameters)
+            {
+                if (p.Definition is InternalDefinition id && id.BuiltInParameter == bip)
+                {
+                    if (p.StorageType == StorageType.Double && p.HasValue) return p.AsDouble();
+                }
+            }
+
+            // 2. Nếu không thấy, tìm theo Tên trong ParameterSet
+            foreach (string name in names)
+            {
+                foreach (Parameter p in symbol.Parameters)
+                {
+                    if (p.Definition.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (p.StorageType == StorageType.Double && p.HasValue) return p.AsDouble();
+                    }
+                }
+            }
+
+            return 0;
+        }
+
+        /// <summary>
+        /// Lấy Cut Length dùng AsValueString rồi convert về Double (Internal Units).
+        /// </summary>
+        private double GetCutLengthValue(Element elem)
+        {
+            // API chuẩn cho Cut Length
+            Parameter p = elem.get_Parameter(BuiltInParameter.STRUCTURAL_FRAME_CUT_LENGTH);
+
+            // Nếu API không ra, thử tìm theo tên
+            if (p == null) p = elem.LookupParameter("Cut Length");
+            if (p == null) p = elem.LookupParameter("Length");
+
+            if (p != null && p.HasValue)
+            {
+                // Cách 1: Thử lấy AsDouble trước (Chuẩn nhất)
+                double val = p.AsDouble();
+                if (val > 0.001) return val; // Nếu có giá trị > 0 thì dùng luôn
+
+                // Cách 2: Nếu AsDouble = 0 (như bạn gặp), dùng AsValueString
+                string valStr = p.AsValueString();
+                if (!string.IsNullOrEmpty(valStr))
+                {
+                    // Parse string về double. 
+                    // Lưu ý: Cần convert từ DisplayUnit về InternalUnit (Feet)
+                    // Ở đây dùng Parse đơn giản, nếu chuỗi có đơn vị (mm) có thể cần xử lý thêm.
+                    // Tuy nhiên, GetValueFromString của Revit API mới là chuẩn nhất để parse.
+
+                    try
+                    {
+                        // Dùng UnitFormatUtils để parse chuỗi có đơn vị (vd: "3000 mm") về feet
+                        // Yêu cầu Revit 2021+
+                        if (elem.Document.DisplayUnitSystem == DisplayUnit.METRIC)
+                        {
+                            // Parse thủ công sơ bộ nếu không muốn dùng UnitUtils phức tạp
+                            string cleanStr = new string(valStr.Where(c => char.IsDigit(c) || c == '.' || c == ',').ToArray());
+                            cleanStr = cleanStr.Replace(',', '.'); // Đổi phẩy thành chấm
+                            if (double.TryParse(cleanStr, out double result))
+                            {
+                                // Giả sử input là mm -> đổi ra feet
+                                return UnitUtils.ConvertToInternalUnits(result, UnitTypeId.Millimeters);
+                            }
+                        }
+                    }
+                    catch { }
+                }
+            }
+            return 0;
+        }
+
+        private void SetParam(Element elem, string paramName, double value)
+        {
+            Parameter p = elem.LookupParameter(paramName);
+            if (p != null && !p.IsReadOnly) p.Set(value);
+        }
+
+        private void RotateInstanceToVector(Document doc, FamilyInstance inst, XYZ targetDir, XYZ center)
+        {
+            XYZ currentDir = inst.HandOrientation;
+            double angle = currentDir.AngleTo(targetDir);
+            if (Math.Abs(angle) > 0.001)
+            {
+                XYZ cross = currentDir.CrossProduct(targetDir);
+                if (cross.IsZeroLength()) cross = XYZ.BasisZ;
+                if (cross.Z < 0) angle = -angle;
+                Line axis = Line.CreateBound(center, center + XYZ.BasisZ);
+                ElementTransformUtils.RotateElement(doc, inst.Id, axis, angle);
+            }
+        }
+
+        public class WallSelectionFilter : ISelectionFilter
+        {
+            public bool AllowElement(Element elem) => elem.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Walls;
+            public bool AllowReference(Reference reference, XYZ position) => false;
+        }
+
+        public class FamilySelectionForm : Form
+        {
+            public FamilySymbol SelectedSymbol { get; private set; }
+            private ComboBox cmbFamilies;
+            private Button btnOk;
+            private List<FamilySymbol> _symbols;
+
+            public FamilySelectionForm(List<FamilySymbol> symbols)
+            {
+                _symbols = symbols;
+                InitializeComponent();
+            }
+
+            private void InitializeComponent()
+            {
+                this.Text = "ArcTool - Chọn Void";
+                this.Size = new Size(350, 180);
+                this.StartPosition = FormStartPosition.CenterScreen;
+
+                System.Windows.Forms.Label lbl = new System.Windows.Forms.Label() { Text = "Chọn Family Void:", Location = new System.Drawing.Point(20, 20), AutoSize = true };
+                cmbFamilies = new ComboBox() { Location = new System.Drawing.Point(20, 50), Size = new System.Drawing.Size(290, 30), DropDownStyle = ComboBoxStyle.DropDownList };
+                foreach (var sym in _symbols) cmbFamilies.Items.Add($"{sym.FamilyName} : {sym.Name}");
+                if (cmbFamilies.Items.Count > 0) cmbFamilies.SelectedIndex = 0;
+
+                btnOk = new Button() { Text = "OK", Location = new System.Drawing.Point(130, 100), DialogResult = DialogResult.OK };
+                btnOk.Click += (s, e) => { if (cmbFamilies.SelectedIndex >= 0) SelectedSymbol = _symbols[cmbFamilies.SelectedIndex]; };
+
+                this.Controls.Add(lbl); this.Controls.Add(cmbFamilies); this.Controls.Add(btnOk);
+            }
+        }
+    }
+}

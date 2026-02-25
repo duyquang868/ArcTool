@@ -1,0 +1,107 @@
+﻿using System;
+using System.Runtime.InteropServices;
+using System.Diagnostics;
+using System.IO;
+// Bắt buộc: Add Reference -> COM -> Microsoft Excel 16.0 Object Library
+using Excel = Microsoft.Office.Interop.Excel;
+
+// Khai báo COM để sử dụng GetActiveObject
+[DllImport("ole32.dll")]
+public static extern int GetRunningObjectTable(uint reserved, out System.Runtime.InteropServices.ComTypes.IRunningObjectTable pprot);
+
+[DllImport("ole32.dll")]
+public static extern int CreateBindCtx(uint reserved, out System.Runtime.InteropServices.ComTypes.IBindCtx ppcbc);
+
+namespace ArcTool.Core.Services
+{
+    public class ExcelInteropService : IDisposable
+    {
+        private Excel.Application _excelApp;
+
+        /// <summary>
+        /// 1. Kết nối vào Excel đang mở (Silent Mode)
+        /// </summary>
+        public bool AttachToActiveExcel()
+        {
+            try
+            {
+                // Lấy instance Excel đang chạy trên Windows
+                // Sử dụng COM interop để lấy active object
+                object obj = Marshal.GetActiveObject("Excel.Application");
+                _excelApp = (Excel.Application)obj;
+                return _excelApp != null;
+            }
+            catch
+            {
+                return false; // Không tìm thấy Excel đang mở
+            }
+        }
+
+        /// <summary>
+        /// 2. Copy vùng in, Paste vào Chart và Xuất ra SVG
+        /// </summary>
+        public bool ExportSelectionToSvg(string outputSvgPath)
+        {
+            if (_excelApp == null) return false;
+
+            Excel.Workbook wb = null;
+            Excel.Worksheet sheet = null;
+            Excel.Range selection = null;
+            Excel.ChartObject tempChart = null;
+
+            try
+            {
+                wb = _excelApp.ActiveWorkbook;
+                sheet = (Excel.Worksheet)wb.ActiveSheet;
+
+                // Lấy vùng đang chọn hoặc UsedRange
+                selection = _excelApp.Selection as Excel.Range;
+                if (selection == null) return false;
+
+                // A. COPY AS PICTURE (Vector Format)
+                // xlPicture là mấu chốt để ảnh nét khi zoom
+                selection.CopyPicture(Excel.XlPictureAppearance.xlScreen, Excel.XlCopyPictureFormat.xlPicture);
+
+                // B. TẠO CHART TẠM (WORKAROUND)
+                var charts = (Excel.ChartObjects)sheet.ChartObjects();
+                // Tạo chart có kích thước bằng đúng vùng chọn
+                tempChart = charts.Add(0, 0, (double)selection.Width, (double)selection.Height);
+
+                // C. PASTE & EXPORT
+                tempChart.Activate();
+                tempChart.Chart.Paste();
+                // FilterName "SVG" chỉ có trên Excel 2016 trở lên
+                tempChart.Chart.Export(outputSvgPath, "SVG");
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("Error: " + ex.Message);
+                return false;
+            }
+            finally
+            {
+                // D. DỌN DẸP CHIẾN TRƯỜNG
+                if (tempChart != null)
+                {
+                    try { tempChart.Delete(); } catch { } // Xóa chart để user không thấy
+                }
+
+                // Giải phóng COM objects để tránh treo Excel
+                if (selection != null) Marshal.ReleaseComObject(selection);
+                if (sheet != null) Marshal.ReleaseComObject(sheet);
+                if (wb != null) Marshal.ReleaseComObject(wb);
+            }
+        }
+
+        public void Dispose()
+        {
+            if (_excelApp != null)
+            {
+                Marshal.ReleaseComObject(_excelApp);
+                _excelApp = null;
+            }
+        }
+    }
+}

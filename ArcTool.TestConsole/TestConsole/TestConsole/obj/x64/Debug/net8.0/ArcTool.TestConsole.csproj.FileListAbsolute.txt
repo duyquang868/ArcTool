@@ -1,0 +1,46 @@
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\ArcTool.TestConsole.csproj.AssemblyReference.cache
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\ArcTool.TestConsole.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\ArcTool.TestConsole.AssemblyInfoInputs.cache
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\ArcTool.TestConsole.AssemblyInfo.cs
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\ArcTool.TestConsole.csproj.CoreCompileInputs.cache
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\ArcTool.TestConsole.exe
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\ArcTool.TestConsole.deps.json
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\ArcTool.TestConsole.runtimeconfig.json
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\ArcTool.TestConsole.dll
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\ArcTool.TestConsole.pdb
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\Aspose.Cells.dll
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\SkiaSharp.dll
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\System.Security.Cryptography.Pkcs.dll
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\runtimes\osx\native\libSkiaSharp.dylib
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\runtimes\win-arm64\native\libSkiaSharp.dll
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\runtimes\win-x64\native\libSkiaSharp.dll
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\runtimes\win-x86\native\libSkiaSharp.dll
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\runtimes\win\lib\net8.0\System.Security.Cryptography.Pkcs.dll
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\ArcTool.ExcelEngine.dll
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\ArcTool.ExcelEngine.pdb
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\ArcTool..3195CA6A.Up2Date
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\ArcTool.TestConsole.dll
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\refint\ArcTool.TestConsole.dll
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\ArcTool.TestConsole.pdb
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\ArcTool.TestConsole.genruntimeconfig.cache
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\ref\ArcTool.TestConsole.dll
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\ArcTool.TestConsole.csproj.AssemblyReference.cache
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\ArcTool.TestConsole.GeneratedMSBuildEditorConfig.editorconfig
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\ArcTool.TestConsole.AssemblyInfoInputs.cache
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\ArcTool.TestConsole.AssemblyInfo.cs
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\ArcTool.TestConsole.csproj.CoreCompileInputs.cache
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\ArcTool.TestConsole.exe
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\ArcTool.TestConsole.deps.json
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\ArcTool.TestConsole.runtimeconfig.json
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\ArcTool.TestConsole.dll
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\ArcTool.TestConsole.pdb
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\ArcTool.Core.dll
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\ArcTool.Core.pdb
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\ArcTool.Core.dll.config
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\ArcTool..3195CA6A.Up2Date
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\ArcTool.TestConsole.dll
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\refint\ArcTool.TestConsole.dll
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\ArcTool.TestConsole.pdb
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\ArcTool.TestConsole.genruntimeconfig.cache
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\ref\ArcTool.TestConsole.dll
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0\Microsoft.Office.Interop.Excel.dll

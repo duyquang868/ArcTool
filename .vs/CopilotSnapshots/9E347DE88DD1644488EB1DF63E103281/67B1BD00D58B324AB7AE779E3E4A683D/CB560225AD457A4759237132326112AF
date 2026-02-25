@@ -1,0 +1,83 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using Autodesk.Revit.Attributes;
+using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
+using Arctool.UI;
+
+namespace Arctool.Core.Commands
+{
+    [Transaction(TransactionMode.Manual)]
+    public class FilterManagerCommand : IExternalCommand
+    {
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        {
+            // 1. Lấy tài liệu và View hiện hành
+            UIDocument uidoc = commandData.Application.ActiveUIDocument;
+            Document doc = uidoc.Document;
+            View activeView = doc.ActiveView;
+
+            // 2. Khởi tạo cửa sổ giao diện Arctool
+            FilterWindow ui = new FilterWindow();
+
+            // ĐỒNG BỘ TÊN VIEW ĐANG MỞ (Sửa lỗi hiển thị Level 2)
+            ui.UpdateActiveViewInfo(activeView.Name);
+
+            // 3. Quét danh sách Filters trong dự án và đổ vào bảng trái
+            var filters = new FilteredElementCollector(doc)
+                .OfClass(typeof(ParameterFilterElement))
+                .Cast<ParameterFilterElement>()
+                .OrderBy(x => x.Name)
+                .ToList();
+
+            foreach (var f in filters)
+            {
+                ui.FiltersSource.Add(new FilterItem
+                {
+                    Name = f.Name,
+                    IsSelected = false,
+                    IsEnabled = true,
+                    IsVisible = true
+                });
+            }
+
+            // 4. Quét danh sách Views và đổ vào bảng phải
+            // Đã sửa lỗi lặp lại dòng .Where và dấu chấm phẩy sai từ code cũ
+            var views = new FilteredElementCollector(doc)
+                .OfClass(typeof(View))
+                .Cast<View>()
+                .Where(v => !v.IsTemplate && v.CanUseTemporaryVisibilityModes())
+                .OrderBy(v => v.Name)
+                .ToList();
+
+            foreach (var v in views)
+            {
+                ui.ViewsSource.Add(new ViewItem
+                {
+                    ViewName = v.Name,
+                    FilterCount = v.GetFilters().Count,
+                    IsSelected = false
+                });
+            }
+
+            // 5. Gắn chủ sở hữu là Revit để cửa sổ không bị trôi và xử lý hiển thị
+            var helper = new System.Windows.Interop.WindowInteropHelper(ui);
+            helper.Owner = Autodesk.Windows.ComponentManager.ApplicationWindow;
+
+            // 6. Hiển thị hộp thoại
+            if (ui.ShowDialog() == true)
+            {
+                // Khi người dùng nhấn "Thêm Filters" (DialogResult = true)
+                RevitCommandId id = RevitCommandId.LookupPostableCommandId(PostableCommand.Filters);
+                if (commandData.Application.CanPostCommand(id))
+                {
+                    commandData.Application.PostCommand(id);
+                }
+                return Result.Succeeded;
+            }
+
+            return Result.Cancelled;
+        }
+    }
+}

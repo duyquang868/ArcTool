@@ -1,0 +1,144 @@
+﻿using System;
+using System.Runtime.InteropServices;
+using System.IO;
+using System.Windows;
+using Microsoft.Office.Interop.Excel;
+using Microsoft.Office.Core;
+
+namespace ArcTool.Core.Services
+{
+    /// <summary>
+    /// Service quản lý giao tiếp với Excel thông qua COM Interop.
+    /// Architect Note: Class này implement IDisposable để đảm bảo giải phóng tiến trình Excel.
+    /// </summary>
+    public class ExcelInteropService : IDisposable
+    {
+        private Application _excelApp;
+        private Workbook _workbook;
+        private Worksheet _activeSheet;
+
+        // Constants cho cấu hình xuất ảnh
+        private const int TARGET_DPI = 300; // Độ phân giải mong muốn
+        private const int SCREEN_DPI = 72;  // DPI cơ sở của Excel (Points)
+
+        public ExcelInteropService()
+        {
+            // Constructor: Khởi tạo hoặc attach vào Excel nếu cần
+        }
+
+        public bool OpenFile(string filePath)
+        {
+            try
+            {
+                _excelApp = new Application();
+                _excelApp.Visible = false; // Chạy ngầm để tăng tốc
+                _excelApp.DisplayAlerts = false; // Tắt cảnh báo
+                _workbook = _excelApp.Workbooks.Open(filePath);
+                _activeSheet = _workbook.ActiveSheet as Worksheet;
+                return true;
+            }
+            catch (Exception ex)
+            {
+                // Log error here
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Xuất vùng dữ liệu (Range) ra file ảnh với độ phân giải cao.
+        /// </summary>
+        /// <param name="rangeAddress">Địa chỉ vùng (vd: "A1:F20")</param>
+        /// <param name="outputPath">Đường dẫn file ảnh đầu ra</param>
+        /// <returns>True nếu thành công</returns>
+        public bool ExportRangeAsHighResImage(string rangeAddress, string outputPath)
+        {
+            Range range = null;
+            ChartObjects chartObjects = null;
+            ChartObject chartObj = null;
+            Chart chart = null;
+
+            try
+            {
+                if (_activeSheet == null) return false;
+
+                // 1. Lấy vùng dữ liệu
+                range = _activeSheet.Range[rangeAddress];
+
+                // 2. Copy vùng dữ liệu dưới dạng Picture (Vector)
+                // xlScreen + xlPicture cho kết quả scale tốt nhất
+                range.CopyPicture(XlPictureAppearance.xlScreen, XlCopyPictureFormat.xlPicture);
+
+                // 3. Tính toán kích thước phóng đại (The "Secret" Logic)
+                // Excel đo kích thước bằng Points (1/72 inch).
+                // Để đạt 300 DPI, ta cần scale kích thước Chart lên tỷ lệ tương ứng.
+                double scaleFactor = (double)TARGET_DPI / SCREEN_DPI;
+                double width = (double)range.Width * scaleFactor;
+                double height = (double)range.Height * scaleFactor;
+
+                // 4. Tạo Chart tạm thời với kích thước ĐÃ SCALE
+                chartObjects = (ChartObjects)_activeSheet.ChartObjects();
+                chartObj = chartObjects.Add(0, 0, width, height);
+                chart = chartObj.Chart;
+
+                // Clean chart (bỏ title, legend, border nếu có)
+                chart.ChartArea.Format.Line.Visible = MsoTriState.msoFalse;
+                chart.ChartArea.Fill.Visible = MsoTriState.msoFalse; // Transparent background nếu cần
+
+                // 5. Paste ảnh vào Chart
+                chart.Paste();
+
+                // Architect Note: Đôi khi ảnh paste vào chưa full chart, cần force resize shape bên trong (nếu cần thiết)
+                // Tuy nhiên, logic chuẩn là Chart Container to thì ảnh Paste vào sẽ tự fit hoặc giữ nguyên scale.
+                // Nếu ảnh bị nhỏ, ta có thể access chart.Shapes.Item(1) để resize. 
+                // Ở đây ta tin tưởng vào cơ chế Paste của Excel vào Chart trống.
+
+                // 6. Export ra file
+                chart.Export(outputPath, "PNG", false);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                // Xử lý lỗi (ví dụ: Clipboard busy)
+                System.Diagnostics.Debug.WriteLine($"Export Error: {ex.Message}");
+                return false;
+            }
+            finally
+            {
+                // 7. Cleanup resource ngay lập tức
+                if (chartObj != null) chartObj.Delete();
+
+                ReleaseObject(chart);
+                ReleaseObject(chartObj);
+                ReleaseObject(chartObjects);
+                ReleaseObject(range);
+            }
+        }
+
+        public void Dispose()
+        {
+            if (_workbook != null)
+            {
+                _workbook.Close(false);
+                ReleaseObject(_workbook);
+            }
+            if (_excelApp != null)
+            {
+                _excelApp.Quit();
+                ReleaseObject(_excelApp);
+            }
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+        }
+
+        private void ReleaseObject(object obj)
+        {
+            try
+            {
+                if (obj != null) Marshal.ReleaseComObject(obj);
+            }
+            catch (Exception) { }
+            finally { obj = null; }
+        }
+    }
+}

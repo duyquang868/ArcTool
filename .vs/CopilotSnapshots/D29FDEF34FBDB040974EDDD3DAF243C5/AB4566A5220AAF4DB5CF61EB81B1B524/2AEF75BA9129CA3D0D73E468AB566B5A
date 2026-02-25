@@ -1,0 +1,115 @@
+﻿using System;
+using System.Runtime.InteropServices;
+using System.Diagnostics;
+using System.IO;
+// Remove the alias to avoid version conflicts - use direct reference
+using Microsoft.Office.Interop.Excel;
+
+namespace ArcTool.Core.Services
+{
+    public class ExcelInteropService : IDisposable
+    {
+        private Application _excelApp;
+
+        /// <summary>
+        /// 1. Connect to open Excel instance (Silent Mode)
+        /// </summary>
+        public bool AttachToActiveExcel()
+        {
+            try
+            {
+                // Get Excel instance running on Windows
+                // Use reflection to call Marshal.GetActiveObject for .NET 8 compatibility
+                var type = Type.GetType("System.Runtime.InteropServices.Marshal");
+                if (type != null)
+                {
+                    var method = type.GetMethod("GetActiveObject", 
+                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static,
+                        null, new[] { typeof(string) }, null);
+                    
+                    if (method != null)
+                    {
+                        object obj = method.Invoke(null, new[] { "Excel.Application" });
+                        _excelApp = (Application)obj;
+                        return _excelApp != null;
+                    }
+                }
+
+                // Fallback: Create new instance
+                _excelApp = new Application();
+                return _excelApp != null;
+            }
+            catch
+            {
+                return false; // Excel not found or error
+            }
+        }
+
+        /// <summary>
+        /// 2. Copy print range, Paste to Chart and Export to SVG
+        /// </summary>
+        public bool ExportSelectionToSvg(string outputSvgPath)
+        {
+            if (_excelApp == null) return false;
+
+            Workbook wb = null;
+            Worksheet sheet = null;
+            Range selection = null;
+            ChartObject tempChart = null;
+
+            try
+            {
+                wb = _excelApp.ActiveWorkbook;
+                sheet = (Worksheet)wb.ActiveSheet;
+
+                // Get current selection or UsedRange
+                selection = _excelApp.Selection as Range;
+                if (selection == null) return false;
+
+                // A. COPY AS PICTURE (Vector Format)
+                // xlPicture is key for sharp image when zoomed
+                selection.CopyPicture(XlPictureAppearance.xlScreen, XlCopyPictureFormat.xlPicture);
+
+                // B. CREATE TEMPORARY CHART (WORKAROUND)
+                var charts = (ChartObjects)sheet.ChartObjects();
+                // Create chart with same dimensions as selection
+                tempChart = charts.Add(0, 0, (double)selection.Width, (double)selection.Height);
+
+                // C. PASTE & EXPORT
+                tempChart.Activate();
+                tempChart.Chart.Paste();
+                // FilterName "SVG" only available on Excel 2016+
+                tempChart.Chart.Export(outputSvgPath, "SVG");
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine("Error: " + ex.Message);
+                return false;
+            }
+            finally
+            {
+                // D. CLEANUP
+                if (tempChart != null)
+                {
+                    try { tempChart.Delete(); } catch { } // Delete chart so user doesn't see it
+                }
+
+                // Release COM objects to prevent Excel from hanging
+                if (selection != null) Marshal.ReleaseComObject(selection);
+                if (sheet != null) Marshal.ReleaseComObject(sheet);
+                if (wb != null) Marshal.ReleaseComObject(wb);
+            }
+        }
+
+        public void Dispose()
+        {
+            if (_excelApp != null)
+            {
+                Marshal.ReleaseComObject(_excelApp);
+                _excelApp = null;
+            }
+        }
+    }
+}

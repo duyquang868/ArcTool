@@ -60,3 +60,4 @@ D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\ne
 D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\ArcTool.Core.dll
 D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\ArcTool.Core.pdb
 D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ref\ArcTool.Core.dll
+D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.sourcelink.json

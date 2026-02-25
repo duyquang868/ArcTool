@@ -38,3 +38,25 @@ D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-window
 D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ref\ArcTool.Core.dll
 D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\Interop.Microsoft.Office.Interop.Excel.dll
 D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.csproj.ResolveComReference.cache
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.csproj.AssemblyReference.cache
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\Interop.Microsoft.Office.Interop.Excel.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.csproj.ResolveComReference.cache
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\UI\FilterWindow.baml
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\UI\FilterWindow.g.cs
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core_MarkupCompile.cache
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.g.resources
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.Properties.Resources.resources
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.csproj.GenerateResource.cache
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.GeneratedMSBuildEditorConfig.editorconfig
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.AssemblyInfoInputs.cache
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.AssemblyInfo.cs
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.csproj.CoreCompileInputs.cache
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.sourcelink.json
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\refint\ArcTool.Core.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.pdb
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\ArcTool.Core.dll.config
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\ArcTool.Core.deps.json
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\ArcTool.Core.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\ArcTool.Core.pdb
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ref\ArcTool.Core.dll

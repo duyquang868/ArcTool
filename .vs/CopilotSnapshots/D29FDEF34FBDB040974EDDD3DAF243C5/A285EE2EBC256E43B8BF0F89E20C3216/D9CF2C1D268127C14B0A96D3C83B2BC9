@@ -1,0 +1,173 @@
+﻿using System;
+using System.Runtime.InteropServices;
+using System.Diagnostics;
+using System.IO;
+
+namespace ArcTool.Core.Services
+{
+    public class ExcelInteropService : IDisposable
+    {
+        // Use dynamic object to avoid type conflicts between Excel COM versions
+        private dynamic _excelApp;
+
+        /// <summary>
+        /// Connect to open Excel instance (Silent Mode)
+        /// </summary>
+        public bool AttachToActiveExcel()
+        {
+            try
+            {
+                // Get Excel instance running on Windows
+                // Use reflection to call Marshal.GetActiveObject for .NET 8 compatibility
+                var type = Type.GetType("System.Runtime.InteropServices.Marshal");
+                if (type != null)
+                {
+                    var method = type.GetMethod("GetActiveObject", 
+                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static,
+                        null, new[] { typeof(string) }, null);
+                    
+                    if (method != null)
+                    {
+                        object obj = method.Invoke(null, new[] { "Excel.Application" });
+                        _excelApp = obj;
+                        return _excelApp != null;
+                    }
+                }
+
+                // Fallback: Create new instance using CreateObject
+                _excelApp = Activator.CreateInstance(Type.GetTypeFromProgID("Excel.Application"));
+                return _excelApp != null;
+            }
+            catch
+            {
+                return false; // Excel not found or error
+            }
+        }
+
+        /// <summary>
+        /// Copy print range, Paste to Chart and Export to SVG
+        /// </summary>
+        public bool ExportSelectionToSvg(string outputSvgPath, out string errorMsg)
+        {
+            errorMsg = string.Empty;
+            if (_excelApp == null)
+            {
+                errorMsg = "Mất kết nối với Excel.";
+                return false;
+            }
+
+            Excel.Workbook wb = null;
+            Excel.Worksheet sheet = null;
+            Excel.Range targetRange = null;
+            Excel.ChartObject tempChart = null;
+
+            try
+            {
+                if (!_excelApp.Ready)
+                {
+                    errorMsg = "Excel đang bận (Đang ở chế độ Edit Cell hoặc có hộp thoại mở).";
+                    return false;
+                }
+
+                wb = _excelApp.ActiveWorkbook;
+                if (wb == null)
+                {
+                    errorMsg = "Không tìm thấy Workbook nào đang mở.";
+                    return false;
+                }
+
+                sheet = (Excel.Worksheet)wb.ActiveSheet;
+
+                // --- LOGIC THÔNG MINH BẮT ĐẦU TẠI ĐÂY ---
+
+                // 1. Ưu tiên lấy Print Area
+                try
+                {
+                    string printAreaAddress = sheet.PageSetup.PrintArea;
+                    if (!string.IsNullOrEmpty(printAreaAddress))
+                    {
+                        // Print Area trả về địa chỉ dạng chuỗi (VD: "$A$1:$F$20")
+                        targetRange = sheet.Range[printAreaAddress];
+                        System.Diagnostics.Debug.WriteLine($"-> Đã tìm thấy Print Area: {printAreaAddress}");
+                    }
+                }
+                catch { /* Bỏ qua nếu lỗi lấy Print Area */ }
+
+                // 2. Nếu không có Print Area, lấy vùng đang chọn (Selection)
+                if (targetRange == null)
+                {
+                    targetRange = _excelApp.Selection as Excel.Range;
+                    if (targetRange != null)
+                    {
+                        // Kiểm tra nếu chỉ chọn 1 ô thì coi như chưa chọn (để tránh in 1 ô vô nghĩa)
+                        if (targetRange.Count == 1 && string.IsNullOrEmpty(targetRange.Value2?.ToString()))
+                        {
+                            targetRange = null; // Hủy chọn để nhảy xuống bước 3
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine("-> Sử dụng vùng đang chọn (Selection).");
+                        }
+                    }
+                }
+
+                // 3. Đường cùng: Lấy toàn bộ vùng có dữ liệu (UsedRange)
+                if (targetRange == null)
+                {
+                    targetRange = sheet.UsedRange;
+                    System.Diagnostics.Debug.WriteLine("-> Không có PrintArea/Selection, sử dụng UsedRange.");
+                }
+
+                // Kiểm tra lần cuối
+                if (targetRange == null)
+                {
+                    errorMsg = "Không xác định được vùng dữ liệu để in.";
+                    return false;
+                }
+
+                // --- KẾT THÚC LOGIC THÔNG MINH ---
+
+                // A. COPY AS PICTURE
+                targetRange.CopyPicture(Excel.XlPictureAppearance.xlScreen, Excel.XlCopyPictureFormat.xlPicture);
+
+                // B. TẠO CHART
+                var charts = (Excel.ChartObjects)sheet.ChartObjects();
+                tempChart = charts.Add(0, 0, (double)targetRange.Width, (double)targetRange.Height);
+
+                // C. PASTE & EXPORT
+                tempChart.Activate();
+                tempChart.Chart.Paste();
+                tempChart.Chart.Export(outputSvgPath, "SVG");
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                errorMsg = "Lỗi xử lý Excel: " + ex.Message;
+                return false;
+            }
+            finally
+            {
+                // DỌN DẸP
+                if (tempChart != null) try { tempChart.Delete(); } catch { }
+
+                if (targetRange != null) Marshal.ReleaseComObject(targetRange);
+                if (sheet != null) Marshal.ReleaseComObject(sheet);
+                if (wb != null) Marshal.ReleaseComObject(wb);
+            }
+        }
+
+        public void Dispose()
+        {
+            if (_excelApp != null)
+            {
+                try
+                {
+                    Marshal.ReleaseComObject(_excelApp);
+                }
+                catch { }
+                _excelApp = null;
+            }
+        }
+    }
+}

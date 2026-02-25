@@ -1,0 +1,304 @@
+﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
+using Autodesk.Revit.UI.Selection;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+using System.Windows.Forms;
+
+namespace ArcTool.Core.Commands
+{
+    [Transaction(TransactionMode.Manual)]
+    public class CreateVoidFromLinkCommand : IExternalCommand
+    {
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        {
+            UIDocument uidoc = commandData.Application.ActiveUIDocument;
+            Document doc = uidoc.Document;
+
+            try
+            {
+                // --- BƯỚC 1: HIỆN FORM CHỌN FAMILY VOID ---
+                var genericModelSymbols = new FilteredElementCollector(doc)
+                    .OfClass(typeof(FamilySymbol))
+                    .OfCategory(BuiltInCategory.OST_GenericModel)
+                    .Cast<FamilySymbol>()
+                    .OrderBy(x => x.FamilyName)
+                    .ToList();
+
+                if (genericModelSymbols.Count == 0)
+                {
+                    TaskDialog.Show("ArcTool Error", "Không tìm thấy Family Generic Model nào trong dự án.");
+                    return Result.Failed;
+                }
+
+                FamilySymbol selectedVoidSymbol = null;
+                using (var form = new FamilySelectionForm(genericModelSymbols))
+                {
+                    if (form.ShowDialog() == DialogResult.OK) selectedVoidSymbol = form.SelectedSymbol;
+                    else return Result.Cancelled;
+                }
+
+                using (Transaction t = new Transaction(doc, "Activate Symbol"))
+                {
+                    t.Start();
+                    if (!selectedVoidSymbol.IsActive) selectedVoidSymbol.Activate();
+                    t.Commit();
+                }
+
+                // --- BƯỚC 2: CHỌN DẦM TỪ LINK ---
+                Reference linkRef = uidoc.Selection.PickObject(ObjectType.LinkedElement, "Chọn dầm (Structural Framing) từ file Link");
+                RevitLinkInstance linkInstance = doc.GetElement(linkRef.ElementId) as RevitLinkInstance;
+                Document linkDoc = linkInstance.GetLinkDocument();
+                Element linkedBeam = linkDoc.GetElement(linkRef.LinkedElementId);
+
+                // --- BƯỚC 3: LẤY THÔNG SỐ ---
+                double beamWidth = GetTypeParamFromSymbol(linkedBeam, BuiltInParameter.STRUCTURAL_SECTION_SHAPE_WIDTH, new[] { "b", "Width", "B", "Rộng" });
+                double beamHeight = GetTypeParamFromSymbol(linkedBeam, BuiltInParameter.STRUCTURAL_SECTION_SHAPE_HEIGHT, new[] { "h", "Height", "H", "Depth", "Cao" });
+                double beamCutLength = GetCutLengthValue(linkedBeam);
+
+                if (beamWidth == 0 || beamHeight == 0 || beamCutLength == 0)
+                {
+                    TaskDialog.Show("ArcTool Error", $"Thiếu thông số dầm:\nWidth: {beamWidth}\nHeight: {beamHeight}\nLength: {beamCutLength}");
+                    return Result.Failed;
+                }
+
+                // --- BƯỚC 4: LẤY VỊ TRÍ & HÌNH HỌC (CHUẨN XÁC TUYỆT ĐỐI) ---
+                Transform linkTransform = linkInstance.GetTotalTransform();
+
+                // 1. Lấy hướng dầm từ LocationCurve (Hướng vector không đổi dù offset)
+                LocationCurve locCurve = linkedBeam.Location as LocationCurve;
+                if (locCurve == null) return Result.Failed;
+
+                XYZ startPointCurve = linkTransform.OfPoint(locCurve.Curve.GetEndPoint(0));
+                XYZ endPointCurve = linkTransform.OfPoint(locCurve.Curve.GetEndPoint(1));
+                XYZ beamDir = (endPointCurve - startPointCurve).Normalize();
+
+                // 2. Lấy TÂM KHỐI SOLID (Centroid) - Thay vì BoundingBox
+                // Cách này chính xác 100% với khối lượng hình học thực tế
+                Solid beamSolid = GetSolidFromElement(linkedBeam);
+                if (beamSolid == null)
+                {
+                    TaskDialog.Show("Error", "Không thể lấy khối Solid của dầm để tính tâm.");
+                    return Result.Failed;
+                }
+
+                // Lấy trọng tâm của Solid (Tọa độ local trong file Link)
+                XYZ solidCentroidLocal = beamSolid.ComputeCentroid();
+
+                // Chuyển sang tọa độ Host
+                XYZ midPoint = linkTransform.OfPoint(solidCentroidLocal);
+
+                // --- BƯỚC 5: CHỌN TƯỜNG & CẮT ---
+                Reference wallRef = uidoc.Selection.PickObject(ObjectType.Element, new WallSelectionFilter(), "Chọn Tường cần cắt");
+                Element wall = doc.GetElement(wallRef);
+
+                using (Transaction t = new Transaction(doc, "ArcTool: Place Void & Cut"))
+                {
+                    t.Start();
+
+                    // Đặt Void tại trọng tâm Solid (midPoint)
+                    FamilyInstance voidInst = doc.Create.NewFamilyInstance(midPoint, selectedVoidSymbol, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+
+                    // Xoay theo hướng dầm
+                    RotateInstanceToVector(doc, voidInst, beamDir, midPoint);
+
+                    SetParam(voidInst, "Width", beamWidth);
+                    SetParam(voidInst, "Height", beamHeight);
+                    SetParam(voidInst, "Length", beamCutLength);
+
+                    doc.Regenerate();
+
+                    try
+                    {
+                        if (InstanceVoidCutUtils.CanBeCutWithVoid(wall))
+                        {
+                            InstanceVoidCutUtils.AddInstanceVoidCut(doc, wall, voidInst);
+                        }
+                        else
+                        {
+                            TaskDialog.Show("Warning", "Tường không hỗ trợ cắt hoặc Void chưa chạm tường.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        TaskDialog.Show("Cut Error", ex.Message);
+                    }
+
+                    t.Commit();
+                }
+
+                return Result.Succeeded;
+            }
+            catch (Autodesk.Revit.Exceptions.OperationCanceledException)
+            {
+                return Result.Cancelled;
+            }
+            catch (Exception ex)
+            {
+                message = ex.Message;
+                return Result.Failed;
+            }
+        }
+
+        // ====================================================
+        //              CÁC HÀM HỖ TRỢ (UPDATE)
+        // ====================================================
+
+        /// <summary>
+        /// Hàm lấy Solid sạch từ Element (Dùng cho dầm Link)
+        /// </summary>
+        private Solid GetSolidFromElement(Element elem)
+        {
+            Options opt = new Options();
+            opt.DetailLevel = ViewDetailLevel.Fine; // Lấy mức chi tiết cao nhất
+            opt.ComputeReferences = true;
+
+            GeometryElement geomElem = elem.get_Geometry(opt);
+            return GetSolidFromGeometryElement(geomElem);
+        }
+
+        private Solid GetSolidFromGeometryElement(GeometryElement geomElem)
+        {
+            if (geomElem == null) return null;
+
+            foreach (GeometryObject geomObj in geomElem)
+            {
+                if (geomObj is Solid solid)
+                {
+                    if (solid.Volume > 0) return solid;
+                }
+                else if (geomObj is GeometryInstance geomInst)
+                {
+                    // Với dầm, Geometry thường nằm trong Instance
+                    // Lấy SymbolGeometry (gốc) vì ta sẽ transform điểm Centroid sau
+                    // Hoặc lấy InstanceGeometry (đã transform tại chỗ). 
+                    // Ở đây ta dùng GetInstanceGeometry() để lấy solid tại vị trí local chuẩn nhất.
+                    GeometryElement instElem = geomInst.GetInstanceGeometry();
+                    Solid nestedSolid = GetSolidFromGeometryElement(instElem);
+                    if (nestedSolid != null) return nestedSolid;
+                }
+            }
+            return null;
+        }
+
+        // --- CÁC HÀM CŨ GIỮ NGUYÊN ---
+        private double GetTypeParamFromSymbol(Element elem, BuiltInParameter bip, string[] names)
+        {
+            FamilyInstance fi = elem as FamilyInstance;
+            if (fi == null) return 0;
+            FamilySymbol symbol = fi.Symbol;
+            if (symbol == null) return 0;
+
+            foreach (Parameter p in symbol.Parameters)
+            {
+                if (p.Definition is InternalDefinition id && id.BuiltInParameter == bip)
+                {
+                    if (p.StorageType == StorageType.Double && p.HasValue) return p.AsDouble();
+                }
+            }
+            foreach (string name in names)
+            {
+                foreach (Parameter p in symbol.Parameters)
+                {
+                    if (p.Definition.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (p.StorageType == StorageType.Double && p.HasValue) return p.AsDouble();
+                    }
+                }
+            }
+            return 0;
+        }
+
+        private double GetCutLengthValue(Element elem)
+        {
+            Parameter p = elem.get_Parameter(BuiltInParameter.STRUCTURAL_FRAME_CUT_LENGTH);
+            if (p == null) p = elem.LookupParameter("Cut Length");
+            if (p == null) p = elem.LookupParameter("Length");
+
+            if (p != null && p.HasValue)
+            {
+                double val = p.AsDouble();
+                if (val > 0.001) return val;
+
+                string valStr = p.AsValueString();
+                if (!string.IsNullOrEmpty(valStr))
+                {
+                    try
+                    {
+                        if (elem.Document.DisplayUnitSystem == DisplayUnit.METRIC)
+                        {
+                            string cleanStr = new string(valStr.Where(c => char.IsDigit(c) || c == '.' || c == ',').ToArray());
+                            cleanStr = cleanStr.Replace(',', '.');
+                            if (double.TryParse(cleanStr, out double result))
+                            {
+                                return UnitUtils.ConvertToInternalUnits(result, UnitTypeId.Millimeters);
+                            }
+                        }
+                    }
+                    catch { }
+                }
+            }
+            return 0;
+        }
+
+        private void SetParam(Element elem, string paramName, double value)
+        {
+            Parameter p = elem.LookupParameter(paramName);
+            if (p != null && !p.IsReadOnly) p.Set(value);
+        }
+
+        private void RotateInstanceToVector(Document doc, FamilyInstance inst, XYZ targetDir, XYZ center)
+        {
+            XYZ currentDir = inst.HandOrientation;
+            double angle = currentDir.AngleTo(targetDir);
+            if (Math.Abs(angle) > 0.001)
+            {
+                XYZ cross = currentDir.CrossProduct(targetDir);
+                if (cross.IsZeroLength()) cross = XYZ.BasisZ;
+                if (cross.Z < 0) angle = -angle;
+                Line axis = Line.CreateBound(center, center + XYZ.BasisZ);
+                ElementTransformUtils.RotateElement(doc, inst.Id, axis, angle);
+            }
+        }
+
+        public class WallSelectionFilter : ISelectionFilter
+        {
+            public bool AllowElement(Element elem) => elem.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Walls;
+            public bool AllowReference(Reference reference, XYZ position) => false;
+        }
+
+        public class FamilySelectionForm : Form
+        {
+            public FamilySymbol SelectedSymbol { get; private set; }
+            private ComboBox cmbFamilies;
+            private Button btnOk;
+            private List<FamilySymbol> _symbols;
+
+            public FamilySelectionForm(List<FamilySymbol> symbols)
+            {
+                _symbols = symbols;
+                InitializeComponent();
+            }
+
+            private void InitializeComponent()
+            {
+                this.Text = "ArcTool - Chọn Void";
+                this.Size = new Size(350, 180);
+                this.StartPosition = FormStartPosition.CenterScreen;
+
+                System.Windows.Forms.Label lbl = new System.Windows.Forms.Label() { Text = "Chọn Family Void:", Location = new System.Drawing.Point(20, 20), AutoSize = true };
+                cmbFamilies = new ComboBox() { Location = new System.Drawing.Point(20, 50), Size = new System.Drawing.Size(290, 30), DropDownStyle = ComboBoxStyle.DropDownList };
+                foreach (var sym in _symbols) cmbFamilies.Items.Add($"{sym.FamilyName} : {sym.Name}");
+                if (cmbFamilies.Items.Count > 0) cmbFamilies.SelectedIndex = 0;
+
+                btnOk = new Button() { Text = "OK", Location = new System.Drawing.Point(130, 100), DialogResult = DialogResult.OK };
+                btnOk.Click += (s, e) => { if (cmbFamilies.SelectedIndex >= 0) SelectedSymbol = _symbols[cmbFamilies.SelectedIndex]; };
+
+                this.Controls.Add(lbl); this.Controls.Add(cmbFamilies); this.Controls.Add(btnOk);
+            }
+        }
+    }
+}

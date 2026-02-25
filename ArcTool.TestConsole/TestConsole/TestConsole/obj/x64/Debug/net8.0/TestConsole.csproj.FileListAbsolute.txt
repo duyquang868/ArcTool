@@ -1,0 +1,5 @@
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\TestConsole.csproj.AssemblyReference.cache
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\TestConsole.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\TestConsole.AssemblyInfoInputs.cache
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\TestConsole.AssemblyInfo.cs
+C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0\TestConsole.csproj.CoreCompileInputs.cache

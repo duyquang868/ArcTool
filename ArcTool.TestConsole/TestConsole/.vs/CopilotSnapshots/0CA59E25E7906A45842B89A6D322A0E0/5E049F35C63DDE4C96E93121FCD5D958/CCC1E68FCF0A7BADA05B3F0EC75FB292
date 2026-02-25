@@ -1,0 +1,44 @@
+﻿using System;
+using ArcTool.ExcelEngine; // Đảm bảo bạn đã Add Project Reference tới ExcelEngine
+
+namespace ArcTool.TestConsole
+{
+    class Program
+    {
+        // Chú ý: string args là mảng chuỗi, bắt buộc phải có cặp ngoặc
+        static void Main(string args)
+        {
+            Console.WriteLine("--- Arctool: Excel to Image Test ---");
+
+            // Đường dẫn test (Đảm bảo file Excel tồn tại tại đây)
+            string excelPath = @"C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\Testconsole.xlsx";
+            string outPath = @"C:\Users\quangnguyen\Documents\Plugin Revit\ArcTool\ArcTool.TestConsole\Result_300dpi.png";
+
+            try
+            {
+                using (var converter = new ExcelToImageConverter(excelPath))
+                {
+                    Console.WriteLine("Đang xử lý render...");
+
+                    // Render Sheet1, vùng A1:H20, độ phân giải 300 DPI
+                    var size = converter.RenderToImage("Sheet1", "A1:H20", 300, outPath);
+
+                    Console.WriteLine("----------------------------------");
+                    Console.WriteLine("THÀNH CÔNG!");
+                    Console.WriteLine($"Ảnh lưu tại: {outPath}");
+                    Console.WriteLine($"Kích thước thực tế: {size.WidthInch:F2} x {size.HeightInch:F2} inch");
+                    Console.WriteLine("----------------------------------");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("LỖI: " + ex.Message);
+                Console.ResetColor();
+            }
+
+            Console.WriteLine("Nhấn phím bất kỳ để thoát...");
+            Console.ReadKey();
+        }
+    }
+}

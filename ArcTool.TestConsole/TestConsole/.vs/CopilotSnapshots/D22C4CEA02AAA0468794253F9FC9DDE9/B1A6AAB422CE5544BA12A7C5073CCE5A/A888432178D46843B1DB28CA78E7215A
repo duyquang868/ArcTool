@@ -1,0 +1,90 @@
+﻿using System;
+using System.IO;
+using System.Diagnostics;
+using ArcTool.Core.Services; // Namespace chứa cả ExcelInteropService và ImageProcessingService
+
+namespace ArcTool.TestConsole
+{
+    class Program
+    {
+        // Bắt buộc có STAThread cho Interop
+
+        static void Main(string args)
+        {
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
+            Console.WriteLine("--- KIỂM TRA TOÀN BỘ QUY TRÌNH (FULL PIPELINE TEST) ---");
+
+            // 1. Chuẩn bị đường dẫn
+            string desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            string svgPath = Path.Combine(desktop, "temp_step1.svg");
+            string pngPath = Path.Combine(desktop, "FINAL_RESULT.png");
+
+            // Xóa file cũ
+            if (File.Exists(svgPath)) File.Delete(svgPath);
+            if (File.Exists(pngPath)) File.Delete(pngPath);
+
+            // 2. BƯỚC 1: XUẤT SVG TỪ EXCEL
+            Console.WriteLine("\n Đang kết nối Excel để lấy ảnh...");
+
+            bool svgSuccess = false;
+            using (var excelService = new ExcelInteropService())
+            {
+                if (excelService.AttachToActiveExcel())
+                {
+                    string errorMsg;
+                    // Logic tự động tìm PrintArea -> Selection -> UsedRange
+                    svgSuccess = excelService.ExportSelectionToSvg(svgPath, out errorMsg);
+
+                    if (svgSuccess)
+                    {
+                        Console.WriteLine("✅ Đã xuất ra file SVG!");
+                    }
+                    else
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine($"❌ Lỗi Excel: {errorMsg}");
+                        Console.ResetColor();
+                    }
+                }
+                else
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("❌ Không tìm thấy Excel đang mở.");
+                    Console.ResetColor();
+                }
+            }
+
+            // 3. BƯỚC 2: CHUYỂN ĐỔI SANG PNG (NẾU BƯỚC 1 THÀNH CÔNG)
+            if (svgSuccess && File.Exists(svgPath))
+            {
+                Console.WriteLine("\n Đang dùng SkiaSharp để render ra PNG (High DPI)...");
+
+                var imgService = new ImageProcessingService();
+
+                // Convert với DPI 300 (Chất lượng in ấn)
+                // Lưu ý: Nếu method ConvertSvgToPng của bạn trả về bool thì dùng if
+                bool pngSuccess = imgService.ConvertSvgToPng(svgPath, pngPath, 300);
+
+                if (pngSuccess)
+                {
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine($"✅ THÀNH CÔNG TUYỆT ĐỐI!");
+                    Console.WriteLine($"📂 File ảnh tại: {pngPath}");
+                    Console.ResetColor();
+
+                    // Tự động mở ảnh lên xem
+                    try { Process.Start(new ProcessStartInfo(pngPath) { UseShellExecute = true }); } catch { }
+                }
+                else
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("❌ Lỗi khi convert sang PNG (Kiểm tra lại ImageProcessingService)");
+                    Console.ResetColor();
+                }
+            }
+
+            Console.WriteLine("\nNhấn phím bất kỳ để thoát...");
+            Console.ReadKey();
+        }
+    }
+}

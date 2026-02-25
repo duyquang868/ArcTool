@@ -1,0 +1,75 @@
+﻿using System.Collections.Generic;
+using System.Windows;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
+namespace Arctool.UI
+{
+    public class FilterItem : INotifyPropertyChanged
+    {
+        private string _name = string.Empty; // Sửa lỗi CS8618
+        public string Name
+        {
+            get => _name;
+            set { _name = value; OnPropertyChanged(); }
+        }
+
+        public bool IsVisible { get; set; }
+        public object Data { get; set; }
+
+        public event PropertyChangedEventHandler? PropertyChanged; // Sửa lỗi CS8612
+        protected void OnPropertyChanged([CallerMemberName] string? name = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
+    }
+
+    public class ViewItem : INotifyPropertyChanged
+    {
+        private string _viewName = string.Empty; // Sửa lỗi CS8618
+        public string ViewName
+        {
+            get => _viewName;
+            set { _viewName = value; OnPropertyChanged(); }
+        }
+
+        public int FilterCount { get; set; }
+        public bool IsSelected { get; set; }
+        public object Data { get; set; }
+
+        public event PropertyChangedEventHandler? PropertyChanged; // Sửa lỗi CS8612
+        protected void OnPropertyChanged([CallerMemberName] string? name = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
+    }
+
+    public partial class FilterWindow : Window
+    {
+        // Khởi tạo trực tiếp để hết cảnh báo CS8618
+        public ObservableCollection<FilterItem> FiltersSource { get; set; } = new ObservableCollection<FilterItem>();
+        public ObservableCollection<ViewItem> ViewsSource { get; set; } = new ObservableCollection<ViewItem>();
+
+        public FilterWindow()
+        {
+            InitializeComponent();
+            dgFiltersCopy.ItemsSource = FiltersSource;
+            dgViewsPaste.ItemsSource = ViewsSource;
+        }
+
+        private void BtnAddFilters_Click(object sender, RoutedEventArgs e)
+        {
+            this.DialogResult = true;
+            this.Close();
+        }
+
+        private void BtnDeleteFilters_Click(object sender, RoutedEventArgs e) { }
+
+        private void BtnCopyFilters_Click(object sender, RoutedEventArgs e)
+        {
+            this.DialogResult = false;
+            this.Close();
+        }
+    }
+}

@@ -1,0 +1,160 @@
+﻿using System;
+using System.Runtime.InteropServices;
+using System.Threading;
+using Microsoft.Office.Interop.Excel;
+using Range = Microsoft.Office.Interop.Excel.Range;
+using Application = Microsoft.Office.Interop.Excel.Application;
+
+namespace ArcTool.Core.Services
+{
+    public class ExcelInteropService : IDisposable
+    {
+        private Application _excelApp;
+        private Workbook _workbook;
+        private Worksheet _activeSheet;
+
+        // Cấu hình Scale
+        private const int TARGET_DPI = 300;
+        private const int SCREEN_DPI = 72;
+
+        public bool OpenFile(string filePath)
+        {
+            try
+            {
+                _excelApp = new Application();
+                _excelApp.Visible = false; // Chạy ngầm
+                _excelApp.DisplayAlerts = false;
+                _workbook = _excelApp.Workbooks.Open(filePath);
+                _activeSheet = _workbook.ActiveSheet as Worksheet;
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public bool ExportPrintAreaAsHighResImage(string outputPath)
+        {
+            if (_activeSheet == null) return false;
+
+            Range targetRange = null;
+            try
+            {
+                // Ưu tiên lấy vùng in (Print Area)
+                string printArea = _activeSheet.PageSetup.PrintArea;
+                if (!string.IsNullOrEmpty(printArea))
+                {
+                    targetRange = _activeSheet.Range[printArea];
+                }
+                else
+                {
+                    // Fallback: Lấy vùng có dữ liệu
+                    targetRange = _activeSheet.UsedRange;
+                }
+
+                return ExportRangeInternal(targetRange, outputPath);
+            }
+            catch
+            {
+                return false;
+            }
+            // Note: Do not release targetRange - it's a COM property managed by Excel
+        }
+
+        private bool ExportRangeInternal(Range range, string outputPath)
+        {
+            ChartObjects chartObjects = null;
+            ChartObject chartObj = null;
+            Chart chart = null;
+
+            try
+            {
+                // 1. COPY: Dùng xlPrinter để có độ nét cao nhất (chuẩn in ấn) thay vì xlScreen
+                range.CopyPicture(XlPictureAppearance.xlPrinter, XlCopyPictureFormat.xlPicture);
+
+                // Nghỉ 1 chút để Clipboard kịp nhận dữ liệu (Fix lỗi ảnh trắng)
+                Thread.Sleep(500);
+
+                // 2. TÍNH TOÁN SCALE
+                double scale = (double)TARGET_DPI / SCREEN_DPI;
+                double width = (double)range.Width * scale;
+                double height = (double)range.Height * scale;
+
+                // 3. TẠO CHART CONTAINER
+                chartObjects = (ChartObjects)_activeSheet.ChartObjects();
+                chartObj = chartObjects.Add(0, 0, width, height);
+                chart = chartObj.Chart;
+
+                // Quan trọng: Phải Activate chart thì mới Paste chuẩn được
+                chartObj.Activate();
+
+                // 4. PASTE VÀO CHART
+                // Thử paste 3 lần nếu thất bại (Cơ chế Retry)
+                bool pasted = false;
+                for (int i = 0; i < 3; i++)
+                {
+                    try
+                    {
+                        chart.Paste();
+                        pasted = true;
+                        break;
+                    }
+                    catch
+                    {
+                        Thread.Sleep(500); // Chờ rồi thử lại
+                    }
+                }
+
+                if (!pasted) return false;
+
+                // 6. EXPORT
+                chart.Export(outputPath, "PNG", false);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Export Error: {ex.Message}");
+                return false;
+            }
+            finally
+            {
+                // 7. DỌN DẸP CHART TẠM
+                if (chartObj != null)
+                {
+                    try { chartObj.Delete(); } catch { }
+                }
+
+                ReleaseObject(chart);
+                ReleaseObject(chartObj);
+                ReleaseObject(chartObjects);
+            }
+        }
+
+        public void Dispose()
+        {
+            if (_workbook != null)
+            {
+                try { _workbook.Close(false); } catch { }
+                ReleaseObject(_workbook);
+            }
+            if (_excelApp != null)
+            {
+                try { _excelApp.Quit(); } catch { }
+                ReleaseObject(_excelApp);
+            }
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+        }
+
+        private void ReleaseObject(object obj)
+        {
+            try
+            {
+                if (obj != null) Marshal.ReleaseComObject(obj);
+            }
+            catch { }
+            finally { obj = null; }
+        }
+    }
+}

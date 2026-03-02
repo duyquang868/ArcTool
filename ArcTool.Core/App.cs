@@ -45,13 +45,13 @@ namespace ArcTool.Core
             if (splitBtn != null)
             {
                 // Nút 1: Create Void
-                PushButtonData btnCreate = new PushButtonData("btnCreateVoid", "Create\nVoid", assemblyPath, "ArcTool.Core.CreateVoidFromLinkCommand");
+                PushButtonData btnCreate = new PushButtonData("btnCreateVoid", "Create\nVoid", assemblyPath, "ArcTool.Core.Commands.CreateVoidFromLinkCommand");
                 // Icon assignment is optional - commented out until resources are added
                 // btnCreate.LargeImage = ConvertToImageSource(Properties.Resources.icon_create_void_32);
                 btnCreate.ToolTip = "Tự động tạo Void (Generic Model) tại vị trí tất cả Dầm trong file Link được chọn.";
 
                 // Nút 2: Multi-Cut
-                PushButtonData btnCut = new PushButtonData("btnMultiCut", "Multi-Cut", assemblyPath, "ArcTool.Core.MultiCutCommand");
+                PushButtonData btnCut = new PushButtonData("btnMultiCut", "Multi-Cut", assemblyPath, "ArcTool.Core.Commands.MultiCutCommand");
                 // Icon assignment is optional - commented out until resources are added
                 // btnCut.LargeImage = ConvertToImageSource(Properties.Resources.icon_multi_cut_32);
                 btnCut.ToolTip = "Cắt Tường (Walls) và Cột (Columns) bằng các Void đã tạo. Sử dụng thuật toán BoundingBox tối ưu.";

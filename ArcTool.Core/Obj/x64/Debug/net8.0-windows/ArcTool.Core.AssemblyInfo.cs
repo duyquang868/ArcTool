@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ArcTool.Core")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4e4826897d471973bd75658c77b396604bb719f0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+06ae48721cf50256edad0ecbebe6a44bcdd0e380")]
 [assembly: System.Reflection.AssemblyProductAttribute("ArcTool.Core")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ArcTool.Core")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

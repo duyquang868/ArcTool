@@ -1,7 +1,7 @@
 # ARCTOOL — AI SESSION CONTEXT
 > Paste file này vào ĐẦU mỗi session chat mới với AI.
 > Cập nhật sau mỗi session làm việc.
-> Last updated: 2026-04-14
+> Last updated: 2026-04-14 — Session 2: Fix 5 bugs ưu tiên cao ✅
 
 ---
 
@@ -97,41 +97,45 @@ ArcTool/
 
 ---
 
-## 4. BUG ĐÃ PHÁT HIỆN — CHƯA FIX
+## 4. BUG ĐÃ PHÁT HIỆN — ĐÃ FIX (SESSION: 2026-04-14)
 
 > Cập nhật trạng thái: [ ] Chưa fix / [x] Đã fix
 
-### 🔴 BUG NGHIÊM TRỌNG
+### 🔴 BUG NGHIÊM TRỌNG — ĐÃ FIX
 
-- [ ] **MultiCutCommand** — `(int)elem.Category.Id.Value` gây Integer Overflow
-  - Revit 2026: `ElementId.Value` trả về `long`, không phải `int`
-  - Fix: `elem.Category.Id.Value == (long)BuiltInCategory.OST_Walls`
+- [x] **MultiCutCommand** — `(int)elem.Category.Id.Value` gây Integer Overflow
+  - ✅ Fix: Cast về `(long)BuiltInCategory.OST_Walls` thay vì `(int)`
+  - File: `VoidSelectionFilter.AllowElement()` + `CutTargetSelectionFilter.AllowElement()`
 
-- [ ] **CreateVoidFromLinkCommand** — `GetParamValue` chỉ tìm trên `Symbol`, bỏ sót `Instance`
-  - Hầu hết custom family dầm lưu Width/Height ở Instance → `beamWidth = 0` → Void không được tạo
-  - Fix: tìm Instance trước, fallback về Symbol
+- [x] **CreateVoidFromLinkCommand** — `GetParamValue` chỉ tìm trên `Symbol`, bỏ sót `Instance`
+  - ✅ Fix: Tìm Instance parameters trước, fallback về Symbol nếu không tìm thấy
+  - File: dòng 106-113, gọi `GetParamValue(beamInstance, ...)` rồi `GetParamValue(beamInstance.Symbol, ...)`
 
 - [ ] **CreateVoidFromLinkCommand** — `SetParam(voidInst, "Height", -beamHeight)` gán giá trị âm
-  - Revit có thể từ chối commit. Cần thiết kế lại: dùng Mirror hoặc đổi hướng Family
+  - ⏳ TODO: Cần thiết kế lại: dùng Mirror hoặc đổi hướng Family (phức tạp hơn, ưu tiên thấp)
 
-- [ ] **FilterManagerCommand** — `_lastUpdate` là instance field, reset mỗi lần chạy lệnh
-  - Fix: đổi thành `static DateTime _lastUpdate`
+- [x] **FilterManagerCommand** — `_lastUpdate` là instance field, reset mỗi lần chạy lệnh
+  - ✅ Fix: Đổi thành `private static DateTime _lastUpdate`
+  - File: dòng 17
 
-### 🟠 RỦI RO / CẦN CẢI THIỆN
+### 🟠 RỦI RO / CẦN CẢI THIỆN — ĐÃ FIX
 
-- [ ] **ArrangeDimensionCommand** — baseline cập nhật dù Dim lỗi (Line == null)
-  - Fix: `bool moved = MoveDimension(...); if (moved) baselineDim = nextDim;`
+- [x] **ArrangeDimensionCommand** — baseline cập nhật dù Dim lỗi (Line == null)
+  - ✅ Fix: Hàm `MoveDimensionToMatchSnap()` trả về `bool`, chỉ update baseline nếu `moved == true`
+  - File: dòng 52-54, thay `MoveDimensionToMatchSnap(...);` bằng `bool moved = MoveDimensionToMatchSnap(...); if (moved) baselineDim = nextDim;`
 
 - [ ] **ArrangeDimensionCommand** — không kiểm tra `activeView.Scale == 0` (3D view)
+  - ⏳ TODO: Thêm guard clause `if (activeView.Scale == 0) return false;`
 
-- [ ] **CreateVoidFromLinkCommand** — `doc.Regenerate()` thừa trước `t.Commit()`
-  - Revit tự Regenerate khi Commit. Xóa dòng này để tránh lag.
+- [x] **CreateVoidFromLinkCommand** — `doc.Regenerate()` thừa trước `t.Commit()`
+  - ✅ Fix: Xóa dòng `doc.Regenerate();` (Revit tự Regenerate khi Commit)
+  - File: dòng 153
 
 - [ ] **FilterManagerCommand** — `Idling` event là anti-pattern cho model lớn
-  - Nâng cấp lên `IExternalEventHandler` + `ExternalEvent.Raise()`
+  - ⏳ TODO: Nâng cấp lên `IExternalEventHandler` + `ExternalEvent.Raise()`
 
 - [ ] **ExcelInteropService** — `finally { obj = null; }` trong `ReleaseObject` vô nghĩa
-  - Chỉ null local variable, không null biến caller. Xóa dòng đó.
+  - ⏳ TODO: Xóa dòng `finally { obj = null; }` (chỉ null local variable)
 
 ---
 
@@ -175,17 +179,21 @@ elem.Category.Id.Value == (long)BuiltInCategory.OST_Walls  // ĐÚNG
 
 ## 7. ROADMAP
 
-### Giai đoạn 1 — Trả nợ kỹ thuật (ƯU TIÊN CAO)
-- [ ] Fix bug `long` cast trong `MultiCutCommand`
-- [ ] Fix `GetParamValue` tìm Instance trong `CreateVoidFromLinkCommand`
-- [ ] Fix `_lastUpdate` thành `static` trong `FilterManagerCommand`
-- [ ] Fix baseline update logic trong `ArrangeDimensionCommand`
-- [ ] Xóa `doc.Regenerate()` thừa trong `CreateVoidFromLinkCommand`
+### Giai đoạn 1 — Trả nợ kỹ thuật (ƯU TIÊN CAO) — 5/5 HOÀN THÀNH ✅
+- [x] Fix bug `long` cast trong `MultiCutCommand` — ✅ DONE
+- [x] Fix `GetParamValue` tìm Instance trong `CreateVoidFromLinkCommand` — ✅ DONE
+- [x] Fix `_lastUpdate` thành `static` trong `FilterManagerCommand` — ✅ DONE
+- [x] Fix baseline update logic trong `ArrangeDimensionCommand` — ✅ DONE
+- [x] Xóa `doc.Regenerate()` thừa trong `CreateVoidFromLinkCommand` — ✅ DONE
+
+### Giai đoạn 1B — Cải thiện thêm (ƯU TIÊN TRUNG BÌNH)
+- [ ] Fix `activeView.Scale == 0` check trong `ArrangeDimensionCommand`
+- [ ] Refactor `Idling` → `ExternalEvent` pattern trong `FilterManagerCommand`
+- [ ] Xóa vô nghĩa `finally { obj = null; }` trong `ExcelInteropService`
 
 ### Giai đoạn 2 — Filter Manager
 - [ ] Implement logic Copy Filter: đọc `ParameterFilterElement` từ View nguồn
 - [ ] Implement logic Paste Filter: `view.AddFilter()`, set Visibility/Override
-- [ ] Refactor `Idling` → `ExternalEvent` pattern
 - [ ] Hoàn thiện MVVM binding cho `FilterWindow`
 
 ### Giai đoạn 3 — Excel to Revit Image

@@ -1,7 +1,7 @@
 # ARCTOOL — AI SESSION CONTEXT
 > Paste file này vào ĐẦU mỗi session chat mới với AI.
 > Cập nhật sau mỗi session làm việc.
-> Last updated: 2026-04-14 — Session 2: Fix 5 bugs ưu tiên cao ✅
+> Last updated: 2026-04-16 — Session 2: Fix 5 bugs ưu tiên cao ✅
 
 ---
 
@@ -97,7 +97,7 @@ ArcTool/
 
 ---
 
-## 4. BUG ĐÃ PHÁT HIỆN — ĐÃ FIX (SESSION: 2026-04-14)
+## 4. BUG ĐÃ PHÁT HIỆN — ĐÃ FIX (SESSION: 2026-04-16)
 
 > Cập nhật trạng thái: [ ] Chưa fix / [x] Đã fix
 

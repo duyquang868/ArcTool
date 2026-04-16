@@ -1,7 +1,7 @@
 # ARCTOOL — AI SESSION CONTEXT
 > Paste file này vào ĐẦU mỗi session chat mới với AI.
 > Cập nhật sau mỗi session làm việc.
-> Last updated: 2026-04-16 — Session 2: Fix 5 bugs ưu tiên cao ✅
+> Last updated: 2026-04-16 — Session 3: Rà soát toàn bộ bug, phát hiện 4 bug mới trong ExcelInteropService.cs
 
 ---
 
@@ -86,8 +86,9 @@ ArcTool/
 
 ### E. Excel Export Engine — `ExcelInteropService.cs` (V5)
 - Đọc file Excel (hidden mode), export Print Area hoặc UsedRange thành PNG
-- Scale factor: 35x (chú ý: comment trong code ghi sai là "50x" — đã biết)
-- Dùng COM Interop, có `IDisposable` đúng chuẩn
+- Scale factor: 35x (chú ý: comment trong class summary ghi sai là "50x" — BUG #2 chưa fix)
+- Dùng COM Interop, có `IDisposable`
+- **TODO:** Fix 4 bug COM management (xem Mục 4 bên dưới)
 - **TODO:** Viết logic Import ảnh vào Revit (ImageImportOptions, ImageInstance.Create)
 
 ### F. Filter Manager — `FilterManagerCommand.cs` + `FilterWindow.xaml`
@@ -97,11 +98,11 @@ ArcTool/
 
 ---
 
-## 4. BUG ĐÃ PHÁT HIỆN — ĐÃ FIX (SESSION: 2026-04-16)
+## 4. BUG ĐÃ PHÁT HIỆN — TRẠNG THÁI ĐẦY ĐỦ
 
 > Cập nhật trạng thái: [ ] Chưa fix / [x] Đã fix
 
-### 🔴 BUG NGHIÊM TRỌNG — ĐÃ FIX
+### 🔴 BUG NGHIÊM TRỌNG
 
 - [x] **MultiCutCommand** — `(int)elem.Category.Id.Value` gây Integer Overflow
   - ✅ Fix: Cast về `(long)BuiltInCategory.OST_Walls` thay vì `(int)`
@@ -109,33 +110,99 @@ ArcTool/
 
 - [x] **CreateVoidFromLinkCommand** — `GetParamValue` chỉ tìm trên `Symbol`, bỏ sót `Instance`
   - ✅ Fix: Tìm Instance parameters trước, fallback về Symbol nếu không tìm thấy
-  - File: dòng 106-113, gọi `GetParamValue(beamInstance, ...)` rồi `GetParamValue(beamInstance.Symbol, ...)`
+  - File: dòng 106-113
 
 - [ ] **CreateVoidFromLinkCommand** — `SetParam(voidInst, "Height", -beamHeight)` gán giá trị âm
-  - ⏳ TODO: Cần thiết kế lại: dùng Mirror hoặc đổi hướng Family (phức tạp hơn, ưu tiên thấp)
+  - ⏳ TODO: Cần thiết kế lại: dùng Mirror hoặc đổi hướng Family
 
 - [x] **FilterManagerCommand** — `_lastUpdate` là instance field, reset mỗi lần chạy lệnh
   - ✅ Fix: Đổi thành `private static DateTime _lastUpdate`
-  - File: dòng 17
 
-### 🟠 RỦI RO / CẦN CẢI THIỆN — ĐÃ FIX
+### 🟠 RỦI RO / CẦN CẢI THIỆN
 
 - [x] **ArrangeDimensionCommand** — baseline cập nhật dù Dim lỗi (Line == null)
-  - ✅ Fix: Hàm `MoveDimensionToMatchSnap()` trả về `bool`, chỉ update baseline nếu `moved == true`
-  - File: dòng 52-54, thay `MoveDimensionToMatchSnap(...);` bằng `bool moved = MoveDimensionToMatchSnap(...); if (moved) baselineDim = nextDim;`
+  - ✅ Fix: `MoveDimensionToMatchSnap()` trả về `bool`, chỉ update baseline nếu `moved == true`
 
 - [ ] **ArrangeDimensionCommand** — không kiểm tra `activeView.Scale == 0` (3D view)
-  - ⏳ TODO: Thêm guard clause `if (activeView.Scale == 0) return false;`
+  - ⏳ TODO: Thêm guard clause `if (activeView.Scale == 0) return Result.Failed;` trước khi pick
 
 - [x] **CreateVoidFromLinkCommand** — `doc.Regenerate()` thừa trước `t.Commit()`
-  - ✅ Fix: Xóa dòng `doc.Regenerate();` (Revit tự Regenerate khi Commit)
-  - File: dòng 153
+  - ✅ Fix: Đã xóa
 
 - [ ] **FilterManagerCommand** — `Idling` event là anti-pattern cho model lớn
   - ⏳ TODO: Nâng cấp lên `IExternalEventHandler` + `ExternalEvent.Raise()`
 
-- [ ] **ExcelInteropService** — `finally { obj = null; }` trong `ReleaseObject` vô nghĩa
-  - ⏳ TODO: Xóa dòng `finally { obj = null; }` (chỉ null local variable)
+### 🔴 BUG MỚI PHÁT HIỆN SESSION 3 — ExcelInteropService.cs
+
+- [ ] **[BUG-E1] ExcelInteropService** — `ReleaseObject` có `finally { obj = null; }` VÔ NGHĨA
+  - **Mức độ:** 🔴 Nghiêm trọng — COM leak tiềm ẩn
+  - **Nguyên nhân:** `obj` là local parameter (pass-by-value). Gán `obj = null` chỉ null biến local trong stack frame, KHÔNG null field gốc `_excelApp`, `_workbook` ở caller. COM object không bao giờ được set null đúng cách.
+  - **Fix:**
+    ```csharp
+    // Xóa finally { obj = null; } trong ReleaseObject()
+    private void ReleaseObject(object obj)
+    {
+        if (obj == null) return;
+        try { Marshal.ReleaseComObject(obj); }
+        catch { }
+    }
+
+    // Null field GỐC trong Dispose() mới có tác dụng
+    public void Dispose()
+    {
+        if (_activeSheet != null) { ReleaseObject(_activeSheet); _activeSheet = null; }
+        if (_workbook != null)
+        {
+            try { _workbook.Close(false); } catch { }
+            ReleaseObject(_workbook);
+            _workbook = null;
+        }
+        if (_excelApp != null)
+        {
+            try { _excelApp.Quit(); } catch { }
+            ReleaseObject(_excelApp);
+            _excelApp = null;
+        }
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+    }
+    ```
+
+- [ ] **[BUG-E2] ExcelInteropService** — Comment sai: class summary ghi "50x Scale" nhưng constant là 35.0
+  - **Mức độ:** 🟡 Technical Debt — gây nhầm lẫn khi maintain
+  - **Fix:** Sửa dòng summary thành:
+    ```csharp
+    /// Updated V5: Synchronous Execution - No Sleep, No Retry, Hardcode 35x Scale.
+    private const double FIXED_SCALE_FACTOR = 35.0;
+    ```
+
+- [ ] **[BUG-E3] ExcelInteropService** — `chartObj` bị `ReleaseObject()` SAU KHI đã `Delete()` — thứ tự sai
+  - **Mức độ:** 🟠 Rủi ro — có thể gây `InvalidComObjectException` bị swallow âm thầm
+  - **Nguyên nhân:** Sau `chartObj.Delete()`, COM object đã bị revoke. Gọi `Marshal.ReleaseComObject(chartObj)` tiếp tục là undefined behavior với COM. Thêm nữa, `chart` (child) phải được release trước `chartObj` (parent).
+  - **Fix — thứ tự release đúng (child → parent):**
+    ```csharp
+    finally
+    {
+        // 1. Release child trước
+        ReleaseObject(chart);
+        // 2. Delete và KHÔNG release thêm (Delete đã dọn COM)
+        if (chartObj != null)
+        {
+            try { chartObj.Delete(); } catch { }
+            // KHÔNG gọi ReleaseObject(chartObj) ở đây
+        }
+        // 3. Release container cuối
+        ReleaseObject(chartObjects);
+    }
+    ```
+
+- [ ] **[BUG-E4] ExcelInteropService** — `_activeSheet` KHÔNG được `ReleaseComObject` trong `Dispose()`
+  - **Mức độ:** 🔴 COM memory leak — Excel process sẽ không thoát sạch
+  - **Nguyên nhân:** `_activeSheet` là COM Worksheet object, nhưng `Dispose()` chỉ release `_workbook` và `_excelApp`. `_activeSheet` bị bỏ quên hoàn toàn.
+  - **Fix:** Thêm vào đầu `Dispose()` (trước khi close workbook):
+    ```csharp
+    if (_activeSheet != null) { ReleaseObject(_activeSheet); _activeSheet = null; }
+    ```
 
 ---
 
@@ -149,6 +216,7 @@ ArcTool/
 | `TransactionGroup` trong ArrangeDim | Gộp thành 1 lần Undo | — |
 | WinForms cho Family selection dialog | Đơn giản, không cần MVVM | UI không đồng nhất với WPF |
 | `Idling` event cho FilterManager | Prototype nhanh | Cần đổi sang ExternalEvent |
+| COM release: child trước parent | Tránh InvalidComObjectException | — |
 
 ---
 
@@ -164,8 +232,8 @@ catch (Autodesk.Revit.Exceptions.OperationCanceledException) { return Result.Can
 catch (Exception ex) { message = ex.Message; return Result.Failed; }
 
 // 3. Thông báo kết quả
-TaskDialog.Show("ArcTool", "...");          // Kết quả cho user
-uidoc.Application.Application.WriteJournalComment("...", true); // Tiến độ vòng lặp
+TaskDialog.Show("ArcTool", "...");
+uidoc.Application.Application.WriteJournalComment("...", true);
 
 // 4. Revit 2026: dùng long, không dùng int cho ElementId
 elem.Category.Id.Value == (long)BuiltInCategory.OST_Walls  // ĐÚNG
@@ -173,6 +241,10 @@ elem.Category.Id.Value == (long)BuiltInCategory.OST_Walls  // ĐÚNG
 
 // 5. Đơn vị: Revit dùng feet nội bộ
 // 1 foot = 304.8mm. Convert: UnitUtils.ConvertToInternalUnits(mm, UnitTypeId.Millimeters)
+
+// 6. COM Interop: LUÔN release theo thứ tự child → parent
+// LUÔN null field gốc sau ReleaseObject, KHÔNG null trong ReleaseObject()
+// KHÔNG ReleaseComObject sau Delete() — COM đã tự cleanup
 ```
 
 ---
@@ -186,10 +258,13 @@ elem.Category.Id.Value == (long)BuiltInCategory.OST_Walls  // ĐÚNG
 - [x] Fix baseline update logic trong `ArrangeDimensionCommand` — ✅ DONE
 - [x] Xóa `doc.Regenerate()` thừa trong `CreateVoidFromLinkCommand` — ✅ DONE
 
-### Giai đoạn 1B — Cải thiện thêm (ƯU TIÊN TRUNG BÌNH)
+### Giai đoạn 1B — Cải thiện thêm (ƯU TIÊN TRUNG BÌNH) — 0/6 HOÀN THÀNH
+- [ ] **[BUG-E1]** Fix `ReleaseObject` + null field gốc trong `Dispose()` — `ExcelInteropService`
+- [ ] **[BUG-E2]** Sửa comment sai "50x" → "35x" — `ExcelInteropService`
+- [ ] **[BUG-E3]** Fix thứ tự release COM trong `finally` block — `ExcelInteropService`
+- [ ] **[BUG-E4]** Thêm `_activeSheet` vào `Dispose()` — `ExcelInteropService`
 - [ ] Fix `activeView.Scale == 0` check trong `ArrangeDimensionCommand`
 - [ ] Refactor `Idling` → `ExternalEvent` pattern trong `FilterManagerCommand`
-- [ ] Xóa vô nghĩa `finally { obj = null; }` trong `ExcelInteropService`
 
 ### Giai đoạn 2 — Filter Manager
 - [ ] Implement logic Copy Filter: đọc `ParameterFilterElement` từ View nguồn
@@ -222,6 +297,7 @@ elem.Category.Id.Value == (long)BuiltInCategory.OST_Walls  // ĐÚNG
 | `ImageInstance.Create()` | Import ảnh vào Revit (Giai đoạn 3) |
 | `doc.Create.NewDimension()` | Tạo Dimension (Giai đoạn 4) |
 | `UnitUtils.ConvertToInternalUnits()` | Convert đơn vị |
+| `Marshal.ReleaseComObject()` | Giải phóng COM object — release theo thứ tự child → parent |
 
 > Tra cứu API bắt buộc tại: https://www.revitapidocs.com/2026/
 

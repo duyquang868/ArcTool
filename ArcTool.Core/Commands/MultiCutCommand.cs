@@ -110,7 +110,7 @@ namespace ArcTool.Core.Commands
         {
             public bool AllowElement(Element elem)
             {
-                return elem.Category.Id.Value == (int)BuiltInCategory.OST_GenericModel;
+                return elem.Category.Id.Value == (long)BuiltInCategory.OST_GenericModel;
             }
             public bool AllowReference(Reference reference, XYZ position) => false;
         }
@@ -122,11 +122,11 @@ namespace ArcTool.Core.Commands
             {
                 if (elem.Category == null) return false;
 
-                int catId = (int)elem.Category.Id.Value;
+                long catId = elem.Category.Id.Value;
 
-                return catId == (int)BuiltInCategory.OST_Walls ||              // Tường
-                       catId == (int)BuiltInCategory.OST_StructuralColumns ||  // Cột Kết cấu
-                       catId == (int)BuiltInCategory.OST_Columns;              // Cột Kiến trúc
+                return catId == (long)BuiltInCategory.OST_Walls ||              // Tường
+                       catId == (long)BuiltInCategory.OST_StructuralColumns ||  // Cột Kết cấu
+                       catId == (long)BuiltInCategory.OST_Columns;              // Cột Kiến trúc
             }
             public bool AllowReference(Reference reference, XYZ position) => false;
         }

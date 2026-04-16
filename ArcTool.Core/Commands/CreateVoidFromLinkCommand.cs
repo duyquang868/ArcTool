@@ -99,8 +99,14 @@ namespace ArcTool.Core.Commands
 
                             // B. Lấy thông số kích thước
                             double beamCutLength = startPoint.DistanceTo(endPoint);
-                            double beamWidth = GetParamValue(beamInstance.Symbol, new[] { "b", "Width", "B", "Rộng" });
-                            double beamHeight = GetParamValue(beamInstance.Symbol, new[] { "h", "Height", "H", "Depth", "Cao" });
+                            // Try Instance parameters first, then fallback to Symbol parameters
+                            double beamWidth = GetParamValue(beamInstance, new[] { "b", "Width", "B", "Rộng" });
+                            if (beamWidth <= 0)
+                                beamWidth = GetParamValue(beamInstance.Symbol, new[] { "b", "Width", "B", "Rộng" });
+
+                            double beamHeight = GetParamValue(beamInstance, new[] { "h", "Height", "H", "Depth", "Cao" });
+                            if (beamHeight <= 0)
+                                beamHeight = GetParamValue(beamInstance.Symbol, new[] { "h", "Height", "H", "Depth", "Cao" });
 
                             if (beamWidth <= 0 || beamHeight <= 0 || beamCutLength <= 0)
                             {
@@ -145,7 +151,6 @@ namespace ArcTool.Core.Commands
                         }
                     }
 
-                    doc.Regenerate();
                     t.Commit();
 
                     Autodesk.Revit.UI.TaskDialog.Show("Success",

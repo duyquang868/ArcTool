@@ -14,7 +14,7 @@ namespace ArcTool.Core.Commands
     {
         // Giữ instance tĩnh để cửa sổ không bị giải phóng bộ nhớ khi lệnh kết thúc
         private static FilterWindow _ui;
-        private DateTime _lastUpdate = DateTime.MinValue;
+        private static DateTime _lastUpdate = DateTime.MinValue;
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {

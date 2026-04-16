@@ -48,10 +48,10 @@ namespace ArcTool.Core.Commands
                         if (nextDim.Id == baselineDim.Id) continue;
 
                         // Thực thi di chuyển
-                        MoveDimensionToMatchSnap(doc, activeView, baselineDim, nextDim);
+                        bool moved = MoveDimensionToMatchSnap(doc, activeView, baselineDim, nextDim);
 
-                        // Cập nhật Baseline
-                        baselineDim = nextDim;
+                        // Chỉ cập nhật Baseline nếu di chuyển thành công
+                        if (moved) baselineDim = nextDim;
                     }
 
                     tg.Assimilate();
@@ -70,16 +70,16 @@ namespace ArcTool.Core.Commands
             }
         }
 
-        private void MoveDimensionToMatchSnap(Document doc, Autodesk.Revit.DB.View activeView, Dimension baselineDim, Dimension nextDim)
+        private bool MoveDimensionToMatchSnap(Document doc, Autodesk.Revit.DB.View activeView, Dimension baselineDim, Dimension nextDim)
         {
             Line baseLine = baselineDim.Curve as Line;
             Line nextLine = nextDim.Curve as Line;
 
-            if (baseLine == null || nextLine == null) return;
+            if (baseLine == null || nextLine == null) return false;
 
             DimensionType dimType = baselineDim.DimensionType;
             Parameter snapParam = dimType.LookupParameter("Dimension Line Snap Distance");
-            if (snapParam == null) return;
+            if (snapParam == null) return false;
 
             double snapDistanceInternal = snapParam.AsDouble();
             double requiredDistance = snapDistanceInternal * activeView.Scale;
@@ -97,7 +97,7 @@ namespace ArcTool.Core.Commands
             double moveOffset = desiredDistance - currentDistance;
 
             // Bỏ qua nếu sai số nhỏ (đã nằm đúng vị trí)
-            if (Math.Abs(moveOffset) < 1e-5) return;
+            if (Math.Abs(moveOffset) < 1e-5) return true;
 
             XYZ translationVector = perpVector * moveOffset;
 
@@ -107,6 +107,8 @@ namespace ArcTool.Core.Commands
                 ElementTransformUtils.MoveElement(doc, nextDim.Id, translationVector);
                 t.Commit();
             }
+
+            return true;
         }
     }
 }

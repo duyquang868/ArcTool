@@ -1,16 +1,7 @@
 {
   "Version": 1,
   "WorkspaceRootPath": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\",
-  "Documents": [
-    {
-      "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\commands\\createvoidfromlinkcommand.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|solutionrelative:arctool.core\\commands\\createvoidfromlinkcommand.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\app.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|solutionrelative:arctool.core\\app.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    }
-  ],
+  "Documents": [],
   "DocumentGroupContainers": [
     {
       "Orientation": 0,
@@ -18,37 +9,15 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": -1,
           "Children": [
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "CreateVoidFromLinkCommand.cs",
-              "DocumentMoniker": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Commands\\CreateVoidFromLinkCommand.cs",
-              "RelativeDocumentMoniker": "ArcTool.Core\\Commands\\CreateVoidFromLinkCommand.cs",
-              "ToolTip": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Commands\\CreateVoidFromLinkCommand.cs",
-              "RelativeToolTip": "ArcTool.Core\\Commands\\CreateVoidFromLinkCommand.cs",
-              "ViewState": "AgIAAGQAAAAAAAAAAAAgwIYAAAA6AAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-03-02T12:28:03.596Z",
-              "EditorCaption": ""
-            },
             {
               "$type": "Bookmark",
               "Name": "ST:0:0:{34e76e81-ee4a-11d0-ae2e-00a0c90fffc3}"
             },
             {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "App.cs",
-              "DocumentMoniker": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\App.cs",
-              "RelativeDocumentMoniker": "ArcTool.Core\\App.cs",
-              "ToolTip": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\App.cs",
-              "RelativeToolTip": "ArcTool.Core\\App.cs",
-              "ViewState": "AgIAAFEAAAAAAAAAAAAswH4AAAABAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-02-25T12:48:27.167Z",
-              "EditorCaption": ""
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{56df62a4-05a3-4e5b-aa1a-99371ccfb997}"
             }
           ]
         }

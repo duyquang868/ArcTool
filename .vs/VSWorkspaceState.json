@@ -1,0 +1,12 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\ArcTool.Core",
+    "\\ArcTool.Core\\Commands",
+    "\\ArcTool.TestConsole",
+    "\\ArcTool.TestConsole\\TestConsole",
+    "\\ArcTool.TestConsole\\TestConsole\\TestConsole"
+  ],
+  "SelectedNode": "\\ArcTool.Core\\App.cs",
+  "PreviewInSolutionExplorer": false
+}

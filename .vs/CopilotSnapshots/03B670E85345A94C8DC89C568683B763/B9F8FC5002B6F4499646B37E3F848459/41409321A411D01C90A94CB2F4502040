@@ -1,0 +1,70 @@
+﻿## ĐỐI TÁC CỦA BẠN
+
+Tôi là kiến trúc sư với **20 năm kinh nghiệm thực chiến** trong ngành thiết kế xây dựng. Tôi hiểu sâu về logic nghiệp vụ, quy trình thiết kế BIM và nhu cầu thực tế của công việc kiến trúc. Tôi **không phải coder chuyên nghiệp** — tôi tiếp cận lập trình như một *problem-solver*: tôi biết mình muốn gì, tôi hiểu tại sao cần làm, nhưng tôi cần bạn là người biến ý tưởng đó thành code cấp enterprise.
+
+Nhiệm vụ của bạn: kết hợp hoàn hảo với kiến thức chuyên ngành kiến trúc của tôi để tạo ra phần mềm thực sự giải quyết vấn đề thực tế trong nghề. Bạn vừa là "thợ cả" vừa là "người thầy" — tôi học từ bạn, và bạn học bối cảnh nghiệp vụ từ tôi.
+
+---
+
+## DỰ ÁN: ARCTOOL PLUGIN
+
+**Tên dự án:** ArcTool
+**Namespace:** ArcTool.Core
+**Nền tảng:** Autodesk Revit 2026 (API 2026)
+**Ngôn ngữ:** C# (.NET 8.0)
+**Công cụ:** Visual Studio Enterprise 2026
+**Thư viện UI:** Windows Forms (Form chọn Family) & Revit Ribbon (App.cs)
+**Quản lý Resource:** File `Resources.resx` (Access Modifier: Public) chứa Icon
+
+---
+
+## TÍNH NĂNG ĐÃ HOÀN THIỆN
+
+### A. Giao diện Cốt lõi — App.cs (UI V5.1 - Final)
+- Sử dụng **SplitButton** (Nút chia đôi) cho nhóm "Void Manager"
+- Icon: Load từ `Properties.Resources` qua hàm helper `ConvertToImageSource` (chuyển Bitmap sang ImageSource)
+- Đã tích hợp: **Create Void** (Nút chính - Synchronized) và **Multi-Cut** (ngăn cách bằng Separator)
+- Đã sẵn sàng mở rộng cho Filter Manager và Image Import
+
+### B. Lệnh tạo Void — CreateVoidFromLinkCommand.cs (V4.0 - Auto Generate)
+- **Chức năng:** Tự động tạo Void (Generic Model) tại vị trí TẤT CẢ dầm (Structural Framing) trong file Link được chọn — không cần quét chọn PickBox
+- **Logic vị trí:** Lấy trung điểm của LocationCurve
+- **Logic kích thước:** Width/Length lấy từ tham số dầm Link; Height gán giá trị ÂM (-Height) để đảo chiều Void (Fix lỗi vị trí Bottom)
+- ⚠️ **Đang trong diện refactor:** xử lý tọa độ Transform Matrix chưa áp dụng
+
+### C. Lệnh cắt đa năng — MultiCutCommand.cs (V2.0 - Performance Optimized)
+- **Chức năng:** Cắt Tường (Walls) và Cột (Columns) bằng các Void đã tạo
+- **Quy trình:** Lọc chọn Void (Generic Model) → Lọc chọn vùng đối tượng mục tiêu (CutTargetSelectionFilter)
+- **Thuật toán Broad Phase:** Dùng `BoundingBoxIntersectsFilter` kiểm tra va chạm sơ bộ, chống treo máy với dự án lớn
+- ⚠️ **Chờ nâng cấp:** Narrow Phase Solid Intersection chưa được thêm vào
+
+### D. Engine xuất ảnh từ Excel
+- **Trạng thái:** Core Engine hoàn thiện (đọc file Excel và xuất thành hình ảnh)
+- ⏳ **Còn thiếu:** Logic Import để đưa ảnh vào Revit
+
+### E. Nền móng Filter Manager
+- **Trạng thái:** Đã khởi tạo `FilterManagerCommand.cs` và UI WPF (`FilterWindow.xaml` / `FilterWindow.xaml.cs`)
+- ⏳ **Sẵn sàng cho:** Tích hợp MVVM và thư viện `ParameterFilterElement` của Revit 2026 API
+
+---
+
+## ROADMAP PHÁT TRIỂN
+
+### Giai đoạn 1 — Cải tiến & Trả nợ kỹ thuật (Technical Debt)
+> *Nâng cấp chất lượng các lệnh hiện có trước khi xây thêm*
+
+- **CreateVoidFromLinkCommand:** Áp dụng đúng Transformation Matrix của file Link để fix lỗi lệch tọa độ
+- **MultiCutCommand:** Thêm Narrow Phase bằng Solid Intersection — thay thế việc chỉ dựa vào BoundingBox
+
+### Giai đoạn 2 — Filter Manager
+- Xây dựng UI/UX đầy đủ bằng WPF (kiến trúc MVVM)
+- Tích hợp các bộ lọc (Filter) chuẩn của Revit 2026 qua `ParameterFilterElement` API
+
+### Giai đoạn 3 — Excel to Revit Image
+- Engine Core đã xong. Viết tiếp logic Import vào Revit
+- **API cần tập trung:** `ImageImportOptions`, `ImageInstance.Create`, quản lý View/Sheet để đặt ảnh đúng vị trí
+
+### Giai đoạn 4 — Quick Dim (R&D)
+- Đang trong giai đoạn nghiên cứu thuật toán
+- **Khác biệt cốt lõi so với AutoCAD:** Revit yêu cầu Dimension qua **Reference objects** (mặt phẳng, đường hình học), không phải qua tọa độ điểm
+- **Việc cần làm trước:** Xây dựng hàm trích xuất `ReferenceArray` chuẩn xác trước khi gọi `NewDimension`

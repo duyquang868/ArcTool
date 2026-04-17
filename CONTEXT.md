@@ -1,7 +1,7 @@
 # ARCTOOL — AI SESSION CONTEXT
 > Paste file này vào ĐẦU mỗi session chat mới với AI.
 > Cập nhật sau mỗi session làm việc.
-> Last updated: 2026-04-16 — Session 5: FIX ambiguous reference + Build successful ✅
+> Last updated: 2026-04-16 — Session 5.7.1: MERGE ArcTool_Instructions.md - Inherit old content + add SESSION 5 updates
 
 ---
 
@@ -25,16 +25,19 @@
 ```
 ArcTool/
 ├── ArcTool.slnx
-├── CONTEXT.md                          ← file này
+├── CONTEXT.md                          ← Project status & roadmap
+├── ArcTool_Instructions.md             ← Development guide (NEW - SESSION 5.6) ✨
+├── SKILL.md                            ← Coding patterns & techniques (NEW - SESSION 5.6) ✨
 ├── ArcTool.Core/
 │   ├── App.cs                          ← Ribbon UI, entry point
+│   ├── App.config
 │   ├── ArcTool.Core.csproj
 │   ├── Commands/
 │   │   ├── CreateVoidFromLinkCommand.cs
 │   │   ├── MultiCutCommand.cs
 │   │   ├── ArrangeDimensionCommand.cs
 │   │   ├── FilterManagerCommand.cs
-│   │   └── ImageImportCommand.cs       ← NEW: Phase 3
+│   │   └── ExcelToRevitCommand.cs      ← Phase 3: Unified Excel → Revit Image Pipeline
 │   ├── Services/
 │   │   └── ExcelInteropService.cs
 │   ├── UI/
@@ -42,6 +45,13 @@ ArcTool/
 │   │   └── FilterWindow.xaml.cs
 │   ├── Utilities/
 │   │   └── SelectionFilters.cs
+│   ├── Models/
+│   │   └── (placeholder for future data models)
+│   ├── Resources/
+│   │   ├── icon_create_16.jpg
+│   │   ├── icon_create_32.jpg
+│   │   ├── icon_cut_16.png
+│   │   └── icon_cut_32.png
 │   └── Properties/
 │       ├── Resources.resx
 │       └── Resources.Designer.cs
@@ -96,40 +106,17 @@ ArcTool/
 - Command skeleton đã xong, dùng `Idling` event để real-time update
 - **TODO:** Implement logic Copy/Paste Filter thực sự bằng `ParameterFilterElement` API
 
-### G. Image Import Engine — `ImageImportCommand.cs` (V1.3.1 - Final) — **NEW PHASE 3**
-- Import ảnh PNG từ Excel Export vào **TẤT CẢ loại View** (Sheet, Drafting, Legend, Floor Plan, Section, v.v.)
-- **🎯 TÂM ẢNH TỰ ĐỘNG TRÙNG TÂM VIEW** — center-aligned theo mặc định
-- **✨ Dialog được cải thiện (V1.3.1):**
-  - Thiết kế chuyên nghiệp: Segoe UI font, modern colors, flat buttons
-  - Dùng TableLayoutPanel → Clean layout, không control thừa
-  - Chỉ yêu cầu Scale (%) — UX tối giản
-  - Input validation + helpful error messages
-  - Auto-select textbox content
-- **🔍 ImageType Detection:**
-  - ✅ Auto-detect nếu ImageType tồn tại
-  - ⚠️ **API Limitation:** Revit không expose ImageType creation API
-  - Fallback: Guide user (1 lần duy nhất first time)
-  - Xem chi tiết: `IMAGETYPE_LIMITATION.md`
-- Cách tính center: BoundingBoxXYZ → midpoint
-- Workflow:
-  1. User chọn file PNG
-  2. Auto-detect Active View + validate type
-  3. Dialog Scale (%) → modern UI
-  4. Tính center View tự động
-  5. Insert image tại center View
-  6. Apply scale factor
-- Ribbon: Tab "ArcTool" → Panel "Excel Tools" → Button "Excel to Revit"
-
-### H. Excel to Revit Command — `ExcelToRevitCommand.cs` (V1.0 - Final) — **SESSION 5 REFACTOR**
+### G. Excel to Revit Command — `ExcelToRevitCommand.cs` (V1.0 - Final) — **PHASE 3 REFACTOR**
 - **🎯 Unified Pipeline:** Gộp ExcelInteropService + ImageType.Create API thành 1 lệnh duy nhất
 - **✨ Workflow:**
   1. User chọn file Excel
   2. ExcelInteropService xuất Print Area → Temp PNG (hidden Excel)
-  3. ImageType.Create(doc, ImageTypeOptions) — tạo trực tiếp từ file PNG
+  3. ImageType.Create(doc, ImageTypeOptions) — tạo ImageType từ file PNG
   4. Dialog chỉnh Scale (%) — modern TableLayoutPanel design
   5. ImageInstance.Create() đặt ảnh tại **TÂM VIEW** tự động
   6. Xoá Temp PNG sau commit
 - **🔧 Technical Details:**
+  - ✅ **API Confirmation:** Revit 2026 API **CÓ HỖ TRỢ** `ImageType.Create()` công khai
   - ✅ **SESSION 5 FIX:** Giải quyết ambiguous reference `TaskDialog` và `TextBox`
     - Added alias: `using RevitTaskDialog = Autodesk.Revit.UI.TaskDialog;`
     - Changed all `TaskDialog.Show()` → `RevitTaskDialog.Show()` (9 occurrences)
@@ -140,7 +127,12 @@ ArcTool/
   - Transaction: Manual mode, RollBack nếu lỗi, Commit nếu thành công
   - Error handling: Chi tiết từng bước (Excel open, export, ImageType create, ImageInstance create, scale apply)
 - **🏆 Build Status:** ✅ **BUILD SUCCESSFUL** — 0 errors, 0 warnings
-- Ribbon: Tab "ArcTool" → Panel "Excel Tools" → Button "Excel to Revit"
+- **Ribbon:** Tab "ArcTool" → Panel "Excel Tools" → Button "Excel to Revit"
+
+### Former Features (Deprecated/Merged):
+- ❌ **ImageImportCommand.cs** — **REMOVED SESSION 5** (chức năng merged vào ExcelToRevitCommand.cs)
+  - Lý do: ImageType.Create() được Revit 2026 hỗ trợ công khai, không cần workaround
+  - ExcelToRevitCommand cung cấp complete pipeline: Excel → PNG → ImageType → ImageInstance
 
 ---
 
@@ -323,31 +315,21 @@ elem.Category.Id.Value == (long)BuiltInCategory.OST_Walls  // ĐÚNG
 - [ ] Implement logic Paste Filter: `view.AddFilter()`, set Visibility/Override
 - [ ] Hoàn thiện MVVM binding cho `FilterWindow`
 
-### Giai đoạn 3 — Excel to Revit Image — **8/8 HOÀN THÀNH ✅ — SESSION 4-4e**
-- [x] Viết `ImageImportCommand.cs` (V1.0) — ✅ DONE
-- [x] Viết `ImageImportCommand.cs` (V1.1 Full View Support) — ✅ DONE SESSION 4b
-- [x] Viết `ImageImportCommand.cs` (V1.2 Centered + Scale-Only) — ✅ DONE SESSION 4c
-- [x] Viết `ImageImportCommand.cs` (V1.3 Professional UI) — ✅ DONE SESSION 4d
-- [x] Viết `ImageImportCommand.cs` (V1.3.1 TableLayoutPanel Fix) — ✅ DONE SESSION 4e
-- [x] Fix Dialog layout (TableLayoutPanel → clean layout) — ✅ DONE SESSION 4e
-- [x] Phân tích ImageType API limitation — ✅ DONE (xem `IMAGETYPE_LIMITATION.md`)
-- [x] Tính center View tự động (`BoundingBoxXYZ` + midpoint) — ✅ DONE
-- [x] Dialog chỉ Scale % (UX tối giản) — ✅ DONE
-- [x] Tự động detect Active View + Validate (reject 3D) — ✅ DONE
-- [x] Thêm button "Import Image" vào Ribbon (Tab ArcTool → Panel Excel Tools) — ✅ DONE
-- [x] **Build successful** — ✅ COMPILED
-- [x] **Plugin PRODUCTION READY** — ✅ READY TO USE
-
-### Giai đoạn 3.5 — Excel to Revit Command Refactor — **SESSION 5 — 3/3 HOÀN THÀNH ✅**
-- [x] **Refactor `ExcelToRevitCommand.cs`** — Gộp ExcelInteropService + ImageType.Create vào 1 lệnh
-  - ✅ DONE — Unified pipeline import ảnh Excel
-  - ✅ DONE — Integrated error handling + modern dialog
-  - ✅ DONE — Auto-center tại View center
-  - ✅ DONE — Flexible scale adjustment (%)
-- [x] **Fix ambiguous reference errors** — TaskDialog + TextBox
-  - ✅ DONE — Added alias `RevitTaskDialog`
-  - ✅ DONE — Explicit qualification for TextBox
-  - ✅ DONE — 9 TaskDialog.Show() replacements
+### Giai đoạn 3 — Excel to Revit Image — **REFACTORED SESSION 5 — MERGED INTO ExcelToRevitCommand** ✅
+- [x] Viết `ImageImportCommand.cs` (V1.0-1.3.1) — ✅ **DEPRECATED SESSION 5**
+  - Nguyên nhân: Xóa ImageImportCommand (lỗi nhận định về API limitation)
+  - ImageType.Create() **CÓ HỖ TRỢ** công khai trong Revit 2026 API
+  - Chức năng merged vào ExcelToRevitCommand.cs (unified pipeline)
+- [x] Refactor thành `ExcelToRevitCommand.cs` (V1.0 - Final) — ✅ **DONE SESSION 5**
+  - ✅ Unified pipeline: Excel → PNG → ImageType → ImageInstance
+  - ✅ Modern dialog (TableLayoutPanel, Segoe UI, flat buttons)
+  - ✅ Auto-center at View center
+  - ✅ Flexible scale adjustment (%)
+  - ✅ Complete error handling per step
+- [x] **Fix ambiguous reference** (TaskDialog + TextBox)
+  - ✅ Added alias `RevitTaskDialog`
+  - ✅ Explicit qualification for TextBox
+  - ✅ 9 TaskDialog.Show() replacements
 - [x] **Build successful + Production ready**
   - ✅ BUILD SUCCESSFUL — 0 errors, 0 warnings
 
@@ -378,17 +360,112 @@ elem.Category.Id.Value == (long)BuiltInCategory.OST_Walls  // ĐÚNG
 
 ---
 
-## 9. CÁCH DÙNG FILE NÀY
+## 9. PROJECT DOCUMENTATION FILES
 
-**Đầu mỗi session mới:**
-1. Mở file này, copy toàn bộ nội dung
-2. Paste vào đầu chat với AI
-3. Ghi rõ: "Session hôm nay tôi muốn làm: [nhiệm vụ cụ thể]"
+### A. CONTEXT.md (file này) — Project Status & Roadmap
+- **Mục đích:** Track dự án state, bug list, features completed, decisions made
+- **Cập nhật:** Cuối mỗi session
+- **Dùng khi:** Session start (read history), planning features, tracking progress
+- **Sections:**
+  - 1-2: Project info + folder structure
+  - 3: Features completed (detailed status)
+  - 4-6: Bug list + technical decisions
+  - 7: Roadmap + phase completion status
+  - 8: API references
+  - 9: This section
 
-**Cuối mỗi session:**
-1. Cập nhật trạng thái bug ([ ] → [x])
-2. Thêm quyết định kỹ thuật mới vào Mục 5
-3. Commit file lên GitHub cùng với code
+### B. ArcTool_Instructions.md (NEW - SESSION 5.6) — Development Guide
+- **Mục đích:** Hands-on reference để setup, debug, test, deploy plugin
+- **Cập nhật:** Khi có thay đổi workflow hoặc setup instructions
+- **Dùng khi:** First setup, debugging session, manual testing, deployment
+- **Sections:**
+  - Debug setup (VS config, Revit debugger)
+  - Testing workflow (4 test procedures with assertions)
+  - Ribbon UI layout diagram
+  - Build & deployment checklist
+  - Common development tasks (add command, add icon, modify ExcelToRevit)
+  - Troubleshooting table (build errors + runtime issues)
+  - References & links
+  - Session workflow
+
+### C. SKILL.md (NEW - SESSION 5.6) — Coding Patterns & Standards
+- **Mục đích:** Reference guide cho coding patterns, best practices, standards dùng trong project
+- **Cập nhật:** Khi discover new pattern hoặc improve existing ones
+- **Dùng khi:** Writing new code, code review, refactoring, maintenance
+- **Sections:**
+  - 15 major coding patterns (Transaction, COM, Filters, UI, etc.)
+  - Each pattern: code example + explanation + when to use
+  - DO's & DON'Ts quick reference
+  - Future recommendations (logging, DI, etc.)
 
 ---
-*ArcTool © 2026 — Internal development context file*
+
+## 10. WORKFLOW: CÁCH DÙNG 3 FILES NÀY
+
+### Session Start ✅
+1. **Mở CONTEXT.md** → read timestamp + latest updates
+2. **Skim SKILL.md** → refresh memory về patterns (nếu chưa làm lâu)
+3. **Refer to ArcTool_Instructions.md** → setup/debug as needed
+
+### During Coding 💻
+1. **Viết code:** Refer SKILL.md patterns
+2. **Test:** Follow testing workflow từ ArcTool_Instructions.md
+3. **Debug:** Check troubleshooting table
+
+### Session End ✅
+1. **Update CONTEXT.md:** Bug status, decisions made, timestamp
+2. **Add to SKILL.md:** Any new patterns discovered
+3. **Update ArcTool_Instructions.md:** If workflow changed
+4. **Commit all 3 files** + source code
+
+---
+
+## 11. CÁCH PASTE VÀO CHAT AI
+
+**Đầu mỗi session mới:**
+1. Copy toàn bộ **CONTEXT.md** (chỉ file này)
+2. Paste vào đầu chat với prompt
+3. Ghi rõ: "Session [N]: Tôi muốn [task cụ thể]"
+4. **Ghi chú:** Bạn (AI) sẽ tự refer SKILL.md + ArcTool_Instructions.md từ workspace
+
+**Example:**
+```
+# COPILOTWORKSPACE CONTEXT
+- Projects targeting: .NET 8
+- IDE: Visual Studio Enterprise 2026
+
+[PASTE CONTEXT.md HERE]
+
+---
+
+**Session 6 Task:** Tôi muốn implement Filter Copy/Paste feature theo SKILL.md pattern #2 (Transaction Group)
+```
+
+---
+
+## 12. FILE UPDATE CHECKLIST
+
+### Khi add New Feature → Update cái gì?
+- [ ] **CONTEXT.md** Section 3 (thêm feature description)
+- [ ] **CONTEXT.md** Section 7 (update phase status)
+- [ ] **SKILL.md** (thêm pattern nếu là pattern mới)
+- [ ] **ArcTool_Instructions.md** Section 5 (add to common tasks nếu relevant)
+
+### Khi fix Bug → Update cái gì?
+- [ ] **CONTEXT.md** Section 4 (change [ ] → [x], remove from BUG list)
+- [ ] **CONTEXT.md** Section 7 (update phase completion %)
+- [ ] **SKILL.md** (update pattern explanation nếu bug liên quan)
+
+### Khi discover New Pattern → Update cái gì?
+- [ ] **SKILL.md** (thêm section mới, numbered incrementally)
+- [ ] **SKILL.md** DO's/DON'Ts (thêm relevant points)
+- [ ] **ArcTool_Instructions.md** Section 5 (thêm task example nếu applicable)
+
+### Khi change Setup/Workflow → Update cái gì?
+- [ ] **ArcTool_Instructions.md** (relevant section)
+- [ ] **CONTEXT.md** Section 2 (folder structure nếu thay đổi)
+
+---
+
+*ArcTool © 2026 — Internal development documentation*
+

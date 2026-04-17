@@ -1,34 +1,37 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\",
+  "WorkspaceRootPath": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\quang mini\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\imagetype_limitation.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
-      "RelativeMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|solutionrelative:arctool.core\\imagetype_limitation.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\quang mini\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\app.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|solutionrelative:arctool.core\\app.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\quang mini\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\services\\excelinteropservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|solutionrelative:arctool.core\\services\\excelinteropservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.TestConsole\\TestConsole\\TestConsole\\Program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:ArcTool.TestConsole\\TestConsole\\TestConsole\\Program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\CONTEXT.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\CONTEXT.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:CONTEXT.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\quang mini\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\commands\\exceltorevitcommand.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool_Instructions.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:ArcTool_Instructions.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\SKILL.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:SKILL.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\app.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|solutionrelative:arctool.core\\app.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\services\\excelinteropservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|solutionrelative:arctool.core\\services\\excelinteropservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.TestConsole\\TestConsole\\TestConsole\\Program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:ArcTool.TestConsole\\TestConsole\\TestConsole\\Program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\commands\\exceltorevitcommand.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|solutionrelative:arctool.core\\commands\\exceltorevitcommand.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Commands\\ImageImportCommand.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:ArcTool.Core\\Commands\\ImageImportCommand.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Commands\\ImageImportCommand.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -54,73 +57,86 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
-              "Title": "ExcelToRevitCommand.cs",
-              "DocumentMoniker": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Commands\\ExcelToRevitCommand.cs",
-              "RelativeDocumentMoniker": "ArcTool.Core\\Commands\\ExcelToRevitCommand.cs",
-              "ToolTip": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Commands\\ExcelToRevitCommand.cs",
-              "RelativeToolTip": "ArcTool.Core\\Commands\\ExcelToRevitCommand.cs",
-              "ViewState": "AgIAAPsAAAAAAAAAAIBJwAAAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-17T13:58:45.986Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 4,
-              "Title": "CONTEXT.md",
-              "DocumentMoniker": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\CONTEXT.md",
-              "RelativeDocumentMoniker": "CONTEXT.md",
-              "ToolTip": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\CONTEXT.md",
-              "RelativeToolTip": "CONTEXT.md",
-              "ViewState": "AgIAAGIAAAAAAAAAAABBwAAAAAAAAAAAAAAAAA==",
+              "DocumentIndex": 2,
+              "Title": "SKILL.md",
+              "DocumentMoniker": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\SKILL.md",
+              "RelativeDocumentMoniker": "SKILL.md",
+              "ToolTip": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\SKILL.md",
+              "RelativeToolTip": "SKILL.md",
+              "ViewState": "AgIAABUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
-              "WhenOpened": "2026-04-17T12:48:11.005Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "App.cs",
-              "DocumentMoniker": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\App.cs",
-              "RelativeDocumentMoniker": "ArcTool.Core\\App.cs",
-              "ToolTip": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\App.cs",
-              "RelativeToolTip": "ArcTool.Core\\App.cs",
-              "ViewState": "AgIAAHkAAAAAAAAAAAAgwHQAAAAQAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-17T12:45:14.09Z",
+              "WhenOpened": "2026-04-17T15:29:55.585Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "IMAGETYPE_LIMITATION.md",
-              "DocumentMoniker": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\IMAGETYPE_LIMITATION.md",
-              "RelativeDocumentMoniker": "ArcTool.Core\\IMAGETYPE_LIMITATION.md",
-              "ToolTip": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\IMAGETYPE_LIMITATION.md",
-              "RelativeToolTip": "ArcTool.Core\\IMAGETYPE_LIMITATION.md",
-              "ViewState": "AgIAAJcAAAAAAAAAAAAAAL0AAAAAAAAAAAAAAA==",
+              "DocumentIndex": 1,
+              "Title": "ArcTool_Instructions.md",
+              "DocumentMoniker": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool_Instructions.md",
+              "RelativeDocumentMoniker": "ArcTool_Instructions.md",
+              "ToolTip": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool_Instructions.md",
+              "RelativeToolTip": "ArcTool_Instructions.md",
+              "ViewState": "AgIAACsAAAAAAAAAAAAhwDAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
-              "WhenOpened": "2026-04-17T13:27:33.348Z",
+              "WhenOpened": "2026-04-17T15:29:53.249Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 6,
+              "Title": "ExcelToRevitCommand.cs",
+              "DocumentMoniker": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Commands\\ExcelToRevitCommand.cs",
+              "RelativeDocumentMoniker": "ArcTool.Core\\Commands\\ExcelToRevitCommand.cs",
+              "ToolTip": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Commands\\ExcelToRevitCommand.cs",
+              "RelativeToolTip": "ArcTool.Core\\Commands\\ExcelToRevitCommand.cs",
+              "ViewState": "AgIAAP4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-17T13:58:45.986Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "CONTEXT.md",
+              "DocumentMoniker": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\CONTEXT.md",
+              "RelativeDocumentMoniker": "CONTEXT.md",
+              "ToolTip": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\CONTEXT.md",
+              "RelativeToolTip": "CONTEXT.md",
+              "ViewState": "AgIAACIBAAAAAAAAAAAAAA0AAAAtAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
+              "WhenOpened": "2026-04-17T12:48:11.005Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "App.cs",
+              "DocumentMoniker": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\App.cs",
+              "RelativeDocumentMoniker": "ArcTool.Core\\App.cs",
+              "ToolTip": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\App.cs",
+              "RelativeToolTip": "ArcTool.Core\\App.cs",
+              "ViewState": "AgIAAHkAAAAAAAAAAAAgwHQAAAAQAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-17T12:45:14.09Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
               "Title": "ImageImportCommand.cs",
               "DocumentMoniker": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Commands\\ImageImportCommand.cs",
-              "RelativeDocumentMoniker": "ArcTool.Core\\Commands\\ImageImportCommand.cs",
+              "RelativeDocumentMoniker": "..\\..\\..\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Commands\\ImageImportCommand.cs",
               "ToolTip": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Commands\\ImageImportCommand.cs",
-              "RelativeToolTip": "ArcTool.Core\\Commands\\ImageImportCommand.cs",
+              "RelativeToolTip": "..\\..\\..\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Commands\\ImageImportCommand.cs",
               "ViewState": "AgIAAFAAAAAAAAAAAIBJwM8BAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-04-17T13:14:05.661Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 5,
               "Title": "Program.cs",
-              "DocumentMoniker": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.TestConsole\\TestConsole\\TestConsole\\Program.cs",
+              "DocumentMoniker": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.TestConsole\\TestConsole\\TestConsole\\Program.cs",
               "RelativeDocumentMoniker": "ArcTool.TestConsole\\TestConsole\\TestConsole\\Program.cs",
-              "ToolTip": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.TestConsole\\TestConsole\\TestConsole\\Program.cs",
+              "ToolTip": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.TestConsole\\TestConsole\\TestConsole\\Program.cs",
               "RelativeToolTip": "ArcTool.TestConsole\\TestConsole\\TestConsole\\Program.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
@@ -128,11 +144,11 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 4,
               "Title": "ExcelInteropService.cs",
-              "DocumentMoniker": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Services\\ExcelInteropService.cs",
+              "DocumentMoniker": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Services\\ExcelInteropService.cs",
               "RelativeDocumentMoniker": "ArcTool.Core\\Services\\ExcelInteropService.cs",
-              "ToolTip": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Services\\ExcelInteropService.cs",
+              "ToolTip": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Services\\ExcelInteropService.cs",
               "RelativeToolTip": "ArcTool.Core\\Services\\ExcelInteropService.cs",
               "ViewState": "AgIAAI8AAAAAAAAAAAAIwCIAAAARAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",

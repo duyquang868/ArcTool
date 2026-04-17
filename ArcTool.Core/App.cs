@@ -112,10 +112,10 @@ namespace ArcTool.Core
 
             // Nút: Import Image từ Excel Export
             PushButtonData importImageBtnData = new PushButtonData(
-                "btnImportImage",
-                "Import\nImage",
+                "btnExcelToRevit", 
+                "Excel to\nRevit", 
                 assemblyPath,
-                "ArcTool.Core.Commands.ImageImportCommand"
+                "ArcTool.Core.Commands.ExcelToRevitCommand"
             );
 
             importImageBtnData.ToolTip = "Import ảnh PNG từ Excel Export vào Revit Sheet. Hỗ trợ tùy chỉnh vị trí và scale.";

@@ -9,7 +9,7 @@ namespace ArcTool.Core.Services
 {
     /// <summary>
     /// Service quản lý giao tiếp với Excel.
-    /// Updated V5: Synchronous Execution - No Sleep, No Retry, Hardcode 50x Scale.
+    /// Updated V5: Synchronous Execution - No Sleep, No Retry, Hardcode 35x Scale.
     /// </summary>
     public class ExcelInteropService : IDisposable
     {
@@ -121,28 +121,38 @@ namespace ArcTool.Core.Services
             }
             finally
             {
+                // Release child before parent
+                ReleaseObject(chart);
+
+                // Delete chartObj without releasing after (Delete already revokes COM)
                 if (chartObj != null)
                 {
                     try { chartObj.Delete(); } catch { }
                 }
 
-                ReleaseObject(chart);
-                ReleaseObject(chartObj);
+                // Release container last
                 ReleaseObject(chartObjects);
             }
         }
 
         public void Dispose()
         {
+            if (_activeSheet != null)
+            {
+                ReleaseObject(_activeSheet);
+                _activeSheet = null;
+            }
             if (_workbook != null)
             {
                 try { _workbook.Close(false); } catch { }
                 ReleaseObject(_workbook);
+                _workbook = null;
             }
             if (_excelApp != null)
             {
                 try { _excelApp.Quit(); } catch { }
                 ReleaseObject(_excelApp);
+                _excelApp = null;
             }
             GC.Collect();
             GC.WaitForPendingFinalizers();
@@ -155,7 +165,6 @@ namespace ArcTool.Core.Services
                 if (obj != null) Marshal.ReleaseComObject(obj);
             }
             catch { }
-            finally { obj = null; }
         }
     }
 }

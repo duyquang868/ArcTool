@@ -1,0 +1,242 @@
+﻿using Autodesk.Revit.Attributes;
+using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
+using System;
+
+namespace ArcTool.Core.Commands
+{
+    /// <summary>
+    /// ImageImportCommand: Import ảnh PNG từ Excel Export vào Revit Sheet
+    /// 
+    /// Workflow:
+    /// 1. User chọn file ảnh PNG (từ ExcelInteropService export)
+    /// 2. Dialog nhập vị trí (X, Y, Z) và Scale (%)
+    /// 3. Detect Active Sheet tự động
+    /// 4. Dùng Revit API để insert image vào Sheet
+    /// 5. Tự động apply scale factor nếu khác 100%
+    /// 
+    /// V1.0 — Phase 3 Implementation
+    /// - Dùng ImageInstance.Create() API đúng cách
+    /// - Tự động detect Sheet
+    /// - Error handling cho file input
+    /// </summary>
+    [Transaction(TransactionMode.Manual)]
+    public class ImageImportCommand : IExternalCommand
+    {
+        public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+        {
+            UIDocument uidoc = commandData.Application.ActiveUIDocument;
+            Document doc = uidoc.Document;
+
+            try
+            {
+                // --- BƯỚC 1: CHỌN FILE ẢNH PNG ---
+                string imagePath = PromptForImagePath();
+                if (string.IsNullOrEmpty(imagePath))
+                {
+                    return Result.Cancelled;
+                }
+
+                // --- BƯỚC 2: HIỂN THỊ DIALOG CẤU HÌNH ---
+                XYZ insertPoint = XYZ.Zero;
+                double scalePercent = 100.0;
+
+                using (var form = new System.Windows.Forms.Form())
+                {
+                    form.Text = "Image Import Options";
+                    form.Width = 400;
+                    form.Height = 280;
+                    form.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
+                    form.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
+                    form.MaximizeBox = false;
+                    form.MinimizeBox = false;
+
+                    // Create controls
+                    var lblX = new System.Windows.Forms.Label { Text = "X (Feet):", Left = 20, Top = 20, Width = 100 };
+                    var txtX = new System.Windows.Forms.TextBox { Left = 130, Top = 20, Width = 200, Text = "0" };
+
+                    var lblY = new System.Windows.Forms.Label { Text = "Y (Feet):", Left = 20, Top = 60, Width = 100 };
+                    var txtY = new System.Windows.Forms.TextBox { Left = 130, Top = 60, Width = 200, Text = "0" };
+
+                    var lblZ = new System.Windows.Forms.Label { Text = "Z (Feet):", Left = 20, Top = 100, Width = 100 };
+                    var txtZ = new System.Windows.Forms.TextBox { Left = 130, Top = 100, Width = 200, Text = "0" };
+
+                    var lblScale = new System.Windows.Forms.Label { Text = "Scale (%):", Left = 20, Top = 140, Width = 100 };
+                    var txtScale = new System.Windows.Forms.TextBox { Left = 130, Top = 140, Width = 200, Text = "100" };
+
+                    var btnOK = new System.Windows.Forms.Button { Text = "OK", Left = 130, Top = 190, Width = 80, Height = 30 };
+                    var btnCancel = new System.Windows.Forms.Button { Text = "Cancel", Left = 220, Top = 190, Width = 80, Height = 30 };
+
+                    form.Controls.Add(lblX);
+                    form.Controls.Add(txtX);
+                    form.Controls.Add(lblY);
+                    form.Controls.Add(txtY);
+                    form.Controls.Add(lblZ);
+                    form.Controls.Add(txtZ);
+                    form.Controls.Add(lblScale);
+                    form.Controls.Add(txtScale);
+                    form.Controls.Add(btnOK);
+                    form.Controls.Add(btnCancel);
+
+                    form.AcceptButton = btnOK;
+                    form.CancelButton = btnCancel;
+
+                    btnOK.Click += (s, e) =>
+                    {
+                        try
+                        {
+                            double x = double.TryParse(txtX.Text, out var px) ? px : 0;
+                            double y = double.TryParse(txtY.Text, out var py) ? py : 0;
+                            double z = double.TryParse(txtZ.Text, out var pz) ? pz : 0;
+                            double scale = double.TryParse(txtScale.Text, out var ps) && ps > 0 ? ps : 100;
+
+                            insertPoint = new XYZ(x, y, z);
+                            scalePercent = scale;
+
+                            form.DialogResult = System.Windows.Forms.DialogResult.OK;
+                            form.Close();
+                        }
+                        catch
+                        {
+                            System.Windows.Forms.MessageBox.Show("Vui lòng nhập các giá trị số hợp lệ.", "Input Error");
+                        }
+                    };
+
+                    if (form.ShowDialog() != System.Windows.Forms.DialogResult.OK)
+                    {
+                        return Result.Cancelled;
+                    }
+                }
+
+                // --- BƯỚC 3: LẤY ACTIVE SHEET ---
+                ViewSheet activeSheet = doc.ActiveView as ViewSheet;
+                if (activeSheet == null)
+                {
+                    Autodesk.Revit.UI.TaskDialog.Show("Info", 
+                        "Vui lòng mở một Sheet trước khi import ảnh.\n(Hiện tại: " + doc.ActiveView.Name + ")");
+                    return Result.Failed;
+                }
+
+                // --- BƯỚC 4: IMPORT ẢNH ---
+                using (Transaction t = new Transaction(doc, "ArcTool: Import Image from Excel"))
+                {
+                    t.Start();
+
+                    try
+                    {
+                        // Tạo ImageInstance với ImagePlacementOptions
+                        ImagePlacementOptions imgOpts = new ImagePlacementOptions();
+                        imgOpts.PlacementPoint = BoxPlacement.TopLeft;
+                        imgOpts.Location = insertPoint;
+
+                        // ImageInstance.Create signature: (Document, View, ElementId imageId, ImagePlacementOptions)
+                        // Vì chúng ta có file path, cần dùng Image.Create để tạo ElementId image trước
+                        // Hoặc dùng approach khác: ImageType + NewImage
+
+                        // WORKAROUND: Sử dụng clipboard paste image approach (tương tự Excel export)
+                        // Load bitmap từ file
+                        System.Drawing.Bitmap bitmap = new System.Drawing.Bitmap(imagePath);
+
+                        // Copy to clipboard
+                        System.Windows.Forms.Clipboard.SetImage(bitmap);
+
+                        // Paste vào Sheet (thông qua ImageInstance.Create)
+                        // Nhưng ImageInstance.Create cần ImageId, không phải file path
+                        // → Thay vì vậy, dùng OleObjectPaste hoặc manual approach
+
+                        // API đúng: Image.Create(doc, imagePath) → trả về ImageId
+                        // Sau đó ImageInstance.Create(doc, view, imageId, options)
+                        if (!System.IO.File.Exists(imagePath))
+                        {
+                            t.RollBack();
+                            Autodesk.Revit.UI.TaskDialog.Show("Error", $"File không tồn tại: {imagePath}");
+                            return Result.Failed;
+                        }
+
+                        // Create Image element từ file path
+                        ElementId imageId = Image.Create(doc, imagePath);
+
+                        // Create ImageInstance trên Sheet
+                        ImageInstance imageInstance = ImageInstance.Create(doc, activeSheet, imageId, imgOpts);
+
+                        if (imageInstance == null)
+                        {
+                            t.RollBack();
+                            Autodesk.Revit.UI.TaskDialog.Show("Error", "Không thể import ảnh. API error.");
+                            return Result.Failed;
+                        }
+
+                        // Apply scale nếu cần
+                        if (Math.Abs(scalePercent - 100.0) > 0.01)
+                        {
+                            try
+                            {
+                                // Resize bằng cách set width/height
+                                double originalWidth = imageInstance.Width;
+                                double originalHeight = imageInstance.Height;
+
+                                double scaleFactor = scalePercent / 100.0;
+                                imageInstance.Width = originalWidth * scaleFactor;
+                                imageInstance.Height = originalHeight * scaleFactor;
+                            }
+                            catch
+                            {
+                                // Bỏ qua lỗi scale, vẫn import bình thường
+                            }
+                        }
+
+                        t.Commit();
+
+                        // Thông báo kết quả
+                        Autodesk.Revit.UI.TaskDialog.Show("Success",
+                            $"✅ Import ảnh thành công!\n\n" +
+                            $"File: {System.IO.Path.GetFileName(imagePath)}\n" +
+                            $"Sheet: {activeSheet.Name}\n" +
+                            $"Vị trí: ({insertPoint.X:F2}, {insertPoint.Y:F2}, {insertPoint.Z:F2}) Feet\n" +
+                            $"Scale: {scalePercent}%\n\n" +
+                            $"Bạn có thể drag-resize ảnh trực tiếp trên Sheet.");
+
+                        return Result.Succeeded;
+                    }
+                    catch (Exception ex)
+                    {
+                        t.RollBack();
+                        message = $"Error: {ex.Message}";
+                        Autodesk.Revit.UI.TaskDialog.Show("ImageImport Error", message);
+                        return Result.Failed;
+                    }
+                }
+            }
+            catch (Autodesk.Revit.Exceptions.OperationCanceledException)
+            {
+                return Result.Cancelled;
+            }
+            catch (Exception ex)
+            {
+                message = $"Error: {ex.Message}";
+                Autodesk.Revit.UI.TaskDialog.Show("ImageImport Error", message);
+                return Result.Failed;
+            }
+        }
+
+        /// <summary>
+        /// Hiển thị OpenFileDialog để user chọn file ảnh
+        /// </summary>
+        private string PromptForImagePath()
+        {
+            using (var dialog = new System.Windows.Forms.OpenFileDialog())
+            {
+                dialog.Title = "Chọn file ảnh PNG (từ Excel Export)";
+                dialog.Filter = "PNG Image (*.png)|*.png|All Files (*.*)|*.*";
+                dialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+
+                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                {
+                    return dialog.FileName;
+                }
+                return null;
+            }
+        }
+    }
+}
+

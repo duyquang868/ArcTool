@@ -1,0 +1,127 @@
+﻿using Autodesk.Revit.UI;
+using System;
+using System.Reflection;
+using System.Windows.Media.Imaging;
+using System.IO;
+using System.Drawing; // Cần Add Reference: System.Drawing
+using System.Windows.Media; // Cần Add Reference: PresentationCore
+
+namespace ArcTool.Core
+{
+    public class App : IExternalApplication
+    {
+        public Result OnStartup(UIControlledApplication application)
+        {
+            string tabName = "ArcTool";
+            string voidPanelName = "Void Tools";
+            string annotationPanelName = "Annotation Tools"; // Tên Panel mới cho các lệnh Dim/Text
+
+            // 1. TẠO TAB ARCTOOL
+            try
+            {
+                application.CreateRibbonTab(tabName);
+            }
+            catch { /* Bỏ qua lỗi nếu Tab đã tồn tại */ }
+
+            // 2. LẤY HOẶC TẠO PANEL "VOID TOOLS"
+            RibbonPanel voidPanel = null;
+            foreach (RibbonPanel p in application.GetRibbonPanels(tabName))
+            {
+                if (p.Name == voidPanelName)
+                {
+                    voidPanel = p;
+                    break;
+                }
+            }
+            if (voidPanel == null) voidPanel = application.CreateRibbonPanel(tabName, voidPanelName);
+
+            string assemblyPath = Assembly.GetExecutingAssembly().Location;
+
+            // --- A. NHÓM LỆNH VOID MANAGER ---
+            // Tạo SplitButtonData cho Void Manager
+            SplitButtonData splitData = new SplitButtonData("splitBtnVoid", "Void\nManager");
+            SplitButton splitBtn = voidPanel.AddItem(splitData) as SplitButton;
+
+            if (splitBtn != null)
+            {
+                // Nút 1: Create Void
+                PushButtonData btnCreate = new PushButtonData("btnCreateVoid", "Create\nVoid", assemblyPath, "ArcTool.Core.Commands.CreateVoidFromLinkCommand");
+                // Icon assignment is optional - commented out until resources are added
+                // btnCreate.LargeImage = ConvertToImageSource(Properties.Resources.icon_create_void_32);
+                btnCreate.ToolTip = "Tự động tạo Void (Generic Model) tại vị trí tất cả Dầm trong file Link được chọn.";
+
+                // Nút 2: Multi-Cut
+                PushButtonData btnCut = new PushButtonData("btnMultiCut", "Multi-Cut", assemblyPath, "ArcTool.Core.Commands.MultiCutCommand");
+                // Icon assignment is optional - commented out until resources are added
+                // btnCut.LargeImage = ConvertToImageSource(Properties.Resources.icon_multi_cut_32);
+                btnCut.ToolTip = "Cắt Tường (Walls) và Cột (Columns) bằng các Void đã tạo. Sử dụng thuật toán BoundingBox tối ưu.";
+
+                // Thêm các nút vào SplitButton
+                splitBtn.AddPushButton(btnCreate);
+                splitBtn.AddSeparator();
+                splitBtn.AddPushButton(btnCut);
+
+                // Set nút mặc định là nút Create
+                splitBtn.IsSynchronizedWithCurrentItem = true;
+            }
+
+            // --- B. NHÓM LỆNH ANNOTATION TOOLS (MỚI THÊM) ---
+            // Lấy hoặc tạo Panel "Annotation Tools"
+            RibbonPanel annotationPanel = null;
+            foreach (RibbonPanel p in application.GetRibbonPanels(tabName))
+            {
+                if (p.Name == annotationPanelName)
+                {
+                    annotationPanel = p;
+                    break;
+                }
+            }
+            if (annotationPanel == null) annotationPanel = application.CreateRibbonPanel(tabName, annotationPanelName);
+
+            // Khởi tạo nút Arrange Dimension
+            PushButtonData arrangeDimBtnData = new PushButtonData(
+                "btnArrangeDimension",
+                "Arrange\nDimensions",
+                assemblyPath,
+                "ArcTool.Core.Commands.ArrangeDimensionCommand" // Trỏ đúng vào thư mục Commands như kiến trúc mới
+            );
+
+            // LƯU Ý: Mở file Properties/Resources.resx và thêm icon tên là "icon_arrange_dim_32" trước khi bỏ comment dòng dưới nhé!
+            // arrangeDimBtnData.LargeImage = ConvertToImageSource(Properties.Resources.icon_arrange_dim_32);
+
+            // Thiết lập Tooltip (UX quan trọng)
+            arrangeDimBtnData.ToolTip = "Tự động sắp xếp khoảng cách các đường Dimension liên tục dựa trên hệ số Snap Distance và View Scale.";
+            arrangeDimBtnData.LongDescription = "Click chọn đường Dim gốc, sau đó liên tục click chọn các đường Dim tiếp theo để hệ thống tự động tịnh tiến chúng cách đều nhau. Nhấn ESC để kết thúc lệnh.";
+
+            // Thêm nút vào Panel
+            annotationPanel.AddItem(arrangeDimBtnData);
+
+            return Result.Succeeded;
+        }
+
+        public Result OnShutdown(UIControlledApplication application)
+        {
+            return Result.Succeeded;
+        }
+
+        // --- HÀM HỖ TRỢ CHUYỂN ĐỔI ẢNH TỪ RESOURCE SANG REVIT ---
+        public static ImageSource ConvertToImageSource(Bitmap bitmap)
+        {
+            if (bitmap == null) return null;
+
+            using (MemoryStream memory = new MemoryStream())
+            {
+                bitmap.Save(memory, System.Drawing.Imaging.ImageFormat.Png);
+                memory.Position = 0;
+
+                BitmapImage bitmapImage = new BitmapImage();
+                bitmapImage.BeginInit();
+                bitmapImage.StreamSource = memory;
+                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                bitmapImage.EndInit();
+
+                return bitmapImage;
+            }
+        }
+    }
+}

@@ -33,3 +33,39 @@ D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestCons
 D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0-windows\ArcTool.TestConsole.pdb
 D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0-windows\ArcTool.TestConsole.genruntimeconfig.cache
 D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0-windows\ref\ArcTool.TestConsole.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0-windows\ArcTool.TestConsole.exe
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0-windows\ArcTool.TestConsole.deps.json
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0-windows\ArcTool.TestConsole.runtimeconfig.json
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0-windows\ArcTool.TestConsole.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0-windows\ArcTool.TestConsole.pdb
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0-windows\ExCSS.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0-windows\Microsoft.Office.Interop.Excel.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0-windows\ShimSkiaSharp.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0-windows\SkiaSharp.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0-windows\Svg.Custom.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0-windows\Svg.Model.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0-windows\Svg.Skia.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0-windows\runtimes\osx\native\libSkiaSharp.dylib
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0-windows\runtimes\win-arm64\native\libSkiaSharp.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0-windows\runtimes\win-arm64\native\libSkiaSharp.pdb
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0-windows\runtimes\win-x64\native\libSkiaSharp.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0-windows\runtimes\win-x64\native\libSkiaSharp.pdb
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0-windows\runtimes\win-x86\native\libSkiaSharp.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0-windows\runtimes\win-x86\native\libSkiaSharp.pdb
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0-windows\ArcTool.Core.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0-windows\ArcTool.Core.pdb
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\bin\x64\Debug\net8.0-windows\ArcTool.Core.dll.config
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0-windows\ArcTool.TestConsole.csproj.AssemblyReference.cache
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0-windows\Interop.Microsoft.Office.Interop.Excel.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0-windows\ArcTool.TestConsole.csproj.ResolveComReference.cache
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0-windows\ArcTool.TestConsole.GeneratedMSBuildEditorConfig.editorconfig
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0-windows\ArcTool.TestConsole.AssemblyInfoInputs.cache
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0-windows\ArcTool.TestConsole.AssemblyInfo.cs
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0-windows\ArcTool.TestConsole.csproj.CoreCompileInputs.cache
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0-windows\ArcTool.TestConsole.sourcelink.json
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0-windows\ArcTool..3195CA6A.Up2Date
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0-windows\ArcTool.TestConsole.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0-windows\refint\ArcTool.TestConsole.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0-windows\ArcTool.TestConsole.pdb
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0-windows\ArcTool.TestConsole.genruntimeconfig.cache
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\TestConsole\TestConsole\obj\x64\Debug\net8.0-windows\ref\ArcTool.TestConsole.dll

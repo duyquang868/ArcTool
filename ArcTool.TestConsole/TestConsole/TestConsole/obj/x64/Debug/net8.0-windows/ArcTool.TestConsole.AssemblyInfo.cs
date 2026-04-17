@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ArcTool.TestConsole")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+505c07dcb722423e627ebd340350b02e59ea862c")]
 [assembly: System.Reflection.AssemblyProductAttribute("ArcTool.TestConsole")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ArcTool.TestConsole")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

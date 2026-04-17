@@ -16,7 +16,7 @@ namespace ArcTool.TestConsole
 
             // 1. CẤU HÌNH ĐƯỜNG DẪN (INPUT & OUTPUT)
             // LƯU Ý QUAN TRỌNG: Bạn hãy sửa đường dẫn này trỏ đến file Excel thật trên máy bạn để test
-            string excelFilePath = @"D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\Testconsole.xlsx";
+            string excelFilePath = @"D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.TestConsole\Testconsole.xlsx";
 
             string desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
             string pngPath = Path.Combine(desktop, "Revit_Export_Result.png");

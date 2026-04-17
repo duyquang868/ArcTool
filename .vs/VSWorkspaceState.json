@@ -3,10 +3,11 @@
     "",
     "\\ArcTool.Core",
     "\\ArcTool.Core\\Commands",
+    "\\ArcTool.Core\\Resources",
+    "\\ArcTool.Core\\Services",
     "\\ArcTool.TestConsole",
-    "\\ArcTool.TestConsole\\TestConsole",
-    "\\ArcTool.TestConsole\\TestConsole\\TestConsole"
+    "\\ArcTool.TestConsole\\TestConsole"
   ],
-  "SelectedNode": "\\ArcTool.Core\\App.cs",
+  "SelectedNode": "\\ArcTool.slnx",
   "PreviewInSolutionExplorer": false
 }

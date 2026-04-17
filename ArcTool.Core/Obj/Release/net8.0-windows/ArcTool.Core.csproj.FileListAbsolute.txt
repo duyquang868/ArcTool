@@ -1,0 +1,1 @@
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\Release\net8.0-windows\ArcTool.Core.csproj.AssemblyReference.cache

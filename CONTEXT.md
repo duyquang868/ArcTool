@@ -1,7 +1,7 @@
 # ARCTOOL — AI SESSION CONTEXT
 > Paste file này vào ĐẦU mỗi session chat mới với AI.
 > Cập nhật sau mỗi session làm việc.
-> Last updated: 2026-04-16 — Session 4: HOÀN TẤT giai đoạn 3 - Triển khai Image Import từ Excel
+> Last updated: 2026-04-16 — Session 5: FIX ambiguous reference + Build successful ✅
 
 ---
 
@@ -118,7 +118,29 @@ ArcTool/
   4. Tính center View tự động
   5. Insert image tại center View
   6. Apply scale factor
-- Ribbon: Tab "ArcTool" → Panel "Excel Tools" → Button "Import Image"
+- Ribbon: Tab "ArcTool" → Panel "Excel Tools" → Button "Excel to Revit"
+
+### H. Excel to Revit Command — `ExcelToRevitCommand.cs` (V1.0 - Final) — **SESSION 5 REFACTOR**
+- **🎯 Unified Pipeline:** Gộp ExcelInteropService + ImageType.Create API thành 1 lệnh duy nhất
+- **✨ Workflow:**
+  1. User chọn file Excel
+  2. ExcelInteropService xuất Print Area → Temp PNG (hidden Excel)
+  3. ImageType.Create(doc, ImageTypeOptions) — tạo trực tiếp từ file PNG
+  4. Dialog chỉnh Scale (%) — modern TableLayoutPanel design
+  5. ImageInstance.Create() đặt ảnh tại **TÂM VIEW** tự động
+  6. Xoá Temp PNG sau commit
+- **🔧 Technical Details:**
+  - ✅ **SESSION 5 FIX:** Giải quyết ambiguous reference `TaskDialog` và `TextBox`
+    - Added alias: `using RevitTaskDialog = Autodesk.Revit.UI.TaskDialog;`
+    - Changed all `TaskDialog.Show()` → `RevitTaskDialog.Show()` (9 occurrences)
+    - Changed `new TextBox` → `new System.Windows.Forms.TextBox` (explicit qualification)
+  - Temp file path: unique GUID (`ArcTool_Excel_{GUID}.png`)
+  - Resolution: 300 DPI (ImageTypeOptions)
+  - ImagePlacementOptions: `BoxPlacement.Center` → center-aligned mặc định
+  - Transaction: Manual mode, RollBack nếu lỗi, Commit nếu thành công
+  - Error handling: Chi tiết từng bước (Excel open, export, ImageType create, ImageInstance create, scale apply)
+- **🏆 Build Status:** ✅ **BUILD SUCCESSFUL** — 0 errors, 0 warnings
+- Ribbon: Tab "ArcTool" → Panel "Excel Tools" → Button "Excel to Revit"
 
 ---
 
@@ -141,6 +163,12 @@ ArcTool/
 
 - [x] **FilterManagerCommand** — `_lastUpdate` là instance field, reset mỗi lần chạy lệnh
   - ✅ Fix: Đổi thành `private static DateTime _lastUpdate`
+
+- [x] **ExcelToRevitCommand (SESSION 5)** — Ambiguous reference `TaskDialog` (System.Windows.Forms vs Autodesk.Revit.UI)
+  - ✅ Fix: Added alias `using RevitTaskDialog = Autodesk.Revit.UI.TaskDialog;`
+  - ✅ Fix: Changed all 9 `TaskDialog.Show()` calls to `RevitTaskDialog.Show()`
+  - ✅ Fix: Explicit qualification `new System.Windows.Forms.TextBox` for TextBox control
+  - File: `ExcelToRevitCommand.cs` lines 8, 49, 56, 76, 88, 126, 138, 161, 171, 190, 252
 
 ### 🟠 RỦI RO / CẦN CẢI THIỆN
 
@@ -309,6 +337,19 @@ elem.Category.Id.Value == (long)BuiltInCategory.OST_Walls  // ĐÚNG
 - [x] Thêm button "Import Image" vào Ribbon (Tab ArcTool → Panel Excel Tools) — ✅ DONE
 - [x] **Build successful** — ✅ COMPILED
 - [x] **Plugin PRODUCTION READY** — ✅ READY TO USE
+
+### Giai đoạn 3.5 — Excel to Revit Command Refactor — **SESSION 5 — 3/3 HOÀN THÀNH ✅**
+- [x] **Refactor `ExcelToRevitCommand.cs`** — Gộp ExcelInteropService + ImageType.Create vào 1 lệnh
+  - ✅ DONE — Unified pipeline import ảnh Excel
+  - ✅ DONE — Integrated error handling + modern dialog
+  - ✅ DONE — Auto-center tại View center
+  - ✅ DONE — Flexible scale adjustment (%)
+- [x] **Fix ambiguous reference errors** — TaskDialog + TextBox
+  - ✅ DONE — Added alias `RevitTaskDialog`
+  - ✅ DONE — Explicit qualification for TextBox
+  - ✅ DONE — 9 TaskDialog.Show() replacements
+- [x] **Build successful + Production ready**
+  - ✅ BUILD SUCCESSFUL — 0 errors, 0 warnings
 
 ### Giai đoạn 4 — Quick Dim (R&D)
 - [ ] Nghiên cứu trích xuất `ReferenceArray` từ Face/Edge của Wall, Column, Beam

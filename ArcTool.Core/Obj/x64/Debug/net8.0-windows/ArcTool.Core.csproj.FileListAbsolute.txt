@@ -61,5 +61,3 @@ D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-window
 D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\refint\ArcTool.Core.dll
 D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.pdb
 D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ref\ArcTool.Core.dll
-D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\UI\SyncStatusWindow.baml
-D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\UI\SyncStatusWindow.g.cs

@@ -1,0 +1,29 @@
+﻿using System;
+using Autodesk.Revit.DB;
+using System.Reflection;
+
+class Program
+{
+    static void Main()
+    {
+        var type = typeof(ImageTypeOptions);
+        var constructors = type.GetConstructors();
+        Console.WriteLine($"ImageTypeOptions constructors: {constructors.Length}");
+        foreach (var ctor in constructors)
+        {
+            var parms = ctor.GetParameters();
+            Console.WriteLine($"  Constructor with {parms.Length} params:");
+            foreach (var p in parms)
+            {
+                Console.WriteLine($"    - {p.ParameterType.Name} {p.Name}");
+            }
+        }
+
+        var props = type.GetProperties();
+        Console.WriteLine($"\nImageTypeOptions properties: {props.Length}");
+        foreach (var prop in props)
+        {
+            Console.WriteLine($"  - {prop.PropertyType.Name} {prop.Name}");
+        }
+    }
+}

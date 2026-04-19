@@ -1,193 +1,416 @@
-using System;
-using System.IO;
-using System.Windows;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
-using Autodesk.Revit.DB.Events;
 using Autodesk.Revit.UI;
-using Autodesk.Revit.UI.Events;
-using ArcTool.Core.UI;
-
-// BUG-1 FIX: Namespace alias để tránh ambiguity giữa Revit TaskDialog và Windows TextBox
-using RevitTaskDialog = Autodesk.Revit.UI.TaskDialog;
-using Timer = System.Timers.Timer;
+using ArcTool.Core.Services;
+using System;
+using System.IO;
+using System.Windows.Forms;
 
 namespace ArcTool.Core.Commands
 {
+    /// <summary>
+    /// ExcelToRevitCommand — Unified Pipeline
+    ///
+    /// Gộp ExcelInteropService + ImageType.Create API thành 1 lệnh duy nhất.
+    ///
+    /// Pipeline:
+    ///   1. User chọn file Excel
+    ///   2. ExcelInteropService xuất Print Area → Temp PNG (hidden Excel, không hiện lên màn hình)
+    ///   3. ImageType.Create(doc, ImageTypeOptions) — tạo trực tiếp từ file PNG (KHÔNG cần insert thủ công)
+    ///   4. Dialog chỉnh Scale (%)
+    ///   5. ImageInstance.Create() đặt ảnh tại TÂM VIEW tự động
+    ///   6. Xoá Temp PNG
+    ///
+    /// NOTE KỸ THUẬT:
+    ///   - ImageType.Create() là Public API từ Revit 2020, hoạt động bình thường trong Revit 2026
+    ///   - ImageTypeSource.Import: ảnh được nhúng vào project (không link ngoài)
+    ///   - Temp file phải tồn tại trong suốt Transaction vì Revit đọc file khi Create()
+    ///   - Xoá temp file chỉ sau khi t.Commit() xong
+    ///
+    /// V1.0 — Thay thế toàn bộ ImageImportCommand.cs (phiên bản cũ dựa trên assumption sai)
+    /// </summary>
     [Transaction(TransactionMode.Manual)]
     public class ExcelToRevitCommand : IExternalCommand
     {
-        private static FileSystemWatcher _watcher;
-        private static Timer _debounceTimer;
-        private static SyncStatusWindow _currentToast;
-        private static ExternalEvent _reopenEvent;
+        // Đường dẫn temp file — dùng GUID để tránh trùng lặp khi chạy song song
+        private string _tempPngPath = null;
 
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            UIApplication uiApp = commandData.Application;
-            UIDocument uidoc = uiApp.ActiveUIDocument;
+            UIDocument uidoc = commandData.Application.ActiveUIDocument;
             Document doc = uidoc.Document;
 
             try
             {
-                // Initialize external event handler for Revit API operations
-                if (_reopenEvent == null)
+                // ── BƯỚC 1: VALIDATE ACTIVE VIEW ──────────────────────────────────────
+                Autodesk.Revit.DB.View activeView = doc.ActiveView;
+                if (activeView == null)
                 {
-                    _reopenEvent = ExternalEvent.Create(new ReopenHandler(uidoc));
+                    Autodesk.Revit.UI.TaskDialog.Show("ArcTool Error", "Không có View nào đang mở.");
+                    return Result.Failed;
                 }
 
-                // Prompt user to select Excel file
-                RevitTaskDialog taskDialog = new RevitTaskDialog("Excel to Revit");
-                taskDialog.MainInstruction = "Select an Excel file to import";
-                TaskDialogResult result = taskDialog.Show();
-
-                // For demo purposes, use a placeholder path
-                string excelPath = @"C:\Temp\sample.xlsx";
-
-                if (!string.IsNullOrEmpty(excelPath) && File.Exists(excelPath))
+                // ImageInstance không hỗ trợ 3D view và một số loại đặc biệt
+                if (!IsViewTypeSupported(activeView))
                 {
-                    SetupWatcher(excelPath);
-                    RevitTaskDialog.Show("Success", $"Now watching {excelPath} for changes");
+                    Autodesk.Revit.UI.TaskDialog.Show("ArcTool Error",
+                        $"View '{activeView.Name}' ({activeView.ViewType}) không hỗ trợ import ảnh.\n\n" +
+                        "Hỗ trợ: Sheet, Drafting, Floor Plan, Ceiling Plan, Section, Elevation, Detail, Legend.");
+                    return Result.Failed;
                 }
+
+                // ── BƯỚC 2: CHỌN FILE EXCEL ───────────────────────────────────────────
+                string excelPath = PromptForExcelFile();
+                if (string.IsNullOrEmpty(excelPath)) return Result.Cancelled;
+
+                // ── BƯỚC 3: XUẤT EXCEL → TEMP PNG ─────────────────────────────────────
+                // Tạo đường dẫn temp an toàn, không dùng GetTempFileName() vì trả về .tmp
+                string tempDir = Path.GetTempPath();
+                _tempPngPath = Path.Combine(tempDir, $"ArcTool_Excel_{Guid.NewGuid():N}.png");
+
+                bool exportSuccess = false;
+                using (var excelService = new ExcelInteropService())
+                {
+                    if (!excelService.OpenFile(excelPath))
+                    {
+                        Autodesk.Revit.UI.TaskDialog.Show("ArcTool Error",
+                            "Không thể mở file Excel.\n" +
+                            "Kiểm tra: file có đang bị mở bởi chương trình khác không?");
+                        return Result.Failed;
+                    }
+
+                    exportSuccess = excelService.ExportPrintAreaAsHighResImage(_tempPngPath);
+                }
+                // ExcelInteropService.Dispose() đã được gọi → Excel process đã đóng
+
+                if (!exportSuccess || !File.Exists(_tempPngPath))
+                {
+                    Autodesk.Revit.UI.TaskDialog.Show("ArcTool Error",
+                        "Xuất ảnh từ Excel thất bại.\n\n" +
+                        "Kiểm tra:\n" +
+                        "• File Excel có thiết lập Print Area chưa? (Page Layout → Print Area)\n" +
+                        "• File Excel có bị bảo vệ (Protected) không?");
+                    CleanupTempFile();
+                    return Result.Failed;
+                }
+
+                // ── BƯỚC 4: DIALOG CHỈNH SCALE ────────────────────────────────────────
+                double scalePercent = ShowScaleDialog();
+                if (scalePercent <= 0) // Trả về -1 khi user Cancel
+                {
+                    CleanupTempFile();
+                    return Result.Cancelled;
+                }
+
+                // ── BƯỚC 5: IMPORT VÀO REVIT ──────────────────────────────────────────
+                XYZ viewCenter = GetViewCenter(activeView);
+
+                using (var t = new Transaction(doc, "ArcTool: Excel to Revit Image"))
+                {
+                    t.Start();
+                    try
+                    {
+                        // 5a. Tạo ImageType trực tiếp từ file PNG
+                        // ImageTypeSource.Import = nhúng ảnh vào project (không phụ thuộc external file)
+                        // Resolution = 300 DPI để ảnh sắc nét khi print
+                        var imgOptions = new ImageTypeOptions(_tempPngPath, false, ImageTypeSource.Import)
+                        {
+                            Resolution = 300
+                        };
+
+                        ImageType imageType = ImageType.Create(doc, imgOptions);
+
+                        if (imageType == null)
+                        {
+                            t.RollBack();
+                            Autodesk.Revit.UI.TaskDialog.Show("ArcTool Error", "Không thể tạo ImageType từ file PNG.");
+                            CleanupTempFile();
+                            return Result.Failed;
+                        }
+
+                        // 5b. Đặt ảnh tại TÂM VIEW
+                        var placementOpts = new ImagePlacementOptions(viewCenter, BoxPlacement.Center);
+                        ImageInstance imageInstance = ImageInstance.Create(doc, activeView, imageType.Id, placementOpts);
+
+                        if (imageInstance == null)
+                        {
+                            t.RollBack();
+                            Autodesk.Revit.UI.TaskDialog.Show("ArcTool Error", "Không thể tạo ImageInstance.");
+                            CleanupTempFile();
+                            return Result.Failed;
+                        }
+
+                        // 5c. Áp dụng scale nếu khác 100%
+                        // Scale theo tỷ lệ: giữ aspect ratio bằng cách scale cả Width lẫn Height
+                        if (Math.Abs(scalePercent - 100.0) > 0.01)
+                        {
+                            double factor = scalePercent / 100.0;
+
+                            // Width/Height của ImageInstance tính bằng feet (đơn vị nội bộ Revit)
+                            imageInstance.Width  = imageInstance.Width  * factor;
+                            imageInstance.Height = imageInstance.Height * factor;
+                        }
+
+                        t.Commit();
+                    }
+                    catch (Exception ex)
+                    {
+                        t.RollBack();
+                        CleanupTempFile();
+                        message = $"Lỗi khi import vào Revit: {ex.Message}";
+                        Autodesk.Revit.UI.TaskDialog.Show("ArcTool Error", message);
+                        return Result.Failed;
+                    }
+                }
+
+                // ── BƯỚC 6: DỌN DẸP ───────────────────────────────────────────────────
+                // Chỉ xoá temp file SAU KHI t.Commit() thành công
+                // Revit đã nhúng ảnh vào project → temp file không còn cần thiết
+                CleanupTempFile();
+
+                Autodesk.Revit.UI.TaskDialog.Show("ArcTool — Thành công",
+                    $"✅ Import ảnh Excel vào Revit thành công!\n\n" +
+                    $"View: {activeView.Name}\n" +
+                    $"File: {Path.GetFileName(excelPath)}\n" +
+                    $"Scale: {scalePercent}%\n\n" +
+                    $"Ảnh đã được đặt tại tâm View.\n" +
+                    $"Bạn có thể kéo để di chuyển hoặc resize trực tiếp trên View.");
 
                 return Result.Succeeded;
             }
+            catch (Autodesk.Revit.Exceptions.OperationCanceledException)
+            {
+                CleanupTempFile();
+                return Result.Cancelled;
+            }
             catch (Exception ex)
             {
+                CleanupTempFile();
                 message = ex.Message;
+                Autodesk.Revit.UI.TaskDialog.Show("ArcTool Error", $"Lỗi không xác định: {ex.Message}");
                 return Result.Failed;
             }
         }
 
+        // ══════════════════════════════════════════════════════════════════════════════
+        //  CÁC HÀM HỖ TRỢ
+        // ══════════════════════════════════════════════════════════════════════════════
+
         /// <summary>
-        /// Setup file watcher to monitor Excel file changes.
-        /// Handles both Changed and Renamed events to catch Office save operations.
+        /// Hiển thị OpenFileDialog để user chọn file Excel.
         /// </summary>
-        private static void SetupWatcher(string excelPath)
+        private string PromptForExcelFile()
         {
-            // Dispose watcher cũ (nếu có) trước khi tạo mới
-            StopWatcher();
-
-            string dir = Path.GetDirectoryName(excelPath);
-            string file = Path.GetFileName(excelPath);
-            if (string.IsNullOrEmpty(dir)) return;
-
-            _watcher = new FileSystemWatcher(dir, file)
+            using (var dialog = new OpenFileDialog())
             {
-                // BUG-4 FIX: PHẢI thêm NotifyFilters.FileName để Renamed event hoạt động.
-                //
-                // Excel/Office lưu file theo cơ chế:
-                //   1. Ghi nội dung vào file temp (e.g. ~$Report.xlsx)    → LastWrite event
-                //   2. Rename file temp thành tên gốc (Report.xlsx)       → Renamed event ← BỊ MISS
-                //   3. Xóa file gốc cũ
-                //
-                // Nếu không có FileName trong NotifyFilter, Renamed event KHÔNG BAO GIỜ fire
-                // → hook _watcher.Renamed vô nghĩa → nhiều trường hợp save không phát hiện được.
-                NotifyFilter = NotifyFilters.LastWrite
-                             | NotifyFilters.Size
-                             | NotifyFilters.FileName, // ← thêm dòng này
-                EnableRaisingEvents = true
-            };
+                dialog.Title  = "ArcTool — Chọn file Excel cần xuất";
+                dialog.Filter = "Excel Files (*.xlsx;*.xls)|*.xlsx;*.xls|All Files (*.*)|*.*";
+                dialog.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 
-            // Hook cả Changed và Renamed.
-            // Excel/Office save = "write temp file → rename → delete old" → cần bắt Renamed.
-            _watcher.Changed += (s, e) => ScheduleToast(e.FullPath);
-            _watcher.Renamed += (s, e) => ScheduleToast(e.FullPath);
+                return dialog.ShowDialog() == DialogResult.OK ? dialog.FileName : null;
+            }
         }
 
         /// <summary>
-        /// Schedule toast display with debouncing to prevent multiple notifications for single save.
+        /// Hiển thị Dialog nhập Scale (%).
+        /// Trả về giá trị scale > 0, hoặc -1 nếu user Cancel.
         /// </summary>
-        private static void ScheduleToast(string changedFilePath)
+        private double ShowScaleDialog()
         {
-            _debounceTimer?.Stop();
-            _debounceTimer?.Dispose();
-            _debounceTimer = new Timer(2500) { AutoReset = false };
-            _debounceTimer.Elapsed += (s, args) =>
+            double result = -1;
+
+            using (var form = new System.Windows.Forms.Form())
             {
-                ShowToast(changedFilePath);
-            };
-            _debounceTimer.Start();
-        }
+                form.Text            = "ArcTool — Tỉ lệ ảnh";
+                form.Width           = 340;
+                form.Height          = 170;
+                form.StartPosition   = FormStartPosition.CenterScreen;
+                form.FormBorderStyle = FormBorderStyle.FixedDialog;
+                form.MaximizeBox     = false;
+                form.MinimizeBox     = false;
+                form.BackColor       = System.Drawing.Color.White;
+                form.Font            = new System.Drawing.Font("Segoe UI", 9.5f);
 
-        /// <summary>
-        /// FileSystemWatcher gọi trên background thread.
-        /// Phải marshal sang WPF UI thread trước khi tạo/show Window.
-        /// </summary>
-        private static void ShowToast(string changedFilePath)
-        {
-            // BUG-5 FIX: Application.Current có thể null trong một số Revit plugin contexts.
-            // Guard null trước khi access Dispatcher để tránh NullReferenceException
-            // trên background thread — exception này bị swallow âm thầm, toast không hiện.
-            var dispatcher = System.Windows.Application.Current?.Dispatcher;
-            if (dispatcher == null) return;
-
-            dispatcher.BeginInvoke(new Action(() =>
-            {
-                // Đóng toast cũ để tránh stack nhiều popup
-                _currentToast?.Close();
-                _currentToast = null;
-
-                _currentToast = new SyncStatusWindow(
-                    changedFilePath: changedFilePath,
-                    onUpdateClicked: () =>
-                    {
-                        // User nhấn "Cập nhật" → Raise ExternalEvent
-                        // Revit sẽ gọi ReopenHandler.Execute() trên main thread
-                        // → mở lại toàn bộ dialog ExcelToRevitCommand
-                        _reopenEvent?.Raise();
-                    }
-                );
-
-                // Null reference khi toast tự đóng (user bấm ✕ hoặc sau khi Cập nhật)
-                _currentToast.Closed += (s, e) =>
+                var layout = new TableLayoutPanel
                 {
-                    if (ReferenceEquals(s, _currentToast))
-                        _currentToast = null;
+                    Dock        = DockStyle.Fill,
+                    RowCount    = 3,
+                    ColumnCount = 1,
+                    Padding     = new Padding(20, 18, 20, 14)
+                };
+                layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
+
+                var label = new Label
+                {
+                    Text      = "Nhập tỉ lệ ảnh (%):",
+                    AutoSize  = true,
+                    Margin    = new Padding(0, 0, 0, 6)
                 };
 
-                _currentToast.Show();
-            }));
+                var txtScale = new System.Windows.Forms.TextBox
+                {
+                    Text        = "100",
+                    Dock        = DockStyle.Fill,
+                    Font        = new System.Drawing.Font("Segoe UI", 11),
+                    BorderStyle = BorderStyle.FixedSingle,
+                    Margin      = new Padding(0, 0, 0, 0)
+                };
+                txtScale.Enter += (s, e) => txtScale.SelectAll(); // Auto-select khi focus
+
+                var btnPanel = new FlowLayoutPanel
+                {
+                    Dock          = DockStyle.Fill,
+                    FlowDirection = FlowDirection.RightToLeft,
+                    Margin        = new Padding(0, 12, 0, 0)
+                };
+
+                var btnCancel = new System.Windows.Forms.Button
+                {
+                    Text      = "Huỷ",
+                    Width     = 80,
+                    Height    = 30,
+                    FlatStyle = FlatStyle.Flat,
+                    Margin    = new Padding(6, 0, 0, 0)
+                };
+                btnCancel.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(200, 200, 200);
+
+                var btnOK = new System.Windows.Forms.Button
+                {
+                    Text      = "OK",
+                    Width     = 80,
+                    Height    = 30,
+                    FlatStyle = FlatStyle.Flat,
+                    BackColor = System.Drawing.Color.FromArgb(0, 120, 215),
+                    ForeColor = System.Drawing.Color.White,
+                    Font      = new System.Drawing.Font("Segoe UI", 9.5f, System.Drawing.FontStyle.Bold)
+                };
+                btnOK.FlatAppearance.BorderSize = 0;
+
+                btnOK.Click += (s, e) =>
+                {
+                    if (!double.TryParse(txtScale.Text.Replace(",", "."),
+                        System.Globalization.NumberStyles.Any,
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        out double parsed) || parsed <= 0 || parsed > 10000)
+                    {
+                        MessageBox.Show(
+                            "Vui lòng nhập số dương từ 1 đến 10000.",
+                            "Nhập liệu không hợp lệ",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning);
+                        txtScale.SelectAll();
+                        txtScale.Focus();
+                        return;
+                    }
+                    result = parsed;
+                    form.DialogResult = DialogResult.OK;
+                    form.Close();
+                };
+
+                btnCancel.Click += (s, e) =>
+                {
+                    form.DialogResult = DialogResult.Cancel;
+                    form.Close();
+                };
+
+                btnPanel.Controls.Add(btnCancel);
+                btnPanel.Controls.Add(btnOK);
+
+                layout.Controls.Add(label,    0, 0);
+                layout.Controls.Add(txtScale, 0, 1);
+                layout.Controls.Add(btnPanel, 0, 2);
+
+                form.Controls.Add(layout);
+                form.AcceptButton = btnOK;
+                form.CancelButton = btnCancel;
+
+                form.ShowDialog();
+            }
+
+            return result; // -1 nếu Cancel
         }
 
         /// <summary>
-        /// Stop the file watcher and clean up resources.
+        /// Tính tâm của View để đặt ảnh vào chính giữa.
+        /// Ưu tiên CropBox (chính xác nhất), fallback về get_BoundingBox, cuối là XYZ.Zero.
         /// </summary>
-        private static void StopWatcher()
+        private XYZ GetViewCenter(Autodesk.Revit.DB.View view)
         {
-            _watcher?.Dispose();
-            _watcher = null;
+            // Ưu tiên CropBox — phản ánh vùng hiển thị thực tế của View
+            try
+            {
+                BoundingBoxXYZ cropBox = view.CropBox;
+                if (cropBox != null && cropBox.Enabled)
+                {
+                    // CropBox.Transform chuyển local coords về model coords
+                    XYZ localCenter = new XYZ(
+                        (cropBox.Min.X + cropBox.Max.X) / 2.0,
+                        (cropBox.Min.Y + cropBox.Max.Y) / 2.0,
+                        0 // Z = 0 trong không gian 2D của View
+                    );
+                    // Áp dụng transform để ra model space (quan trọng với View rotated/section)
+                    return cropBox.Transform.OfPoint(localCenter);
+                }
+            }
+            catch { /* Fallback nếu View không có CropBox */ }
 
-            _debounceTimer?.Stop();
-            _debounceTimer?.Dispose();
-            _debounceTimer = null;
+            // Fallback: BoundingBox của chính View
+            try
+            {
+                BoundingBoxXYZ bb = view.get_BoundingBox(view);
+                if (bb != null)
+                {
+                    return new XYZ(
+                        (bb.Min.X + bb.Max.X) / 2.0,
+                        (bb.Min.Y + bb.Max.Y) / 2.0,
+                        (bb.Min.Z + bb.Max.Z) / 2.0
+                    );
+                }
+            }
+            catch { /* Fallback cuối */ }
 
-            // Close toast if it's open
-            _currentToast?.Close();
-            _currentToast = null;
+            return XYZ.Zero;
         }
 
         /// <summary>
-        /// External event handler to reopen the ExcelToRevitCommand dialog.
+        /// Kiểm tra View có hỗ trợ ImageInstance không.
+        /// 3D, Walkthrough, Rendering không hỗ trợ.
         /// </summary>
-        private class ReopenHandler : IExternalEventHandler
+        private bool IsViewTypeSupported(Autodesk.Revit.DB.View view)
         {
-            private readonly UIDocument _uidoc;
-
-            public ReopenHandler(UIDocument uidoc)
+            switch (view.ViewType)
             {
-                _uidoc = uidoc;
+                case ViewType.ThreeD:
+                case ViewType.Walkthrough:
+                case ViewType.Rendering:
+                    return false;
+                default:
+                    return true;
             }
+        }
 
-            public void Execute(UIApplication app)
+        /// <summary>
+        /// Xoá temp file an toàn — không throw exception nếu file không tồn tại.
+        /// </summary>
+        private void CleanupTempFile()
+        {
+            try
             {
-                // Placeholder: Reopen the dialog or trigger update
-                RevitTaskDialog.Show("Update", "File was updated. Ready to reimport.");
+                if (_tempPngPath != null && File.Exists(_tempPngPath))
+                {
+                    File.Delete(_tempPngPath);
+                }
             }
-
-            public string GetName()
+            catch
             {
-                return "ExcelToRevitCommand_Reopen";
+                // Bỏ qua lỗi xoá file temp — không nghiêm trọng
+                // File sẽ bị xoá tự động khi hệ điều hành dọn %TEMP%
+            }
+            finally
+            {
+                _tempPngPath = null;
             }
         }
     }

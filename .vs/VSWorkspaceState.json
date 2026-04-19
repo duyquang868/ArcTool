@@ -1,7 +1,6 @@
 {
   "ExpandedNodes": [
     "",
-    "\\ArcTool.Core",
     "\\ArcTool.Core\\Commands",
     "\\ArcTool.Core\\Resources",
     "\\ArcTool.Core\\Services",
@@ -9,5 +8,6 @@
     "\\ArcTool.TestConsole",
     "\\ArcTool.TestConsole\\TestConsole"
   ],
+  "SelectedNode": "\\ArcTool.slnx",
   "PreviewInSolutionExplorer": false
 }

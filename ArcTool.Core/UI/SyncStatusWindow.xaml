@@ -5,7 +5,8 @@
         Width="310" Height="68"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         Topmost="True" ResizeMode="NoResize"
-        WindowStartupLocation="Manual">
+        WindowStartupLocation="Manual"
+        Loaded="Window_Loaded">
 
     <!-- Cho phép kéo window bằng cách click vào bất kỳ đâu -->
     <Border x:Name="RootBorder"
@@ -20,10 +21,14 @@
 
         <Grid Margin="12,8,10,8">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>   <!-- Tick indicator -->
-                <ColumnDefinition Width="*"/>      <!-- Text -->
-                <ColumnDefinition Width="Auto"/>   <!-- Update button -->
-                <ColumnDefinition Width="Auto"/>   <!-- Close button -->
+                <ColumnDefinition Width="Auto"/>
+                <!-- Tick indicator -->
+                <ColumnDefinition Width="*"/>
+                <!-- Text -->
+                <ColumnDefinition Width="Auto"/>
+                <!-- Update button -->
+                <ColumnDefinition Width="Auto"/>
+                <!-- Close button -->
             </Grid.ColumnDefinitions>
 
             <!-- ── STATUS TICK INDICATOR ── -->
@@ -47,20 +52,17 @@
             <StackPanel Grid.Column="1"
                         VerticalAlignment="Center"
                         Margin="0,0,8,0">
-
                 <TextBlock x:Name="TxtFileName"
                            Text="Đang theo dõi..."
                            Foreground="#C8C8DC"
                            FontSize="11"
                            FontFamily="Segoe UI"
                            TextTrimming="CharacterEllipsis"/>
-
                 <TextBlock x:Name="TxtStatus"
                            Text="Đã đồng bộ"
                            Foreground="#22C55E"
                            FontSize="10"
-                           FontFamily="Segoe UI"
-                           Margin="0,1,0,0"/>
+                           FontFamily="Segoe UI"/>
             </StackPanel>
 
             <!-- ── UPDATE BUTTON ── -->

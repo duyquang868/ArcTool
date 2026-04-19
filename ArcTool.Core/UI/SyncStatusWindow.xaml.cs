@@ -1,114 +1,66 @@
 using System;
+using System.IO;
 using System.Windows;
-using System.Windows.Input;
-using System.Windows.Media;
 
+// BUG-1 FIX: namespace phải khớp TUYỆT ĐỐI với x:Class trong XAML
+// XAML khai báo: x:Class="ArcTool.Core.UI.SyncStatusWindow"
+// → namespace phải là ArcTool.Core.UI, không phải ArcTool.UI
 namespace ArcTool.Core.UI
 {
     /// <summary>
-    /// Floating status window — hiển thị trạng thái đồng bộ Excel/Revit.
-    ///
-    /// Trạng thái:
-    ///   🟢 Xanh lá = Đã đồng bộ (file Excel chưa thay đổi kể từ lần import cuối)
-    ///   🔴 Đỏ      = File Excel đã thay đổi → user nhấn "Cập nhật" để áp dụng
+    /// Toast popup — CHỈ hiện khi FileSystemWatcher phát hiện file Excel thay đổi.
+    /// Không phải persistent window.
     ///
     /// Lifecycle:
-    ///   - Được tạo và Show() sau mỗi lần import thành công trong ExcelToRevitCommand
-    ///   - Tồn tại độc lập sau khi Execute() kết thúc (modeless)
-    ///   - Đóng window → trigger WindowClosed event → ExcelToRevitCommand dừng watcher
+    ///   Show()  → khi watcher báo change (sau debounce 2.5s)
+    ///   Close() → user nhấn "✕" HOẶC user nhấn "Cập nhật" (sau khi raise ExternalEvent)
+    ///
+    /// Watcher vẫn tiếp tục chạy sau khi toast đóng — toast chỉ là thông báo,
+    /// không phải vòng đời của watcher.
     /// </summary>
     public partial class SyncStatusWindow : Window
     {
-        // Màu sắc trạng thái
-        private static readonly SolidColorBrush GreenBrush =
-            new SolidColorBrush(System.Windows.Media.Color.FromRgb(34, 197, 94));
-        private static readonly SolidColorBrush RedBrush =
-            new SolidColorBrush(System.Windows.Media.Color.FromRgb(239, 68, 68));
+        // Callback được gọi khi user nhấn "Cập nhật"
+        // → ExcelToRevitCommand.ShowToast() truyền vào: () => _reopenEvent.Raise()
+        private readonly Action _onUpdateClicked;
 
-        /// <summary>Raised khi user nhấn nút "Cập nhật" — ExcelToRevitCommand lắng nghe để raise ExternalEvent.</summary>
-        public event Action RefreshRequested;
-
-        /// <summary>Raised khi window bị đóng — ExcelToRevitCommand lắng nghe để dừng FileSystemWatcher.</summary>
-        public event Action WindowClosed;
-
-        public SyncStatusWindow(string fileName)
+        /// <param name="changedFilePath">Đường dẫn đầy đủ của file Excel đã thay đổi</param>
+        /// <param name="onUpdateClicked">Action gọi khi user nhấn "Cập nhật"</param>
+        public SyncStatusWindow(string changedFilePath, Action onUpdateClicked)
         {
             InitializeComponent();
+            _onUpdateClicked = onUpdateClicked ?? throw new ArgumentNullException(nameof(onUpdateClicked));
 
-            // Hiển thị tên file, cắt bớt nếu quá dài
-            TxtFileName.Text = TruncateFilename(fileName, 30);
-
-            // Đặt vị trí góc dưới bên phải màn hình
-            this.Loaded += (s, e) =>
-            {
-                Left = SystemParameters.WorkArea.Right - Width - 20;
-                Top  = SystemParameters.WorkArea.Bottom - Height - 20;
-            };
-
-            // Kéo thả window
-            this.MouseDown += (s, e) =>
-            {
-                if (e.LeftButton == MouseButtonState.Pressed)
-                    DragMove();
-            };
+            // Hiện tên file ngắn gọn để user nhận ra đây là file nào
+            TxtFileName.Text = Path.GetFileName(changedFilePath);
         }
 
-        // ── PUBLIC API ───────────────────────────────────────────────────────────────
-
-        /// <summary>
-        /// Cập nhật trạng thái hiển thị.
-        /// An toàn để gọi từ bất kỳ thread nào (tự Dispatcher.Invoke nếu cần).
-        /// </summary>
-        /// <param name="hasChanges">true = đỏ (cần cập nhật) / false = xanh (đã đồng bộ)</param>
-        public void SetStatus(bool hasChanges)
+        // BUG-3 FIX: handler này phải được wire trong XAML bằng Loaded="Window_Loaded"
+        // (đã thêm vào SyncStatusWindow.xaml)
+        private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            // Tự xử lý cross-thread — watcher callback từ background timer
-            if (!Dispatcher.CheckAccess())
-            {
-                Dispatcher.Invoke(() => SetStatus(hasChanges));
-                return;
-            }
-
-            if (hasChanges)
-            {
-                StatusDot.Fill       = RedBrush;
-                TxtStatus.Text       = "File Excel đã thay đổi — nhấn Cập nhật";
-                TxtStatus.Foreground = RedBrush;
-                BtnApply.IsEnabled   = true;
-            }
-            else
-            {
-                StatusDot.Fill       = GreenBrush;
-                TxtStatus.Text       = "Đã đồng bộ";
-                TxtStatus.Foreground = GreenBrush;
-                BtnApply.IsEnabled   = false;
-            }
+            // Đặt toast ở góc dưới bên phải màn hình (cách viền 20px)
+            // WorkArea loại trừ Taskbar — đảm bảo toast không bị taskbar che
+            var workArea = SystemParameters.WorkArea;
+            Left = workArea.Right  - Width  - 20;
+            Top  = workArea.Bottom - Height - 20;
         }
 
-        // ── EVENT HANDLERS ───────────────────────────────────────────────────────────
-
+        // BUG-2 FIX: XAML khai báo Click="BtnApply_Click"
+        // → tên method phải là BtnApply_Click, không phải BtnUpdate_Click
         private void BtnApply_Click(object sender, RoutedEventArgs e)
         {
-            // Disable ngay để tránh double-click
-            BtnApply.IsEnabled = false;
-            TxtStatus.Text     = "Đang cập nhật...";
-            TxtStatus.Foreground = new SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 191, 36)); // amber
-
-            RefreshRequested?.Invoke();
+            // 1. Đóng toast trước để UI sạch
+            // 2. Raise ExternalEvent → Revit main thread sẽ mở lại dialog ExcelToRevitCommand
+            _onUpdateClicked.Invoke();
+            Close();
         }
 
         private void BtnClose_Click(object sender, RoutedEventArgs e)
         {
-            WindowClosed?.Invoke();
+            // Chỉ đóng toast — watcher vẫn tiếp tục theo dõi file.
+            // Nếu Excel thay đổi lần nữa, toast sẽ hiện lại.
             Close();
-        }
-
-        // ── HELPER ──────────────────────────────────────────────────────────────────
-
-        private static string TruncateFilename(string name, int maxLen)
-        {
-            if (name.Length <= maxLen) return name;
-            return "..." + name.Substring(name.Length - (maxLen - 3));
         }
     }
 }

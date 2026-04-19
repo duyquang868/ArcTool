@@ -1,0 +1,114 @@
+﻿using System;
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Media;
+
+namespace ArcTool.Core.UI
+{
+    /// <summary>
+    /// Floating status window — hiển thị trạng thái đồng bộ Excel/Revit.
+    ///
+    /// Trạng thái:
+    ///   🟢 Xanh lá = Đã đồng bộ (file Excel chưa thay đổi kể từ lần import cuối)
+    ///   🔴 Đỏ      = File Excel đã thay đổi → user nhấn "Cập nhật" để áp dụng
+    ///
+    /// Lifecycle:
+    ///   - Được tạo và Show() sau mỗi lần import thành công trong ExcelToRevitCommand
+    ///   - Tồn tại độc lập sau khi Execute() kết thúc (modeless)
+    ///   - Đóng window → trigger WindowClosed event → ExcelToRevitCommand dừng watcher
+    /// </summary>
+    public partial class SyncStatusWindow : Window
+    {
+        // Màu sắc trạng thái
+        private static readonly SolidColorBrush GreenBrush =
+            new SolidColorBrush(Color.FromRgb(34, 197, 94));
+        private static readonly SolidColorBrush RedBrush =
+            new SolidColorBrush(Color.FromRgb(239, 68, 68));
+
+        /// <summary>Raised khi user nhấn nút "Cập nhật" — ExcelToRevitCommand lắng nghe để raise ExternalEvent.</summary>
+        public event Action RefreshRequested;
+
+        /// <summary>Raised khi window bị đóng — ExcelToRevitCommand lắng nghe để dừng FileSystemWatcher.</summary>
+        public event Action WindowClosed;
+
+        public SyncStatusWindow(string fileName)
+        {
+            InitializeComponent();
+
+            // Hiển thị tên file, cắt bớt nếu quá dài
+            TxtFileName.Text = TruncateFilename(fileName, 30);
+
+            // Đặt vị trí góc dưới bên phải màn hình
+            this.Loaded += (s, e) =>
+            {
+                Left = SystemParameters.WorkArea.Right - Width - 20;
+                Top  = SystemParameters.WorkArea.Bottom - Height - 20;
+            };
+
+            // Kéo thả window
+            this.MouseDown += (s, e) =>
+            {
+                if (e.LeftButton == MouseButtonState.Pressed)
+                    DragMove();
+            };
+        }
+
+        // ── PUBLIC API ───────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Cập nhật trạng thái hiển thị.
+        /// An toàn để gọi từ bất kỳ thread nào (tự Dispatcher.Invoke nếu cần).
+        /// </summary>
+        /// <param name="hasChanges">true = đỏ (cần cập nhật) / false = xanh (đã đồng bộ)</param>
+        public void SetStatus(bool hasChanges)
+        {
+            // Tự xử lý cross-thread — watcher callback từ background timer
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.Invoke(() => SetStatus(hasChanges));
+                return;
+            }
+
+            if (hasChanges)
+            {
+                StatusDot.Fill       = RedBrush;
+                TxtStatus.Text       = "File Excel đã thay đổi — nhấn Cập nhật";
+                TxtStatus.Foreground = RedBrush;
+                BtnApply.IsEnabled   = true;
+            }
+            else
+            {
+                StatusDot.Fill       = GreenBrush;
+                TxtStatus.Text       = "Đã đồng bộ";
+                TxtStatus.Foreground = GreenBrush;
+                BtnApply.IsEnabled   = false;
+            }
+        }
+
+        // ── EVENT HANDLERS ───────────────────────────────────────────────────────────
+
+        private void BtnApply_Click(object sender, RoutedEventArgs e)
+        {
+            // Disable ngay để tránh double-click
+            BtnApply.IsEnabled = false;
+            TxtStatus.Text     = "Đang cập nhật...";
+            TxtStatus.Foreground = new SolidColorBrush(Color.FromRgb(251, 191, 36)); // amber
+
+            RefreshRequested?.Invoke();
+        }
+
+        private void BtnClose_Click(object sender, RoutedEventArgs e)
+        {
+            WindowClosed?.Invoke();
+            Close();
+        }
+
+        // ── HELPER ──────────────────────────────────────────────────────────────────
+
+        private static string TruncateFilename(string name, int maxLen)
+        {
+            if (name.Length <= maxLen) return name;
+            return "..." + name.Substring(name.Length - (maxLen - 3));
+        }
+    }
+}

@@ -1,0 +1,219 @@
+﻿# ARCTOOL — AI SESSION CONTEXT
+> Last updated: 2026-04-18 — Session 5.10: ExcelToRevitCommand V2.1 — Manual Sync + Smart Scale + SyncStatusWindow
+
+---
+
+## 1. THÔNG TIN DỰ ÁN
+
+| Mục | Chi tiết |
+|---|---|
+| Tên dự án | ArcTool |
+| Namespace chính | `ArcTool.Core` |
+| Nền tảng | Autodesk Revit 2026 (API 2026) |
+| Ngôn ngữ | C# / .NET 8.0 |
+| IDE | Visual Studio Enterprise 2026 |
+| UI Framework | WPF (modeless windows) + WinForms (dialogs) |
+| Revit Unit System | `UnitTypeId` (ForgeTypeId) |
+
+---
+
+## 2. CẤU TRÚC THƯ MỤC
+
+```
+ArcTool.Core/
+├── App.cs
+├── Commands/
+│   ├── CreateVoidFromLinkCommand.cs
+│   ├── MultiCutCommand.cs
+│   ├── ArrangeDimensionCommand.cs
+│   ├── FilterManagerCommand.cs
+│   └── ExcelToRevitCommand.cs      ← V2.1: Manual Sync + Smart Scale
+├── Services/
+│   ├── ExcelInteropService.cs      ← V5.2: + GetActiveSheetName()
+│   └── ArcToolSettings.cs          ← JSON settings → %AppData%\ArcTool\
+├── UI/
+│   ├── FilterWindow.xaml + .cs
+│   ├── SyncStatusWindow.xaml       ← NEW Session 5.10: WPF floating status
+│   └── SyncStatusWindow.xaml.cs   ← NEW Session 5.10: code-behind
+└── Utilities/
+    └── SelectionFilters.cs
+```
+
+---
+
+## 3. TÍNH NĂNG ĐÃ HOÀN THIỆN
+
+### A. Ribbon UI — `App.cs` (V5.2)
+- Panel 1: `Void Tools` → SplitButton (Create Void + Multi-Cut)
+- Panel 2: `Annotation Tools` → Arrange Dimensions
+- Panel 3: `Excel Tools` → Excel to Revit
+- ⚠️ **GAP:** `FilterManagerCommand` chưa có Ribbon Button → cần Panel 4 trong Giai đoạn 2
+
+### B. Create Void — `CreateVoidFromLinkCommand.cs` (V4.0)
+- Tự động tạo Generic Model Void tại tất cả dầm trong file Link
+- Transform Matrix đúng, Instance params trước Symbol, Face-Based placement
+- ⚠️ Rủi ro: Face-Based bị "unhosted" nếu Link reload với geometry thay đổi
+
+### C. Multi-Cut — `MultiCutCommand.cs` (V2.0)
+- Cắt Walls + Structural/Architectural Columns bằng Void
+- BoundingBox broad-phase. **TODO:** Narrow Phase Solid Intersection
+
+### D. Arrange Dimensions — `ArrangeDimensionCommand.cs` (V1.0)
+- Tịnh tiến Dim theo `Snap Distance × View Scale`, TransactionGroup → 1 Undo
+- `MoveDimensionToMatchSnap()` trả `bool` — baseline chỉ update khi move thành công
+
+### E. Excel Export Engine — `ExcelInteropService.cs` (V5.2)
+- Export Print Area / UsedRange → PNG, scale 35x
+- `GetActiveSheetName()` → tên sheet active (dùng cho Feature 3 auto-create view)
+- Tất cả COM bugs E1–E4 đã fix
+
+### F. Settings Persistence — `ArcToolSettings.cs`
+- `%AppData%\ArcTool\settings.json`: `LastScale`, `LastUsed` (DateTime?), `LastExcelFile`
+- `Load()` silent fallback, `Save()` không throw
+
+### G. Filter Manager — `FilterManagerCommand.cs` + `FilterWindow.xaml`
+- WPF modeless, Idling real-time update
+- ⚠️ **CRITICAL GAP:** Không có Ribbon Button → không thể gọi từ Revit
+
+### H. Sync Status Window — `SyncStatusWindow.xaml/.cs` (NEW — Session 5.10)
+- WPF floating window, góc dưới phải màn hình, `Topmost = true`
+- **🟢 Xanh** = file Excel đồng bộ | **🔴 Đỏ** = file Excel có thay đổi
+- Nút "Cập nhật": enabled khi đỏ → user nhấn → `RefreshRequested` event
+- Nút "✕": `WindowClosed` event → ExcelToRevitCommand dừng watcher
+- `SetStatus(bool)`: thread-safe với `Dispatcher.CheckAccess()`
+
+### I. Excel to Revit Command — `ExcelToRevitCommand.cs` (V2.1 — Session 5.10)
+
+**Thay đổi so với V2.0:**
+
+#### [Change 1] Manual Sync Trigger (thay Auto-Refresh)
+- `FileSystemWatcher` + debounce 2.5s **CHỈ** đổi màu tick → đỏ
+- Không tự gọi `_updateEvent.Raise()` nữa
+- User chủ động nhấn "Cập nhật" → `_updateEvent.Raise()` → `ExcelRefreshHandler.Execute()`
+
+#### [Change 2] Smart Scale Persistence
+- Handler đọc `existingInst.Width/Height` **TRƯỚC KHI** xóa instance cũ
+- Giá trị này phản ánh mọi thao tác resize thủ công của user sau lần import
+- `StoredWidth/StoredHeight` được cập nhật mỗi lần refresh (không dùng `ScaleFactor` cố định)
+- Ảnh mới luôn có đúng kích thước user đang dùng → layout không bị phá vỡ
+
+**Static state:**
+```csharp
+private static FileSystemWatcher   _watcher;
+private static ExternalEvent       _updateEvent;
+private static ExcelRefreshHandler _handler;  // StoredWidth, StoredHeight, TargetViewId, ImageInstanceId
+private static System.Timers.Timer _debounceTimer;
+private static readonly object     _debounceLock;
+private static SyncStatusWindow    _statusWindow;
+```
+
+---
+
+## 4. BUG — TRẠNG THÁI ĐẦY ĐỦ
+
+### 🔴 NGHIÊM TRỌNG
+- [x] MultiCutCommand — `(int)` cast overflow → Fix: `(long)` ✅
+- [x] CreateVoidFromLinkCommand — bỏ sót Instance params → Fix: Instance trước Symbol ✅
+- [ ] CreateVoidFromLinkCommand — Height âm → TODO: Mirror / đổi hướng Family
+- [x] FilterManagerCommand — `_lastUpdate` instance field → Fix: `static` ✅
+- [x] ExcelToRevitCommand — Ambiguous TaskDialog/TextBox → Fix: alias + explicit ✅
+
+### 🟠 RỦI RO
+- [x] ArrangeDimensionCommand — baseline cập nhật dù lỗi → Fix: return `bool` ✅
+- [ ] ArrangeDimensionCommand — không check `activeView.Scale == 0` → TODO
+- [x] CreateVoidFromLinkCommand — `doc.Regenerate()` thừa → Đã xóa ✅
+- [ ] FilterManagerCommand — `Idling` anti-pattern → TODO: ExternalEvent
+- [ ] App.cs — FilterManagerCommand không có Ribbon Button → TODO
+
+### 🟢 COM — ExcelInteropService — TẤT CẢ ĐÃ FIX ✅
+- [x] BUG-E1: `ReleaseObject` finally null vô nghĩa ✅
+- [x] BUG-E2: Comment "50x" sai → "35x" ✅
+- [x] BUG-E3: Release sau Delete = UB ✅
+- [x] BUG-E4: `_activeSheet` bị bỏ quên trong Dispose ✅
+
+---
+
+## 5. QUYẾT ĐỊNH KỸ THUẬT ĐÃ CHỐT
+
+| Quyết định | Lý do | Trade-off |
+|---|---|---|
+| Manual Sync (tick đỏ → user nhấn) | Auto-refresh gây gián đoạn workflow Revit | User phải chủ động nhấn |
+| Đọc Width/Height thực từ Revit | ScaleFactor không phản ánh resize thủ công | StoredWidth/Height cần init đúng sau lần đầu |
+| SyncStatusWindow `Topmost = true` | Dễ thấy khi làm việc trong Revit | Có thể che khuất nội dung khác |
+| Debounce 2.5s | Excel lưu = nhiều filesystem events | Delay 2.5s trước khi đổi màu tick |
+| `ExternalEvent` cho handler | Revit API chỉ an toàn trên main thread | Phải đăng ký trước khi Execute kết thúc |
+| JSON persist (`%AppData%`) | Đơn giản, không cần Registry | Mất nếu xóa AppData |
+| GetOrCreate Drafting View | Tránh tạo view trùng tên | View cũ có thể có nội dung khác |
+| Face-Based Void | Void bám mặt phẳng dầm | Unhosted nếu Link reload |
+| COM release: child → parent | Tránh InvalidComObjectException | — |
+
+---
+
+## 6. QUY TẮC LẬP TRÌNH
+
+```csharp
+// 1. Transaction attribute bắt buộc
+[Transaction(TransactionMode.Manual)]
+
+// 2. Namespace conflict
+using RevitTaskDialog = Autodesk.Revit.UI.TaskDialog;
+new System.Windows.Forms.TextBox
+
+// 3. ElementId: long
+elem.Category.Id.Value == (long)BuiltInCategory.OST_Walls
+
+// 4. COM: child → parent, null field gốc, KHÔNG release sau Delete()
+
+// 5. Background thread + Revit API: ExternalEvent bắt buộc
+// FileSystemWatcher → _statusWindow.SetStatus() [UI update only]
+// hoặc → _updateEvent.Raise() [Revit API via handler]
+
+// 6. Smart Scale: đọc từ instance TRƯỚC KHI xóa
+StoredWidth  = existingInst.Width;   // TRƯỚC doc.Delete()
+StoredHeight = existingInst.Height;
+
+// 7. WPF cross-thread: Dispatcher.CheckAccess() trước update UI
+if (!Dispatcher.CheckAccess()) { Dispatcher.Invoke(...); return; }
+```
+
+---
+
+## 7. ROADMAP
+
+### Giai đoạn 1 + 1B — ✅ HOÀN THÀNH
+
+### Giai đoạn 2 — Filter Manager
+- [ ] **[ƯU TIÊN #1]** Thêm Ribbon Button cho FilterManagerCommand vào App.cs
+- [ ] Implement Copy/Paste Filter, MVVM binding, Idling → ExternalEvent
+
+### Giai đoạn 3 — Excel to Revit — ✅ HOÀN THÀNH (V2.1)
+- [x] Core pipeline: Excel → PNG → ImageType → ImageInstance ✅
+- [x] Persist Scale (JSON) ✅
+- [x] Auto-Create Drafting View theo tên sheet ✅
+- [x] Manual Sync: FileSystemWatcher + SyncStatusWindow (tick đỏ/xanh) ✅
+- [x] Smart Scale: đọc kích thước thực từ Revit trước khi refresh ✅
+
+### Giai đoạn 4 — Quick Dim (R&D)
+- [ ] `GetDimensionableReferences(Element)` trước `NewDimension()`
+
+---
+
+## 8. API REFERENCES
+
+| Class/Method | Ghi chú |
+|---|---|
+| `ImageType.Create()` | Tạo ImageType từ PNG (Revit 2026 Public API) |
+| `ImageInstance.Create()` | Đặt ảnh vào View |
+| `ImageInstance.Width/Height` | Kích thước thực tế — đọc TRƯỚC khi xóa (Smart Scale) |
+| `ImageInstance.IsValidObject` | Check trước khi đọc/xóa trong handler |
+| `ViewDrafting.Create(doc, typeId)` | Tạo Drafting View mới |
+| `IExternalEventHandler + ExternalEvent` | Bridge background thread → Revit API |
+| `FileSystemWatcher` | Theo dõi thay đổi file |
+| `Dispatcher.CheckAccess()` | Guard cross-thread WPF update |
+| `Marshal.ReleaseComObject()` | COM release — child → parent |
+
+> Tra cứu API: https://www.revitapidocs.com/2026/
+
+---
+
+*ArcTool © 2026 — Session 5.10: Manual Sync + Smart Scale + SyncStatusWindow*

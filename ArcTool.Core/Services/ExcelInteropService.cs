@@ -1,6 +1,5 @@
 using System;
 using System.Runtime.InteropServices;
-// Đã bỏ using System.Threading vì không còn Sleep
 using Microsoft.Office.Interop.Excel;
 using Range = Microsoft.Office.Interop.Excel.Range;
 using Application = Microsoft.Office.Interop.Excel.Application;
@@ -9,26 +8,29 @@ namespace ArcTool.Core.Services
 {
     /// <summary>
     /// Service quản lý giao tiếp với Excel.
-    /// Updated V5: Synchronous Execution - No Sleep, No Retry, Hardcode 35x Scale.
+    /// V5.2: Thêm GetActiveSheetName() để hỗ trợ auto-create View theo tên sheet.
+    /// COM release order: child → parent. Không ReleaseComObject sau Delete().
     /// </summary>
     public class ExcelInteropService : IDisposable
     {
         private Application _excelApp;
-        private Workbook _workbook;
-        private Worksheet _activeSheet;
+        private Workbook    _workbook;
+        private Worksheet   _activeSheet;
 
-        // CẤU HÌNH: 50x Scale
-        private const double FIXED_SCALE_FACTOR = 35.0;
-        private const double MAX_EXCEL_DIMENSION = 32000; // Giới hạn Point của Excel
+        // Scale 35x cho chất lượng ảnh cao
+        private const double FIXED_SCALE_FACTOR  = 35.0;
+        private const double MAX_EXCEL_DIMENSION = 32000;
 
         public bool OpenFile(string filePath)
         {
             try
             {
-                _excelApp = new Application();
-                _excelApp.Visible = false;
-                _excelApp.DisplayAlerts = false;
-                _workbook = _excelApp.Workbooks.Open(filePath);
+                _excelApp = new Application
+                {
+                    Visible       = false,
+                    DisplayAlerts = false
+                };
+                _workbook    = _excelApp.Workbooks.Open(filePath);
                 _activeSheet = _workbook.ActiveSheet as Worksheet;
                 return true;
             }
@@ -38,6 +40,15 @@ namespace ArcTool.Core.Services
             }
         }
 
+        /// <summary>
+        /// Trả về tên sheet đang active trong file Excel.
+        /// Dùng để đặt tên Drafting View tương ứng trong Revit.
+        /// </summary>
+        public string GetActiveSheetName()
+        {
+            return _activeSheet?.Name ?? string.Empty;
+        }
+
         public bool ExportPrintAreaAsHighResImage(string outputPath)
         {
             if (_activeSheet == null) return false;
@@ -45,16 +56,10 @@ namespace ArcTool.Core.Services
 
             try
             {
-                // Logic chọn vùng in
                 string printArea = _activeSheet.PageSetup.PrintArea;
-                if (!string.IsNullOrEmpty(printArea))
-                {
-                    targetRange = _activeSheet.Range[printArea];
-                }
-                else
-                {
-                    targetRange = _activeSheet.UsedRange;
-                }
+                targetRange = !string.IsNullOrEmpty(printArea)
+                    ? _activeSheet.Range[printArea]
+                    : _activeSheet.UsedRange;
 
                 return ExportRangeInternal(targetRange, outputPath);
             }
@@ -69,74 +74,58 @@ namespace ArcTool.Core.Services
         }
 
         /// <summary>
-        /// [CORE] Thực thi tuần tự, tốc độ cao nhất.
+        /// [CORE] Tuần tự, không Sleep, không retry. Scale 35x cố định.
         /// </summary>
         private bool ExportRangeInternal(Range range, string outputPath)
         {
             ChartObjects chartObjects = null;
-            ChartObject chartObj = null;
-            Chart chart = null;
+            ChartObject  chartObj     = null;
+            Chart        chart        = null;
 
             try
             {
-                // 1. COPY (Gửi lệnh copy vào Clipboard ngay lập tức)
                 range.CopyPicture(XlPictureAppearance.xlPrinter, XlCopyPictureFormat.xlPicture);
 
-                // 2. LẤY KÍCH THƯỚC GỐC
-                double originalWidth = (double)range.Width;
+                double originalWidth  = (double)range.Width;
                 double originalHeight = (double)range.Height;
 
-                // 3. TẠO CHART CONTAINER (Size gốc)
                 chartObjects = (ChartObjects)_activeSheet.ChartObjects();
-                chartObj = chartObjects.Add(0, 0, originalWidth, originalHeight);
-                chart = chartObj.Chart;
+                chartObj     = chartObjects.Add(0, 0, originalWidth, originalHeight);
+                chart        = chartObj.Chart;
 
-                // Active ngay để nhận lệnh Paste
                 chartObj.Activate();
-
-                // 4. PASTE (Thực thi ngay, không chờ đợi, không check lỗi lặp lại)
                 chart.Paste();
 
-                // 5. SCALE UP (50x)
-                double newWidth = originalWidth * FIXED_SCALE_FACTOR;
-                double newHeight = originalHeight * FIXED_SCALE_FACTOR;
+                double newWidth  = Math.Min(originalWidth  * FIXED_SCALE_FACTOR, MAX_EXCEL_DIMENSION);
+                double newHeight = Math.Min(originalHeight * FIXED_SCALE_FACTOR, MAX_EXCEL_DIMENSION);
 
-                // Safety Check
-                if (newWidth > MAX_EXCEL_DIMENSION) newWidth = MAX_EXCEL_DIMENSION;
-                if (newHeight > MAX_EXCEL_DIMENSION) newHeight = MAX_EXCEL_DIMENSION;
-
-                // Gán kích thước mới -> Trigger Excel render lại Vector
-                chartObj.Width = newWidth;
+                chartObj.Width  = newWidth;
                 chartObj.Height = newHeight;
 
-                // 6. EXPORT
                 chart.Export(outputPath, "PNG", false);
-
                 return true;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Export Error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"ExcelInteropService Export Error: {ex.Message}");
                 return false;
             }
             finally
             {
-                // Release child before parent
+                // COM release: child → parent. KHÔNG release chartObj sau Delete().
                 ReleaseObject(chart);
-
-                // Delete chartObj without releasing after (Delete already revokes COM)
                 if (chartObj != null)
                 {
                     try { chartObj.Delete(); } catch { }
+                    // Không gọi ReleaseObject(chartObj) — Delete đã revoke COM
                 }
-
-                // Release container last
                 ReleaseObject(chartObjects);
             }
         }
 
         public void Dispose()
         {
+            // Release theo thứ tự: sheet → workbook → app
             if (_activeSheet != null)
             {
                 ReleaseObject(_activeSheet);
@@ -165,6 +154,7 @@ namespace ArcTool.Core.Services
                 if (obj != null) Marshal.ReleaseComObject(obj);
             }
             catch { }
+            // KHÔNG null obj ở đây — null field gốc ở caller mới có tác dụng
         }
     }
 }

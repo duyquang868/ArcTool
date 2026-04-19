@@ -5,9 +5,9 @@
     "\\ArcTool.Core\\Commands",
     "\\ArcTool.Core\\Resources",
     "\\ArcTool.Core\\Services",
+    "\\ArcTool.Core\\UI",
     "\\ArcTool.TestConsole",
     "\\ArcTool.TestConsole\\TestConsole"
   ],
-  "SelectedNode": "\\SKILL.md",
   "PreviewInSolutionExplorer": false
 }

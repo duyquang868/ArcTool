@@ -93,7 +93,7 @@ namespace ArcTool.UI {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/ArcTool.Core;V1.0.0.0;component/ui/filterwindow.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/ArcTool.Core;component/ui/filterwindow.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\..\UI\FilterWindow.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);

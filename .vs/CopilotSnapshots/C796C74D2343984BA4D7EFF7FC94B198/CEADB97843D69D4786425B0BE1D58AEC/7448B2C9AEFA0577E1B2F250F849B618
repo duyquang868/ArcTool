@@ -1,0 +1,88 @@
+﻿using System;
+using System.IO;
+using System.Windows;
+using System.Windows.Media;
+
+namespace ArcTool.Core.UI
+{
+    /// <summary>
+    /// Persistent floating window — hiện sau khi import thành công, tồn tại
+    /// suốt thời gian FileSystemWatcher đang chạy.
+    ///
+    /// Lifecycle:
+    ///   Show()         → sau khi import lần đầu thành công
+    ///   SetStatus(true) → khi watcher phát hiện file thay đổi (tick đỏ)
+    ///   SetStatus(false)→ sau khi refresh thành công (tick xanh)
+    ///   Close()        → khi user nhấn ✕ HOẶC khi StopWatcher() được gọi
+    /// </summary>
+    public partial class SyncStatusWindow : Window
+    {
+        // Màu sắc — static để tránh tạo lại mỗi lần SetStatus
+        private static readonly SolidColorBrush GreenBrush =
+            new SolidColorBrush(Color.FromRgb(34, 197, 94));   // #22C55E
+        private static readonly SolidColorBrush RedBrush =
+            new SolidColorBrush(Color.FromRgb(239, 68, 68));   // #EF4444
+
+        // Callback: user nhấn "Cập nhật" → raise ExternalEvent
+        private readonly Action _onUpdateClicked;
+
+        /// <param name="watchedFilePath">File Excel đang được theo dõi</param>
+        /// <param name="onUpdateClicked">Action gọi _updateEvent.Raise()</param>
+        public SyncStatusWindow(string watchedFilePath, Action onUpdateClicked)
+        {
+            InitializeComponent();
+            _onUpdateClicked = onUpdateClicked
+                ?? throw new ArgumentNullException(nameof(onUpdateClicked));
+
+            // Hiển thị tên file ngắn gọn
+            TxtFileName.Text = Path.GetFileName(watchedFilePath);
+
+            // State ban đầu: xanh (vừa import xong = đã đồng bộ)
+            SetStatus(hasChanges: false);
+
+            // Cho phép kéo window
+            MouseLeftButtonDown += (s, e) => DragMove();
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+            // Đặt ở góc dưới phải, cách viền 20px, loại trừ Taskbar
+            var area = SystemParameters.WorkArea;
+            Left = area.Right  - Width  - 20;
+            Top  = area.Bottom - Height - 20;
+        }
+
+        /// <summary>
+        /// Cập nhật trạng thái tick xanh/đỏ. Thread-safe — có thể gọi từ bất kỳ thread nào.
+        /// </summary>
+        public void SetStatus(bool hasChanges)
+        {
+            // Guard cross-thread: không invoke nếu window đã đóng
+            if (!IsLoaded) return;
+
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.Invoke(() => SetStatus(hasChanges));
+                return;
+            }
+
+            StatusDot.Fill     = hasChanges ? RedBrush : GreenBrush;
+            TxtStatus.Text     = hasChanges ? "File Excel đã thay đổi" : "Đã đồng bộ";
+            TxtStatus.Foreground = hasChanges ? RedBrush : GreenBrush;
+            BtnApply.IsEnabled = hasChanges;
+        }
+
+        private void BtnApply_Click(object sender, RoutedEventArgs e)
+        {
+            // Disable ngay để tránh double-click trong khi handler đang chạy
+            BtnApply.IsEnabled = false;
+            _onUpdateClicked.Invoke();
+            // Tick sẽ chuyển xanh khi ExcelRefreshHandler.Execute() hoàn tất
+        }
+
+        private void BtnClose_Click(object sender, RoutedEventArgs e)
+        {
+            Close(); // ExcelToRevitCommand đăng ký Closed event để StopWatcher()
+        }
+    }
+}

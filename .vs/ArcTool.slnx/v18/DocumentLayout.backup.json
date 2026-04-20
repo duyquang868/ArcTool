@@ -3,6 +3,7 @@
   "WorkspaceRootPath": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\",
   "Documents": [
     {
+<<<<<<< HEAD
       "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\quang mini\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\commands\\exceltorevitcommand.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|solutionrelative:arctool.core\\commands\\exceltorevitcommand.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -24,6 +25,29 @@
     },
     {
       "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\quang mini\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\app.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+=======
+      "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\commands\\exceltorevitcommand.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|solutionrelative:arctool.core\\commands\\exceltorevitcommand.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\arctool.core.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
+      "RelativeMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|solutionrelative:arctool.core\\arctool.core.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.TestConsole\\TestConsole\\TestConsole\\Program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:ArcTool.TestConsole\\TestConsole\\TestConsole\\Program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\CONTEXT.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:CONTEXT.md||{EFC0BB08-EA7D-40C6-A696-C870411A895B}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\services\\excelinteropservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|solutionrelative:arctool.core\\services\\excelinteropservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\app.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+>>>>>>> 175ed814420ed8c34d98e53dd28aad238ef98aa5
       "RelativeMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|solutionrelative:arctool.core\\app.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
@@ -58,7 +82,12 @@
               "RelativeToolTip": "ArcTool.Core\\ArcTool.Core.csproj",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+<<<<<<< HEAD
               "WhenOpened": "2026-04-19T05:51:55.693Z"
+=======
+              "WhenOpened": "2026-04-19T05:51:55.693Z",
+              "EditorCaption": ""
+>>>>>>> 175ed814420ed8c34d98e53dd28aad238ef98aa5
             },
             {
               "$type": "Document",
@@ -68,7 +97,11 @@
               "RelativeDocumentMoniker": "ArcTool.Core\\Commands\\ExcelToRevitCommand.cs",
               "ToolTip": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Commands\\ExcelToRevitCommand.cs",
               "RelativeToolTip": "ArcTool.Core\\Commands\\ExcelToRevitCommand.cs",
+<<<<<<< HEAD
               "ViewState": "AgIAAEYAAAAAAAAAAAAqwAAAAAAAAAAAAAAAAA==",
+=======
+              "ViewState": "AgIAAB4AAAAAAAAAAAAUwAAAAAAAAAAAAAAAAA==",
+>>>>>>> 175ed814420ed8c34d98e53dd28aad238ef98aa5
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2026-04-17T13:58:45.986Z",
               "EditorCaption": ""
@@ -83,7 +116,8 @@
               "RelativeToolTip": "CONTEXT.md",
               "ViewState": "AgIAAIwAAAAAAAAAAAAAAA0AAAAnAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
-              "WhenOpened": "2026-04-17T12:48:11.005Z"
+              "WhenOpened": "2026-04-17T12:48:11.005Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -107,7 +141,8 @@
               "RelativeToolTip": "ArcTool.TestConsole\\TestConsole\\TestConsole\\Program.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-17T12:31:09.789Z"
+              "WhenOpened": "2026-04-17T12:31:09.789Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -119,7 +154,8 @@
               "RelativeToolTip": "ArcTool.Core\\Services\\ExcelInteropService.cs",
               "ViewState": "AgIAAEcAAAAAAAAAAAAwwCIAAAARAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-17T12:21:29.392Z"
+              "WhenOpened": "2026-04-17T12:21:29.392Z",
+              "EditorCaption": ""
             }
           ]
         }

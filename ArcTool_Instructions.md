@@ -1,163 +1,241 @@
-﻿## ĐỐI TÁC CỦA BẠN
+## ĐỐI TÁC CỦA BẠN
 
 Tôi là kiến trúc sư với **20 năm kinh nghiệm thực chiến** trong ngành thiết kế xây dựng. Tôi hiểu sâu về logic nghiệp vụ, quy trình thiết kế BIM và nhu cầu thực tế của công việc kiến trúc. Tôi **không phải coder chuyên nghiệp** — tôi tiếp cận lập trình như một *problem-solver*: tôi biết mình muốn gì, tôi hiểu tại sao cần làm, nhưng tôi cần bạn là người biến ý tưởng đó thành code cấp enterprise.
-
-Nhiệm vụ của bạn: kết hợp hoàn hảo với kiến thức chuyên ngành kiến trúc của tôi để tạo ra phần mềm thực sự giải quyết vấn đề thực tế trong nghề. Bạn vừa là "thợ cả" vừa là "người thầy" — tôi học từ bạn, và bạn học bối cảnh nghiệp vụ từ tôi.
 
 ---
 
 ## DỰ ÁN: ARCTOOL PLUGIN
 
-**Tên dự án:** ArcTool
-**Namespace:** ArcTool.Core
-**Nền tảng:** Autodesk Revit 2026 (API 2026)
-**Ngôn ngữ:** C# (.NET 8.0)
-**Công cụ:** Visual Studio Enterprise 2026
-**Thư viện UI:** Windows Forms (Form chọn Family) & Revit Ribbon (App.cs)
-**Quản lý Resource:** File `Resources.resx` (Access Modifier: Public) chứa Icon
+| Mục | Chi tiết |
+|---|---|
+| Tên dự án | ArcTool |
+| Namespace | `ArcTool.Core` |
+| Nền tảng | Autodesk Revit 2026 (API 2026) |
+| Ngôn ngữ | C# (.NET 8.0) |
+| IDE | Visual Studio Enterprise 2026 |
+| UI | WPF (modeless) + WinForms (dialog) |
 
 ---
 
-## TÍNH NĂNG ĐÃ HOÀN THIỆN
+## TÍNH NĂNG HIỆN TẠI
 
-### A. Giao diện Cốt lõi — App.cs (UI V5.1 - Final)
-- Sử dụng **SplitButton** (Nút chia đôi) cho nhóm "Void Manager"
-- Icon: Load từ `Properties.Resources` qua hàm helper `ConvertToImageSource` (chuyển Bitmap sang ImageSource)
-- Đã tích hợp: **Create Void** (Nút chính - Synchronized) và **Multi-Cut** (ngăn cách bằng Separator)
-- **Panel 3: Excel Tools** → Button "Excel to Revit" (NEW - SESSION 5) ✅
-- Đã sẵn sàng mở rộng cho Filter Manager
+### A. Ribbon UI — `App.cs` (V5.1 — STABLE)
+- Tab `ArcTool` với 3 panel: Void Tools, Annotation Tools, Excel Tools
+- SplitButton "Void Manager": Create Void (main) + Multi-Cut (dropdown)
+- Helper `ConvertToImageSource(Bitmap)` chuyển Resource sang WPF ImageSource
 
-### B. Lệnh tạo Void — CreateVoidFromLinkCommand.cs (V4.0 - Auto Generate)
-- **Chức năng:** Tự động tạo Void (Generic Model) tại vị trí TẤT CẢ dầm (Structural Framing) trong file Link được chọn — không cần quét chọn PickBox
-- **Logic vị trí:** Lấy trung điểm của LocationCurve
-- **Logic kích thước:** Width/Length lấy từ tham số dầm Link; Height gán giá trị ÂM (-Height) để đảo chiều Void (Fix lỗi vị trí Bottom)
-- ⚠️ **Đang trong diện refactor:** xử lý tọa độ Transform Matrix chưa áp dụng
+### B. Create Void — `CreateVoidFromLinkCommand.cs` (V4.0 — STABLE)
+- Tự động tạo Generic Model Void tại TẤT CẢ dầm trong file Link
+- Face-Based placement, midpoint của LocationCurve
+- ⚠️ Biết rủi ro: Unhosted nếu Link reload
 
-### C. Lệnh cắt đa năng — MultiCutCommand.cs (V2.0 - Performance Optimized)
-- **Chức năng:** Cắt Tường (Walls) và Cột (Columns) bằng các Void đã tạo
-- **Quy trình:** Lọc chọn Void (Generic Model) → Lọc chọn vùng đối tượng mục tiêu (CutTargetSelectionFilter)
-- **Thuật toán Broad Phase:** Dùng `BoundingBoxIntersectsFilter` kiểm tra va chạm sơ bộ, chống treo máy với dự án lớn
-- ⚠️ **Chờ nâng cấp:** Narrow Phase Solid Intersection chưa được thêm vào
+### C. Multi-Cut — `MultiCutCommand.cs` (V2.0 — STABLE)
+- Cắt Tường + Cột bằng Void đã tạo
+- Broad Phase: BoundingBoxIntersectsFilter
+- ⏳ Thiếu: Narrow Phase Solid Intersection
 
-### D. Engine xuất ảnh từ Excel — ExcelInteropService.cs (V5.1 - SESSION 5 Fixed)
-- **Trạng thái:** Core Engine hoàn thiện (đọc file Excel và xuất thành PNG 300 DPI) ✅
-- **SESSION 5 Fixes:** 4 COM object management bugs fixed (BUG-E1 to E4)
-  - ✅ BUG-E1: ReleaseObject + null field gốc
-  - ✅ BUG-E2: Comment sai "50x" → "35x"
-  - ✅ BUG-E3: COM release order (child → parent)
-  - ✅ BUG-E4: Added _activeSheet to Dispose()
+### D. Arrange Dimensions — `ArrangeDimensionCommand.cs` (V1.0 — STABLE)
+- Tịnh tiến Dim cách đều theo Snap Distance × View Scale
+- TransactionGroup → 1 lần Undo
 
-### D.1 Lệnh Excel to Revit — ExcelToRevitCommand.cs (V1.0 - SESSION 5 NEW) ✨
-- **Trạng thái:** Complete unified pipeline (Excel → PNG → ImageType → ImageInstance) ✅
-- **Deprecated:** ImageImportCommand.cs (removed SESSION 5)
-  - Reason: API assumption sai ("Revit không expose ImageType.Create()")
-  - Reality: Revit 2026 **CÓ HỖ TRỢ** ImageType.Create() công khai ✅
-- **Pipeline:**
-  1. User picks Excel file (OpenFileDialog)
-  2. ExcelInteropService exports → Temp PNG at %TEMP% (GUID name)
-  3. ImageType.Create() → Creates from PNG (300 DPI, embedded)
-  4. Modern dialog → asks scale % (TableLayoutPanel UI)
-  5. Calculate View center (BoundingBoxXYZ with 3-tier fallback)
-  6. ImageInstance.Create() → places at center (BoxPlacement.Center)
-  7. Apply scale factor (width × factor, height × factor)
-  8. Cleanup → delete temp PNG after commit
-  9. Show success message
-- **SESSION 5 Fix:** Ambiguous reference (TaskDialog + TextBox)
-  - Added alias: `using RevitTaskDialog = Autodesk.Revit.UI.TaskDialog;`
-  - Explicit qualification: `new System.Windows.Forms.TextBox`
-- **Supported Views:** Sheet, Drafting, Floor Plan, Ceiling Plan, Section, Elevation, Detail, Legend
-- **Unsupported:** 3D view, Walkthrough, Rendering
+### E. Excel Export Engine — `ExcelInteropService.cs` (V5.2 — STABLE)
+- Hidden Excel, export Print Area / UsedRange → PNG 35x scale
+- COM release đúng thứ tự child → parent
+- Method hiện có: `OpenFile()`, `GetActiveSheetName()`, `ExportPrintAreaAsHighResImage()`
+- ⏳ Cần thêm (V5.3): `GetSheetNames()`, `GetNamedRanges()`, `ExportRegion()`
 
-### E. Nền móng Filter Manager
-- **Trạng thái:** Đã khởi tạo `FilterManagerCommand.cs` và UI WPF (`FilterWindow.xaml` / `FilterWindow.xaml.cs`)
-- ⏳ **Sẵn sàng cho:** Tích hợp MVVM và thư viện `ParameterFilterElement` của Revit 2026 API
+### F. Excel to Revit — `ExcelToRevitCommand.cs` (V1.0 — STABLE, chờ V3.0)
+- Pipeline đơn giản: chọn Excel → export PNG → ImageType.Create() → ImageInstance
+- ⏳ Cần nâng cấp lên V3.0: DataGrid UI, change detection, smart scale, auto-create view
+
+### G. Filter Manager — `FilterManagerCommand.cs` + `FilterWindow.xaml` (SKELETON)
+- UI WPF modeless đã xong, dùng Idling event
+- ⏳ Cần: implement logic Copy/Paste Filter
 
 ---
 
-## ROADMAP PHÁT TRIỂN
+## EXCEL TO REVIT V3.0 — SPEC TÓM TẮT
 
-### Giai đoạn 1 — Cải tiến & Trả nợ kỹ thuật (Technical Debt)
-> *Nâng cấp chất lượng các lệnh hiện có trước khi xây thêm*
+> Chi tiết đầy đủ ở CONTEXT.md Section 6. Phần này chỉ tóm tắt để dev nhanh.
 
-- **CreateVoidFromLinkCommand:** Áp dụng đúng Transformation Matrix của file Link để fix lỗi lệch tọa độ
-- **MultiCutCommand:** Thêm Narrow Phase bằng Solid Intersection — thay thế việc chỉ dựa vào BoundingBox
+### Tính năng 3 nhóm
 
-### Giai đoạn 2 — Filter Manager
-- Xây dựng UI/UX đầy đủ bằng WPF (kiến trúc MVVM)
-- Tích hợp các bộ lọc (Filter) chuẩn của Revit 2026 qua `ParameterFilterElement` API
+| # | Nhóm | Mô tả |
+|---|---|---|
+| T1 | Auto-Create View | Drafting View (API đầy đủ) hoặc Legend View (Duplicate workaround) theo tên sheet |
+| T2 | Change Detection | Check timestamp khi dialog mở. AutoSync = tự update. Thủ công = nhấn Update per-row |
+| T3 | Smart Scale | Lưu Width/Height (feet) của ImageInstance vào JSON. Áp lại khi refresh |
 
-### Giai đoạn 3 — Excel to Revit Image (COMPLETED - SESSION 5) ✅
-- ✅ **ExcelInteropService:** Core engine hoàn thiện + COM fixes
-- ✅ **ExcelToRevitCommand:** Unified pipeline (Excel → PNG → ImageType → ImageInstance)
-- ✅ **Integration:** Thêm button vào Ribbon (Tab ArcTool → Panel Excel Tools)
-- ✅ **Session 5 Fixes:** Ambiguous reference + COM management
-- ✅ **Build:** Successful (0 errors, 0 warnings)
+### File mới cần tạo
 
-### Giai đoạn 4 — Quick Dim (R&D)
-- Đang trong giai đoạn nghiên cứu thuật toán
-- **Khác biệt cốt lõi so với AutoCAD:** Revit yêu cầu Dimension qua **Reference objects** (mặt phẳng, đường hình học), không phải qua tọa độ điểm
-- **Việc cần làm trước:** Xây dựng hàm trích xuất `ReferenceArray` chuẩn xác trước khi gọi `NewDimension`
+| File | Mô tả |
+|---|---|
+| `Models/ExcelMapping.cs` | POCO: Id, ViewName, AutoSync, LastModified, WorkSheet, Region, RegionType, ViewType, FilePath, ImageInstanceId, StoredWidth, StoredHeight |
+| `Services/ArcToolSettingsService.cs` | Load/Save JSON cạnh .rvt |
+| `Services/ExcelSyncEngine.cs` | CheckForChanges(), ExecuteUpdate(), GetOrCreateView() |
+| `UI/ExcelToRevitWindow.xaml` + `.cs` | WPF DataGrid 10 cột theo UI spec |
+
+### Legend View — Giới hạn API đã verify
+Revit API 2026 **không có method tạo Legend View từ đầu**. Workaround: `view.Duplicate(ViewDuplicateOption.WithDetailing)`. Yêu cầu: project phải có sẵn 1 Legend View rỗng tên `ArcTool_LegendTemplate`.
+
+### Columns bảng UI (theo thứ tự)
+Select | Status Dot | View Name | Auto Sync | Last Modified | WorkSheet | Region | View Type | File Path | Update button
 
 ---
 
-## TESTING & DEBUGGING
+## BUILD & DEPLOYMENT
 
-### Manual Testing Procedures
+### Build Commands
+```powershell
+cd "D:\OneDrive - MSFT\Plugin Revit\ArcTool"
+dotnet build -c Debug
+dotnet build -c Release
+```
 
-#### Test 1: Create Void
-1. Open Revit → mở file RVT có Structural Link
-2. ArcTool Tab → Void Tools → Create Void
-3. Select Family: Dialog chọn Void family
-4. Pick Link: Chọn file Link
-5. **Expected:** Void instances tạo tại tất cả dầm locations
+### Output Path
+```
+ArcTool.Core\Bin\x64\Debug\net8.0-windows\
+```
 
-**Assertions:**
-- [ ] Void được tạo tại midpoint của dầm
-- [ ] Height/Width/Length lấy từ dầm parameters
-- [ ] Void là Generic Model type
-- [ ] Void là Face-Based (bám vào Link geometry)
+### Deployment Checklist
+- [ ] Build thành công (0 errors, 0 warnings)
+- [ ] Tất cả commands đăng ký trong App.cs
+- [ ] CONTEXT.md cập nhật
+- [ ] SKILL.md cập nhật
+- [ ] ArcTool_Instructions.md cập nhật
+- [ ] Git commit & push
+- [ ] .addin manifest đúng path
 
-#### Test 2: Multi-Cut
-1. Have: Void instances từ Test 1
-2. ArcTool Tab → Void Tools → Multi-Cut
-3. Pick Void: Chọn 1 Void
-4. **Expected:** Walls + Columns bị cắt bởi Void
+---
 
-**Assertions:**
-- [ ] Tường (Walls) bị cắt
-- [ ] Cột kết cấu (Structural Columns) bị cắt
-- [ ] Cột kiến trúc (Architectural Columns) bị cắt
+## TESTING — QUY TRÌNH THỦ CÔNG
 
-#### Test 3: Arrange Dimensions
-1. Open View với linear dimensions
-2. ArcTool Tab → Annotation Tools → Arrange Dimensions
-3. Pick baseline: Chọn Dim đầu tiên
-4. Pick subsequent: Chọn Dim thứ 2, 3, 4... liên tiếp
-5. Press ESC: Kết thúc lệnh
-6. **Expected:** Tất cả Dim tiếp theo được tịnh tiến cách đều
+### Test 1: Create Void
 
-**Assertions:**
-- [ ] Dim tịnh tiến theo snap distance × view scale
-- [ ] Aspect ratio giữ nguyên
-- [ ] TransactionGroup gộp thành 1 undo
+**Setup:** File RVT có Structural Link chứa dầm
 
-#### Test 4: Excel to Revit (NEW - SESSION 5) ✨
-1. **Prepare Excel:** file .xlsx với Print Area định nghĩa
-2. **Open Revit Sheet**
-3. **ArcTool Tab → Excel Tools → Excel to Revit**
-4. **Choose Excel:** Dialog file browser
-5. **ExcelInteropService exports:** PNG (hidden, 300 DPI)
-6. **Enter Scale %:** Dialog (default 100%)
-7. **Expected:** Ảnh import vào Sheet center, scale áp dụng
+**Steps:**
+1. ArcTool Tab → Void Tools → Create Void
+2. Chọn Family Void trong dialog
+3. Pick file Link
 
 **Assertions:**
-- [ ] Excel hidden mode, không bị lock
-- [ ] PNG export thành công tại %TEMP%
-- [ ] ImageType.Create() tạo từ PNG
-- [ ] ImageInstance place tại View center
-- [ ] Scale áp dụng đúng (width × factor)
+- [ ] Void tạo tại midpoint dầm
+- [ ] Height/Width/Length đọc từ dầm parameters
+- [ ] Void là Generic Model, Face-Based
+
+---
+
+### Test 2: Multi-Cut
+
+**Setup:** Có Void instances từ Test 1, có Tường + Cột
+
+**Steps:**
+1. ArcTool Tab → Void Tools → Multi-Cut
+2. Quét chọn Voids
+3. Quét chọn Tường + Cột
+
+**Assertions:**
+- [ ] Tường bị cắt
+- [ ] Cột kết cấu bị cắt
+- [ ] Cột kiến trúc bị cắt
+
+---
+
+### Test 3: Arrange Dimensions
+
+**Setup:** View có ít nhất 3 Linear Dimension
+
+**Steps:**
+1. ArcTool Tab → Annotation Tools → Arrange Dimensions
+2. Pick Dim đầu tiên (baseline)
+3. Pick Dim thứ 2, 3 liên tiếp
+4. Nhấn ESC để kết thúc
+
+**Assertions:**
+- [ ] Dim tịnh tiến đúng khoảng = Snap Distance × View Scale
+- [ ] TransactionGroup: toàn bộ là 1 lần Undo
+
+---
+
+### Test 4: Excel to Revit V1.0 (Hiện tại)
+
+**Setup:** File Excel có Print Area, Revit Sheet đang mở
+
+**Steps:**
+1. ArcTool Tab → Excel Tools → Excel to Revit
+2. Chọn file Excel
+3. Nhập Scale % (mặc định 100)
+
+**Assertions:**
+- [ ] Excel chạy ẩn, không hiện lên màn hình
+- [ ] PNG export tại %TEMP%
+- [ ] Ảnh đặt tại tâm View
+- [ ] Scale áp đúng
 - [ ] Temp PNG xóa sau commit
-- [ ] Error messages chi tiết (Excel open → export → ImageType → ImageInstance)
+
+---
+
+### Test 5: Excel to Revit V3.0 (Sau khi implement)
+
+**Setup:** File Excel có nhiều sheet, một số sheet có Named Ranges. File Revit đã lưu (có PathName).
+
+#### Test 5A — Import lần đầu (Drafting View)
+1. Mở dialog Excel to Revit
+2. Nhấn `+` → Browse chọn file Excel
+3. WorkSheet dropdown: chọn sheet có Named Range
+4. Region dropdown: chọn Named Range
+5. View Type: Drafting View
+6. Nhấn Update
+
+**Assertions:**
+- [ ] Drafting View mới tạo, tên = `[SheetName]_[RegionName]`
+- [ ] Ảnh đặt tại tâm View
+- [ ] Status Dot = xanh
+- [ ] JSON lưu đúng: FilePath, WorkSheet, Region, ImageInstanceId, StoredWidth, StoredHeight
+- [ ] LastModified = thời gian hiện tại
+
+#### Test 5B — Import lần đầu (Legend View)
+1. Tạo trước: 1 Legend View rỗng tên `ArcTool_LegendTemplate` trong Revit
+2. Mở dialog, `+` → chọn Excel, sheet, region
+3. View Type: Legend View
+4. Nhấn Update
+
+**Assertions:**
+- [ ] Legend View mới tạo bằng cách Duplicate template
+- [ ] Tên đúng = `[SheetName]` hoặc `[SheetName]_[RegionName]`
+- [ ] Nếu không có Legend View nào trong project → hiện error dialog rõ ràng
+
+#### Test 5C — Smart Scale
+1. Sau Test 5A: kéo resize ảnh trực tiếp trong Revit View
+2. Sửa nội dung file Excel và lưu
+3. Mở lại dialog Excel to Revit
+4. Status Dot = đỏ (file mới hơn LastModified)
+5. Nhấn Update
+
+**Assertions:**
+- [ ] Ảnh mới có cùng Width/Height với ảnh đã resize (không reset về 100%)
+- [ ] JSON cập nhật: StoredWidth/Height = kích thước mới
+- [ ] Status Dot → xanh sau update
+
+#### Test 5D — AutoSync
+1. Check AutoSync = true cho 1 mapping
+2. Sửa file Excel và lưu
+3. Đóng và mở lại dialog
+
+**Assertions:**
+- [ ] Khi dialog mở: mapping có AutoSync=true tự động update (không cần nhấn nút)
+- [ ] Nút Update per-row bị disabled khi AutoSync=true
+- [ ] LastModified cập nhật
+
+#### Test 5E — File Not Found
+1. Di chuyển file Excel sang thư mục khác
+2. Mở dialog
+
+**Assertions:**
+- [ ] Status Dot = màu vàng (warning, khác với đỏ)
+- [ ] Nút Update disabled
+- [ ] Click icon warning → OpenFileDialog cho phép chọn lại đường dẫn
 
 ---
 
@@ -167,64 +245,70 @@ Nhiệm vụ của bạn: kết hợp hoàn hảo với kiến thức chuyên ng
 ArcTool Tab (3 Panels)
 ├── Void Tools Panel
 │   └── SplitButton "Void Manager"
-│       ├── Create Void (main)
+│       ├── Create Void (main, synchronized)
 │       ├── [Separator]
 │       └── Multi-Cut (dropdown)
 ├── Annotation Tools Panel
 │   └── Arrange Dimensions (push button)
 └── Excel Tools Panel
-    └── Excel to Revit (push button) ✅ NEW - SESSION 5
+    └── Excel to Revit (push button) → mở ExcelToRevitWindow (V3.0)
 ```
-
----
-
-## BUILD & DEPLOYMENT
-
-### Visual Studio Setup
-1. Open ArcTool.sln
-2. Project: ArcTool.Core, Target: .NET 8.0
-3. Build → Build Solution (Ctrl+Shift+B)
-4. Output: `ArcTool.Core\Bin\x64\Debug\net8.0-windows\`
-
-### Build Commands
-```powershell
-cd D:\OneDrive - MSFT\Plugin Revit\ArcTool
-dotnet build -c Debug
-dotnet build -c Release
-```
-
-### Deployment Checklist
-- [ ] Build successful (0 errors, 0 warnings)
-- [ ] All commands registered in App.cs
-- [ ] CONTEXT.md updated
-- [ ] SKILL.md updated  
-- [ ] ArcTool_Instructions.md updated
-- [ ] Git commit & push
-- [ ] .addin manifest created
-- [ ] Manifest path correct
 
 ---
 
 ## TROUBLESHOOTING
 
-| Error | Cause | Solution |
+| Error / Symptom | Nguyên nhân | Giải pháp |
 |---|---|---|
-| CS0104: TaskDialog ambiguous | Import System.Windows.Forms + Autodesk.Revit.UI | Use alias: `using RevitTaskDialog = Autodesk.Revit.UI.TaskDialog;` |
-| Excel process locks | COM object not released properly | Verify ExcelInteropService.Dispose() called + null fields after ReleaseComObject |
-| Image tiny in Sheet | Scale factor calculation wrong | Check: ImageInstance.Width/Height *= (scalePercent/100) |
-| Image not centered | GetViewCenter() fallback issue | Check View.CropBox + View.get_BoundingBox() + fallback to XYZ.Zero |
-| Dimension skip some | Dim.Curve == null | Check ArrangeDimensionCommand error handling |
+| CS0104: TaskDialog ambiguous | Import WinForms + Revit.UI | Dùng alias: `using RevitTaskDialog = Autodesk.Revit.UI.TaskDialog;` |
+| Excel process vẫn còn trong Task Manager | COM object chưa release đúng | Kiểm tra Dispose() có null đủ `_activeSheet`, `_workbook`, `_excelApp` không |
+| Ảnh quá nhỏ sau import | ScaleFactor sai | Kiểm tra: đọc Width/Height từ `ImageInstance` sau Create, nhân với factor |
+| Legend View không tạo được | Không có Legend View template | Tạo thủ công 1 Legend View rỗng tên `ArcTool_LegendTemplate` trong Revit |
+| JSON không lưu được | File .rvt chưa được lưu lần nào | `doc.PathName` rỗng → hiện dialog yêu cầu user lưu file trước |
+| Status Dot không đổi sang đỏ | Timestamp compare sai | Kiểm tra `File.GetLastWriteTime(path) > mapping.LastModified` |
+| Smart Scale reset về mặc định sau Update | Quên đọc Width/Height trước Delete | Đọc `existingInst.Width/Height` TRƯỚC `doc.Delete(existingInst.Id)` |
+| Named Ranges không hiện trong dropdown | Sheet chưa được chọn | GetNamedRanges() phụ thuộc tên sheet, cần chọn WorkSheet trước |
+| Dimension skip một số Dim | `Dim.Curve == null` | ArrangeDimensionCommand có guard `if (baseLine == null) return false` |
+| Integer Overflow trong filter | `(int)Category.Id.Value` | Luôn dùng `(long)BuiltInCategory.OST_Walls` |
+
+---
+
+## COMMON DEVELOPMENT TASKS
+
+### Thêm Command mới vào Ribbon
+1. Tạo file `.cs` trong `Commands/` folder
+2. Implement `IExternalCommand`, đặt `[Transaction(TransactionMode.Manual)]`
+3. Trong `App.cs`: tạo `PushButtonData` trỏ đến class mới
+4. Thêm vào panel tương ứng
+
+### Thêm method mới vào ExcelInteropService
+1. Mở file Excel trước: `OpenFile(path)` phải được gọi trước
+2. Method mới thao tác với `_workbook` hoặc `_activeSheet`
+3. Release mọi COM object tạm thời ngay trong method (không để lại)
+4. Đặt `using var svc = new ExcelInteropService()` ở caller — đảm bảo Dispose()
+
+### Thêm field mới vào ExcelMapping (JSON)
+1. Thêm property vào `Models/ExcelMapping.cs`
+2. Nếu field mới không có trong JSON cũ → đặt default value hợp lý (nullable hoặc default)
+3. Cập nhật `SaveMappings()` và `LoadMappings()` nếu cần migration logic
+4. Cập nhật DataGrid binding trong `ExcelToRevitWindow.xaml`
+
+### Debug Excel COM issue
+1. Build và chạy trong Revit
+2. Mở Task Manager → Processes → tìm `EXCEL.EXE`
+3. Nếu còn sau khi lệnh kết thúc → COM object chưa được release đúng
+4. Đặt breakpoint tại `Dispose()` → kiểm tra từng field
 
 ---
 
 ## RESOURCES & LINKS
 
-- **Revit API Docs:** https://www.revitapidocs.com/2026/
-- **Autodesk Forum:** https://forums.autodesk.com/t5/Revit-API/ct-p/area-p127
+- **Revit API Docs 2026:** https://www.revitapidocs.com/2026/
+- **Autodesk Forum:** https://forums.autodesk.com/t5/revit-api/ct-p/area-p127
 - **GitHub:** https://github.com/duyquang868/ArcTool
 - **Excel COM Interop:** https://docs.microsoft.com/en-us/office/vba/api/overview/
 
 ---
 
 *ArcTool Development & Usage Instructions © 2026*
-*Last updated: SESSION 5.7 — Updated Section D (Excel to Revit refactor + COM fixes) + Added Test 4*
+*Last updated: Session 6.0 — Align với CONTEXT.md V3.0 Roadmap + Legend View API verified*

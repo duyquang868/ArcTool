@@ -98,6 +98,11 @@ catch (Exception ex)
 | Parameter, local var | camelCase | `targetWall` |
 | Interface | IPascalCase | `IElementProcessor` |
 | Constant | PascalCase | `DefaultTolerance` |
+| **Enum trong Models** | **[DomainPrefix]EnumName** | `ExcelViewType`, `ExcelRegionType` |
+
+> **Lý do prefix enum:** Tên `ViewType` và `RegionType` dễ xung đột với `Autodesk.Revit.DB.ViewType`
+> khi file import cả hai namespace → CS0104 ambiguous reference. Đây là lỗi đã xảy ra (BUG-E5 pattern)
+> và phải ngăn chặn ngay ở tầng đặt tên, không phải giải quyết bằng alias sau.
 
 ---
 
@@ -498,3 +503,4 @@ public bool ExportRegion(string sheetName, string regionName, string outputPath)
 - Null biến local trong `ReleaseObject()` — vô nghĩa, null field gốc ở caller
 - Giữ reference Revit element sau khi Transaction kết thúc — có thể bị invalidate
 - `DisplayUnitType` — đã deprecated, dùng `UnitTypeId` (ForgeTypeId)
+- **Đặt tên enum `ViewType` hoặc `RegionType` trong Models** — CS0104 collision với `Autodesk.Revit.DB.ViewType` ở bất kỳ file nào import cả hai namespace. Luôn dùng domain prefix: `ExcelViewType`, `ExcelRegionType`

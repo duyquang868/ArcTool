@@ -52,6 +52,16 @@ Tôi là kiến trúc sư với **20 năm kinh nghiệm thực chiến** trong n
 - UI WPF modeless đã xong, dùng Idling event
 - ⏳ Cần: implement logic Copy/Paste Filter
 
+### H. ExcelMapping Model — `Models/ExcelMapping.cs` (V1.0 ✅ STABLE — Session 6.1)
+- POCO class, JsonSerializable — không phụ thuộc Revit API, compile độc lập
+- Namespace: `ArcTool.Core.Models`
+- Enum `ExcelRegionType`: NamedRange / PrintArea / UsedRange
+- Enum `ExcelViewType`: DraftingView / LegendView
+- ⚠️ Prefix `Excel` bắt buộc — tránh CS0104 collision với `Autodesk.Revit.DB.ViewType`
+- `[JsonIgnore]` helpers: `IsFirstImport`, `HasStoredDimensions`, `BuildViewName()`
+- `Region = null` (không phải `""`) = "chưa chọn Named Range"
+- Sentinel: `ImageInstanceId = 0`, `StoredWidth/Height = 0.0`, `LastModified = DateTime.MinValue`
+
 ---
 
 ## EXCEL TO REVIT V3.0 — SPEC TÓM TẮT
@@ -68,12 +78,13 @@ Tôi là kiến trúc sư với **20 năm kinh nghiệm thực chiến** trong n
 
 ### File mới cần tạo
 
-| File | Mô tả |
-|---|---|
-| `Models/ExcelMapping.cs` | POCO: Id, ViewName, AutoSync, LastModified, WorkSheet, Region, RegionType, ViewType, FilePath, ImageInstanceId, StoredWidth, StoredHeight |
-| `Services/ArcToolSettingsService.cs` | Load/Save JSON cạnh .rvt |
-| `Services/ExcelSyncEngine.cs` | CheckForChanges(), ExecuteUpdate(), GetOrCreateView() |
-| `UI/ExcelToRevitWindow.xaml` + `.cs` | WPF DataGrid 10 cột theo UI spec |
+| File | Mô tả | Trạng thái |
+|---|---|---|
+| `Models/ExcelMapping.cs` | POCO: Id, ViewName, AutoSync, LastModified, WorkSheet, Region, **ExcelRegionType**, **ExcelViewType**, FilePath, ImageInstanceId, StoredWidth, StoredHeight | ✅ DONE — Session 6.1 |
+| `Services/ArcToolSettingsService.cs` | Load/Save JSON cạnh .rvt (atomic write pattern) | ⏳ Phase 1B |
+| `Services/ExcelInteropService.cs` (mở rộng) | Thêm GetSheetNames(), GetNamedRanges(), ExportRegion() → V5.3 | ⏳ Phase 1B |
+| `Services/ExcelSyncEngine.cs` | CheckForChanges(), ExecuteUpdate(), GetOrCreateView() | ⏳ Phase 2 |
+| `UI/ExcelToRevitWindow.xaml` + `.cs` | WPF DataGrid 10 cột theo UI spec | ⏳ Phase 3 |
 
 ### Legend View — Giới hạn API đã verify
 Revit API 2026 **không có method tạo Legend View từ đầu**. Workaround: `view.Duplicate(ViewDuplicateOption.WithDetailing)`. Yêu cầu: project phải có sẵn 1 Legend View rỗng tên `ArcTool_LegendTemplate`.
@@ -261,6 +272,7 @@ ArcTool Tab (3 Panels)
 | Error / Symptom | Nguyên nhân | Giải pháp |
 |---|---|---|
 | CS0104: TaskDialog ambiguous | Import WinForms + Revit.UI | Dùng alias: `using RevitTaskDialog = Autodesk.Revit.UI.TaskDialog;` |
+| CS0104: ViewType ambiguous | Import `ArcTool.Core.Models` + `Autodesk.Revit.DB` trong cùng file | Enum trong Models phải có prefix: `ExcelViewType`, `ExcelRegionType` — không dùng `ViewType` thuần |
 | Excel process vẫn còn trong Task Manager | COM object chưa release đúng | Kiểm tra Dispose() có null đủ `_activeSheet`, `_workbook`, `_excelApp` không |
 | Ảnh quá nhỏ sau import | ScaleFactor sai | Kiểm tra: đọc Width/Height từ `ImageInstance` sau Create, nhân với factor |
 | Legend View không tạo được | Không có Legend View template | Tạo thủ công 1 Legend View rỗng tên `ArcTool_LegendTemplate` trong Revit |
@@ -311,4 +323,4 @@ ArcTool Tab (3 Panels)
 ---
 
 *ArcTool Development & Usage Instructions © 2026*
-*Last updated: Session 6.0 — Align với CONTEXT.md V3.0 Roadmap + Legend View API verified*
+*Last updated: Session 6.1 — ExcelMapping.cs ✅ build success + enum naming convention locked*

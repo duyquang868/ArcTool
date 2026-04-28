@@ -1,7 +1,7 @@
 # ARCTOOL — AI SESSION CONTEXT
 > Paste file này vào ĐẦU mỗi session chat mới với AI.
 > Cập nhật sau mỗi session làm việc.
-> Last updated: 2026-04-21 — Session 6.0: Rollback to V5.7 stable + Excel to Revit V3.0 Roadmap + Legend View API verified
+> Last updated: 2026-04-28 — Session 6.1: Phase 1A complete — Models/ExcelMapping.cs ✅ build success
 
 ---
 
@@ -45,7 +45,8 @@ ArcTool/
 │   │   └── FilterWindow.xaml.cs
 │   ├── Utilities/
 │   │   └── SelectionFilters.cs
-│   ├── Models/                         ← Placeholder — sẽ chứa ExcelMapping model
+│   ├── Models/
+│   │   └── ExcelMapping.cs             ← V1.0 ✅ STABLE — POCO + enums ExcelRegionType/ExcelViewType
 │   ├── Resources/
 │   │   ├── icon_create_16.jpg
 │   │   ├── icon_create_32.jpg
@@ -108,6 +109,16 @@ ArcTool/
 - Command skeleton đã xong, dùng Idling event để real-time update
 - ⏳ TODO: Implement logic Copy/Paste Filter thực sự bằng ParameterFilterElement API
 
+### H. ExcelMapping Model — `Models/ExcelMapping.cs` (V1.0 ✅ STABLE — Session 6.1)
+- POCO class, JsonSerializable với `System.Text.Json` — không phụ thuộc Revit API
+- Namespace: `ArcTool.Core.Models`
+- Enum `ExcelRegionType`: NamedRange / PrintArea / UsedRange
+- Enum `ExcelViewType`: DraftingView / LegendView
+- ⚠️ Enum đặt tên có prefix `Excel` — tránh collision với `Autodesk.Revit.DB.ViewType`
+- Computed helpers `[JsonIgnore]`: `IsFirstImport`, `HasStoredDimensions`, `BuildViewName()`
+- Sentinel values đã chốt: `ImageInstanceId = 0`, `StoredWidth/Height = 0.0`, `LastModified = DateTime.MinValue`
+- `Region = null` (không phải `""`) → "chưa chọn Named Range, dùng PrintArea/UsedRange"
+
 ---
 
 ## 4. BUG REGISTRY — TRẠNG THÁI
@@ -149,6 +160,7 @@ ArcTool/
 | KHÔNG ReleaseComObject sau Delete() | Delete đã revoke COM handle | — |
 | JSON lưu cạnh file .rvt | Setting đi theo project folder | Mất nếu copy .rvt sang thư mục khác mà không copy JSON |
 | Legend View: Duplicate thay vì Create | Revit API 2026 không có method tạo Legend mới | User phải tạo thủ công 1 Legend View rỗng làm template lần đầu |
+| Enum prefix `Excel` (ExcelViewType, ExcelRegionType) | Tránh `CS0104` collision với `Autodesk.Revit.DB.ViewType` khi import cả hai namespace | Tên dài hơn spec gốc — đây là quyết định bắt buộc, không phải tuỳ chọn |
 
 ---
 
@@ -484,13 +496,16 @@ public class ArcToolSettingsService
 
 ```
 Phase 1 — Models & Services (không phụ thuộc UI)
-  [ ] Tạo Models/ExcelMapping.cs (POCO class, JsonSerializable)
+  [x] Tạo Models/ExcelMapping.cs ✅ Session 6.1 — build success
+        NOTE: Enum đổi tên ExcelViewType / ExcelRegionType (tránh collision DB.ViewType)
+        NOTE: Region = null (không phải "") cho "chưa chọn Named Range"
+        NOTE: LastModified default = DateTime.MinValue (file luôn "changed" lần đầu — đúng ý)
   [ ] Tạo Services/ArcToolSettingsService.cs (Load/Save JSON)
-  [ ] Mở rộng Services/ExcelInteropService.cs:
+  [ ] Mở rộng Services/ExcelInteropService.cs → V5.3:
         [ ] GetSheetNames()
         [ ] GetNamedRanges(sheetName)
         [ ] ExportRegion(sheetName, regionName, outputPath)
-  [ ] Verify Legend View creation API tại revitapidocs.com/2026
+  [x] Verify Legend View creation API tại revitapidocs.com/2026 ✅ (không có Create())
 
 Phase 2 — Logic Layer (không phụ thuộc UI)
   [ ] Viết ExcelSyncEngine.cs:
@@ -571,6 +586,12 @@ string jsonPath = Path.Combine(dir, "ArcTool_ExcelSync.json");
 
 // 8. Verify Legend View API trước khi code
 // → site:revitapidocs.com/2026 Legend View Create
+
+// 9. Enum trong Models PHẢI có prefix để tránh collision với Revit API
+// Sai:  public enum ViewType   → CS0104 khi file import Autodesk.Revit.DB
+// Đúng: public enum ExcelViewType
+// Sai:  public enum RegionType → tiềm năng collision tương lai
+// Đúng: public enum ExcelRegionType
 ```
 
 ---
@@ -596,4 +617,4 @@ string jsonPath = Path.Combine(dir, "ArcTool_ExcelSync.json");
 ---
 
 *ArcTool © 2026 — Internal development documentation*
-*Session 6.0: Rollback stable + Excel to Revit V3.0 full spec*
+*Session 6.1: Phase 1A — ExcelMapping.cs ✅ build success + enum naming decision locked*

@@ -42,7 +42,7 @@ Tôi là kiến trúc sư với **20 năm kinh nghiệm thực chiến** trong n
 - Hidden Excel, export Print Area / UsedRange → PNG 35x scale
 - COM release đúng thứ tự child → parent
 - Method hiện có: `OpenFile()`, `GetActiveSheetName()`, `ExportPrintAreaAsHighResImage()`
-- ⏳ Cần thêm (V5.3): `GetSheetNames()`, `GetNamedRanges()`, `ExportRegion()`
+- ⏳ Cần thêm (V5.3): `GetSheetNames()`, `GetNamedRanges(sheetName)`, `ExportRegion(sheetName, regionName, outputPath)`
 
 ### F. Excel to Revit — `ExcelToRevitCommand.cs` (V1.0 — STABLE, chờ V3.0)
 - Pipeline đơn giản: chọn Excel → export PNG → ImageType.Create() → ImageInstance
@@ -61,6 +61,18 @@ Tôi là kiến trúc sư với **20 năm kinh nghiệm thực chiến** trong n
 - `[JsonIgnore]` helpers: `IsFirstImport`, `HasStoredDimensions`, `BuildViewName()`
 - `Region = null` (không phải `""`) = "chưa chọn Named Range"
 - Sentinel: `ImageInstanceId = 0`, `StoredWidth/Height = 0.0`, `LastModified = DateTime.MinValue`
+
+### I. Settings Service — `Services/ArcToolSettingsService.cs` (V1.0 ✅ STABLE — Session 6.2)
+- Static class, chỉ phụ thuộc `Document` (đọc `doc.PathName`) và `ArcTool.Core.Models`
+- **Atomic write**: ghi `.tmp` cùng thư mục → `File.Replace()` / `File.Move()` — không bao giờ corrupt JSON nếu crash
+- **`JsonStringEnumConverter`**: enum serialize thành string (`"DraftingView"`) trong JSON
+- **`JsonSerializerOptions`** cached `static readonly` — không allocate mới mỗi call
+- **`LoadMappings()`**: trả về `List<>` rỗng nếu file không tồn tại hoặc corrupt — không crash
+- **`SaveMappings()`**: throw `IOException` nếu ghi thất bại — caller phải hiện dialog
+- **`GetSettingsPath()`**: throw `InvalidOperationException` khi `doc.PathName` rỗng
+- **`FileExists(mapping)`**: guard cho Status Dot vàng
+- **`HasFileChanged(mapping)`**: so sánh `File.GetLastWriteTime()` (local) > `mapping.LastModified` (local)
+- ⚠️ Luôn dùng `DateTime.Now` khi gán `LastModified` — KHÔNG `DateTime.UtcNow`
 
 ---
 
@@ -81,8 +93,8 @@ Tôi là kiến trúc sư với **20 năm kinh nghiệm thực chiến** trong n
 | File | Mô tả | Trạng thái |
 |---|---|---|
 | `Models/ExcelMapping.cs` | POCO: Id, ViewName, AutoSync, LastModified, WorkSheet, Region, **ExcelRegionType**, **ExcelViewType**, FilePath, ImageInstanceId, StoredWidth, StoredHeight | ✅ DONE — Session 6.1 |
-| `Services/ArcToolSettingsService.cs` | Load/Save JSON cạnh .rvt (atomic write pattern) | ⏳ Phase 1B |
-| `Services/ExcelInteropService.cs` (mở rộng) | Thêm GetSheetNames(), GetNamedRanges(), ExportRegion() → V5.3 | ⏳ Phase 1B |
+| `Services/ArcToolSettingsService.cs` | Load/Save JSON cạnh .rvt — atomic write pattern, FileExists(), HasFileChanged() | ✅ DONE — Session 6.2 |
+| `Services/ExcelInteropService.cs` (mở rộng) | Thêm GetSheetNames(), GetNamedRanges(), ExportRegion() → V5.3 | ⏳ Phase 1C |
 | `Services/ExcelSyncEngine.cs` | CheckForChanges(), ExecuteUpdate(), GetOrCreateView() | ⏳ Phase 2 |
 | `UI/ExcelToRevitWindow.xaml` + `.cs` | WPF DataGrid 10 cột theo UI spec | ⏳ Phase 3 |
 
@@ -204,7 +216,7 @@ ArcTool.Core\Bin\x64\Debug\net8.0-windows\
 - [ ] Ảnh đặt tại tâm View
 - [ ] Status Dot = xanh
 - [ ] JSON lưu đúng: FilePath, WorkSheet, Region, ImageInstanceId, StoredWidth, StoredHeight
-- [ ] LastModified = thời gian hiện tại
+- [ ] LastModified = `DateTime.Now` (local time)
 
 #### Test 5B — Import lần đầu (Legend View)
 1. Tạo trước: 1 Legend View rỗng tên `ArcTool_LegendTemplate` trong Revit
@@ -237,16 +249,30 @@ ArcTool.Core\Bin\x64\Debug\net8.0-windows\
 **Assertions:**
 - [ ] Khi dialog mở: mapping có AutoSync=true tự động update (không cần nhấn nút)
 - [ ] Nút Update per-row bị disabled khi AutoSync=true
-- [ ] LastModified cập nhật
+- [ ] LastModified cập nhật = `DateTime.Now`
 
 #### Test 5E — File Not Found
 1. Di chuyển file Excel sang thư mục khác
 2. Mở dialog
 
 **Assertions:**
-- [ ] Status Dot = màu vàng (warning, khác với đỏ)
+- [ ] Status Dot = màu vàng (`ArcToolSettingsService.FileExists()` trả về false)
 - [ ] Nút Update disabled
 - [ ] Click icon warning → OpenFileDialog cho phép chọn lại đường dẫn
+
+#### Test 5F — ArcToolSettingsService (Unit-level)
+1. Chạy lệnh khi file `.rvt` chưa được lưu (doc.PathName rỗng)
+
+**Assertions:**
+- [ ] `GetSettingsPath()` throw `InvalidOperationException` — dialog yêu cầu lưu file
+- [ ] Không crash NullReferenceException
+
+2. Corrupt thủ công file `ArcTool_ExcelSync.json` (xóa một nửa nội dung)
+3. Mở lại dialog
+
+**Assertions:**
+- [ ] Tool vẫn mở được, DataGrid rỗng (không crash)
+- [ ] File `.corrupt_[timestamp]` xuất hiện cạnh JSON
 
 ---
 
@@ -272,15 +298,17 @@ ArcTool Tab (3 Panels)
 | Error / Symptom | Nguyên nhân | Giải pháp |
 |---|---|---|
 | CS0104: TaskDialog ambiguous | Import WinForms + Revit.UI | Dùng alias: `using RevitTaskDialog = Autodesk.Revit.UI.TaskDialog;` |
-| CS0104: ViewType ambiguous | Import `ArcTool.Core.Models` + `Autodesk.Revit.DB` trong cùng file | Enum trong Models phải có prefix: `ExcelViewType`, `ExcelRegionType` — không dùng `ViewType` thuần |
+| CS0104: ViewType ambiguous | Import `ArcTool.Core.Models` + `Autodesk.Revit.DB` trong cùng file | Enum trong Models phải có prefix: `ExcelViewType`, `ExcelRegionType` |
 | Excel process vẫn còn trong Task Manager | COM object chưa release đúng | Kiểm tra Dispose() có null đủ `_activeSheet`, `_workbook`, `_excelApp` không |
-| Ảnh quá nhỏ sau import | ScaleFactor sai | Kiểm tra: đọc Width/Height từ `ImageInstance` sau Create, nhân với factor |
+| Ảnh quá nhỏ sau import | ScaleFactor sai | Đọc Width/Height từ `ImageInstance` sau Create, nhân với factor |
 | Legend View không tạo được | Không có Legend View template | Tạo thủ công 1 Legend View rỗng tên `ArcTool_LegendTemplate` trong Revit |
-| JSON không lưu được | File .rvt chưa được lưu lần nào | `doc.PathName` rỗng → hiện dialog yêu cầu user lưu file trước |
-| Status Dot không đổi sang đỏ | Timestamp compare sai | Kiểm tra `File.GetLastWriteTime(path) > mapping.LastModified` |
+| JSON không lưu được | File .rvt chưa được lưu lần nào | `doc.PathName` rỗng → `GetSettingsPath()` throw → hiện dialog yêu cầu lưu file |
+| Status Dot không đổi sang đỏ | Timestamp compare sai hoặc mix UTC/local | `HasFileChanged()` dùng local time; `LastModified` phải gán `DateTime.Now` |
 | Smart Scale reset về mặc định sau Update | Quên đọc Width/Height trước Delete | Đọc `existingInst.Width/Height` TRƯỚC `doc.Delete(existingInst.Id)` |
-| Named Ranges không hiện trong dropdown | Sheet chưa được chọn | GetNamedRanges() phụ thuộc tên sheet, cần chọn WorkSheet trước |
-| Dimension skip một số Dim | `Dim.Curve == null` | ArrangeDimensionCommand có guard `if (baseLine == null) return false` |
+| JSON bị corrupt sau crash | `File.WriteAllText()` trực tiếp | Luôn dùng `ArcToolSettingsService.SaveMappings()` — atomic write |
+| Enum deserialize lỗi từ JSON cũ | JSON cũ lưu enum dạng số (0, 1) | JSON mới dùng string ("DraftingView") — cần migration nếu upgrade |
+| Named Ranges không hiện trong dropdown | Sheet chưa được chọn | `GetNamedRanges()` phụ thuộc tên sheet, cần chọn WorkSheet trước |
+| Dimension skip một số Dim | `Dim.Curve == null` | `ArrangeDimensionCommand` có guard `if (baseLine == null) return false` |
 | Integer Overflow trong filter | `(int)Category.Id.Value` | Luôn dùng `(long)BuiltInCategory.OST_Walls` |
 
 ---
@@ -302,14 +330,36 @@ ArcTool Tab (3 Panels)
 ### Thêm field mới vào ExcelMapping (JSON)
 1. Thêm property vào `Models/ExcelMapping.cs`
 2. Nếu field mới không có trong JSON cũ → đặt default value hợp lý (nullable hoặc default)
-3. Cập nhật `SaveMappings()` và `LoadMappings()` nếu cần migration logic
+3. `ArcToolSettingsService` không cần sửa — `JsonSerializer` tự xử lý field mới với default value
 4. Cập nhật DataGrid binding trong `ExcelToRevitWindow.xaml`
+
+### Gọi ArcToolSettingsService đúng cách
+```csharp
+// Load — luôn wrap try-catch vì có thể throw nếu doc.PathName rỗng
+try { mappings = ArcToolSettingsService.LoadMappings(doc); }
+catch (InvalidOperationException ex) { TaskDialog.Show("ArcTool", ex.Message); return Result.Failed; }
+
+// Save — wrap thêm IOException
+try { ArcToolSettingsService.SaveMappings(doc, mappings); }
+catch (InvalidOperationException ex) { TaskDialog.Show("ArcTool", ex.Message); return Result.Failed; }
+catch (IOException ex) { TaskDialog.Show("ArcTool Error", $"Không thể lưu: {ex.Message}"); return Result.Failed; }
+
+// Check status — không cần try-catch, cả hai handle exception nội bộ
+bool exists    = ArcToolSettingsService.FileExists(mapping);
+bool hasChange = ArcToolSettingsService.HasFileChanged(mapping);
+```
 
 ### Debug Excel COM issue
 1. Build và chạy trong Revit
 2. Mở Task Manager → Processes → tìm `EXCEL.EXE`
 3. Nếu còn sau khi lệnh kết thúc → COM object chưa được release đúng
 4. Đặt breakpoint tại `Dispose()` → kiểm tra từng field
+
+### Debug JSON settings issue
+1. Mở thư mục chứa file `.rvt`
+2. Kiểm tra `ArcTool_ExcelSync.json` tồn tại và đúng format
+3. Nếu thấy file `.tmp` → lần save trước bị interrupt giữa chừng (vô hại, sẽ bị overwrite lần sau)
+4. Nếu thấy file `.corrupt_[timestamp]` → JSON đã bị corrupt, tool đã tự backup và reset về List rỗng
 
 ---
 
@@ -323,4 +373,4 @@ ArcTool Tab (3 Panels)
 ---
 
 *ArcTool Development & Usage Instructions © 2026*
-*Last updated: Session 6.1 — ExcelMapping.cs ✅ build success + enum naming convention locked*
+*Last updated: Session 6.2 — ArcToolSettingsService.cs ✅ build success + atomic write pattern locked*

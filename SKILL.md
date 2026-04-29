@@ -235,7 +235,6 @@ public void Dispose()
 }
 
 // Trường hợp Delete() COM object: KHÔNG ReleaseComObject sau đó
-// Delete() đã revoke COM handle → gọi ReleaseComObject tiếp là undefined behavior
 finally
 {
     ReleaseObject(chart);           // child trước
@@ -252,8 +251,8 @@ finally
 
 ```csharp
 // MỤC ĐÍCH: Tôn trọng kích thước user đã resize trực tiếp trên View Revit.
-// Lần đầu import: StoredWidth/Height = kích thước mặc định Revit (không hiển thị cho user).
-// Các lần Update sau: đọc lại Width/Height thực từ instance → lưu → áp lại cho instance mới.
+// Lần đầu import: StoredWidth/Height = kích thước mặc định Revit.
+// Các lần Update sau: đọc lại Width/Height thực → lưu → áp lại cho instance mới.
 
 double storedWidth  = mapping.StoredWidth;   // fallback từ JSON nếu instance không tìm thấy
 double storedHeight = mapping.StoredHeight;
@@ -265,7 +264,7 @@ if (existingInst != null && existingInst.IsValidObject)
     storedWidth  = existingInst.Width;
     storedHeight = existingInst.Height;
     doc.Delete(existingInst.Id);
-    // KHÔNG Marshal.ReleaseComObject — ImageInstance là Revit managed object, không phải COM
+    // KHÔNG Marshal.ReleaseComObject — ImageInstance là Revit managed object
 }
 
 // Tạo instance mới → áp lại kích thước đã lưu
@@ -276,52 +275,73 @@ if (storedWidth > 0 && storedHeight > 0)
     newInst.Height = storedHeight;
 }
 
-// Cập nhật JSON
+// Cập nhật mapping — dùng DateTime.Now (local), nhất quán với HasFileChanged()
 mapping.ImageInstanceId = newInst.Id.Value;
 mapping.StoredWidth     = newInst.Width;
 mapping.StoredHeight    = newInst.Height;
+mapping.LastModified    = DateTime.Now;
 ```
 
-### Pattern 7 — JSON Persistence: Lưu setting cạnh file .rvt
+### Pattern 7 — JSON Persistence: Atomic Write (✅ IMPLEMENTED — ArcToolSettingsService)
 
 ```csharp
-// File JSON nằm cùng thư mục với .rvt → setting đi theo project folder.
-// Trade-off: mất setting nếu copy .rvt sang máy khác mà không copy JSON.
+// QUAN TRỌNG: KHÔNG dùng File.WriteAllText() trực tiếp cho JSON settings.
+// Nếu Revit crash giữa chừng, file bị corrupt một phần → mất toàn bộ mapping data.
+//
+// CHIẾN LƯỢC ATOMIC WRITE:
+//   1. Ghi vào [filename].tmp (cùng thư mục với JSON đích)
+//   2a. File.Replace(tmp, json, null) nếu file đích đã tồn tại    ← atomic trên NTFS
+//   2b. File.Move(tmp, json) nếu file đích chưa tồn tại           ← atomic rename
+//
+// Kết quả: crash ở bước 1 → .tmp corrupt, JSON gốc nguyên vẹn.
+//          crash ở bước 2 → .tmp còn đó (sẽ bị overwrite lần sau), JSON gốc nguyên vẹn.
+//
+// KHÔNG tự implement lại pattern này — gọi ArcToolSettingsService.SaveMappings().
 
-public static class ArcToolSettingsService
+// JsonSerializerOptions — cache static readonly, KHÔNG allocate mới mỗi lần call
+private static readonly JsonSerializerOptions SerializerOptions = new JsonSerializerOptions
 {
-    private const string FileName = "ArcTool_ExcelSync.json";
+    WriteIndented               = true,
+    PropertyNameCaseInsensitive = true,          // tolerate case mismatch khi đọc JSON cũ
+    Converters                  = { new JsonStringEnumConverter() }
+    // JsonStringEnumConverter: enum → string ("DraftingView") thay vì số (0)
+    // Forward-compatible khi thêm enum value mới
+    // ⚠️ Sẽ DeserializeException nếu JSON cũ chứa enum dạng số nguyên
+};
 
-    public static string GetSettingsPath(Document doc)
+public static void SaveMappings(Document doc, List<ExcelMapping> mappings)
+{
+    string finalPath = GetSettingsPath(doc);  // throw nếu doc.PathName rỗng
+    string tempPath  = finalPath + ".tmp";    // cùng thư mục = cùng volume = atomic
+
+    string json = JsonSerializer.Serialize(mappings, SerializerOptions);
+    File.WriteAllText(tempPath, json, Encoding.UTF8);
+
+    if (File.Exists(finalPath))
+        File.Replace(tempPath, finalPath, destinationBackupFileName: null);
+    else
+        File.Move(tempPath, finalPath);
+}
+
+public static List<ExcelMapping> LoadMappings(Document doc)
+{
+    string path = GetSettingsPath(doc);
+    if (!File.Exists(path)) return new List<ExcelMapping>();
+
+    try
     {
-        if (string.IsNullOrEmpty(doc.PathName))
-            throw new InvalidOperationException("Vui lòng lưu file Revit trước khi dùng tính năng này.");
-
-        return Path.Combine(Path.GetDirectoryName(doc.PathName)!, FileName);
+        string json = File.ReadAllText(path, Encoding.UTF8);
+        return JsonSerializer.Deserialize<List<ExcelMapping>>(json, SerializerOptions)
+               ?? new List<ExcelMapping>();
     }
-
-    public static List<ExcelMapping> LoadMappings(Document doc)
+    catch (JsonException)
     {
-        string path = GetSettingsPath(doc);
-        if (!File.Exists(path)) return new List<ExcelMapping>();
-
-        try
-        {
-            string json = File.ReadAllText(path);
-            return JsonSerializer.Deserialize<List<ExcelMapping>>(json)
-                   ?? new List<ExcelMapping>();
-        }
-        catch
-        {
-            return new List<ExcelMapping>(); // Corrupt file → bắt đầu lại
-        }
+        TryBackupCorruptFile(path);   // rename → .corrupt_[timestamp], max 5 bản
+        return new List<ExcelMapping>();
     }
-
-    public static void SaveMappings(Document doc, List<ExcelMapping> mappings)
+    catch (Exception)
     {
-        string path = GetSettingsPath(doc);
-        var options = new JsonSerializerOptions { WriteIndented = true };
-        File.WriteAllText(path, JsonSerializer.Serialize(mappings, options));
+        return new List<ExcelMapping>();
     }
 }
 ```
@@ -329,34 +349,46 @@ public static class ArcToolSettingsService
 ### Pattern 8 — Change Detection: So sánh timestamp file Excel vs LastModified
 
 ```csharp
-// Cơ chế: KHÔNG chạy ngầm liên tục. Chỉ check khi dialog mở.
-// Logic: file.LastWriteTime > mapping.LastModified → có thay đổi chưa sync.
+// QUAN TRỌNG: LUÔN dùng DateTime.Now (local time) khi gán LastModified.
+// File.GetLastWriteTime() trả về local time — phải nhất quán.
+// KHÔNG mix DateTime.UtcNow và DateTime.Now trong cùng một luồng so sánh.
 
+// Trong ArcToolSettingsService (đã implement):
 public static bool HasFileChanged(ExcelMapping mapping)
 {
-    if (!File.Exists(mapping.FilePath)) return false; // File mất → xử lý riêng
+    if (string.IsNullOrWhiteSpace(mapping?.FilePath)) return false;
+    if (!File.Exists(mapping.FilePath)) return false;  // file mất → xử lý riêng qua FileExists()
 
-    DateTime fileTime = File.GetLastWriteTime(mapping.FilePath);
-    return fileTime > mapping.LastModified;
+    try
+    {
+        // Cả hai đều là local time → so sánh hợp lệ
+        return File.GetLastWriteTime(mapping.FilePath) > mapping.LastModified;
+    }
+    catch { return false; }  // IOException, network path mất → không trigger false positive
 }
+
+public static bool FileExists(ExcelMapping mapping)
+    => !string.IsNullOrWhiteSpace(mapping?.FilePath) && File.Exists(mapping.FilePath);
 
 // Khi dialog mở: check tất cả mappings
 foreach (var mapping in mappings)
 {
-    bool fileExists = File.Exists(mapping.FilePath);
-    bool hasChanged = fileExists && HasFileChanged(mapping);
+    bool fileExists = ArcToolSettingsService.FileExists(mapping);
+    bool hasChanged = fileExists && ArcToolSettingsService.HasFileChanged(mapping);
 
-    // Cập nhật trạng thái UI per-row
     rowVm.FileExists = fileExists;
     rowVm.HasChanges = hasChanged;
-    rowVm.StatusDot  = hasChanged ? StatusDot.Red : StatusDot.Green;
+    rowVm.StatusDot  = !fileExists ? StatusDot.Yellow
+                     : hasChanged  ? StatusDot.Red
+                     :               StatusDot.Green;
 
-    // AutoSync: tự động update ngay khi dialog mở
-    if (mapping.AutoSync && hasChanged && fileExists)
-    {
-        ExecuteUpdate(mapping, doc);
-    }
+    if (mapping.AutoSync && hasChanged)
+        ExcelSyncEngine.ExecuteUpdate(mapping, doc);
 }
+
+// Sau khi ExecuteUpdate() thành công — gán local time
+mapping.LastModified = DateTime.Now;   // KHÔNG DateTime.UtcNow
+ArcToolSettingsService.SaveMappings(doc, allMappings);
 ```
 
 ### Pattern 9 — Legend View: Duplicate workaround (API không có Create)
@@ -403,11 +435,12 @@ private View GetOrCreateLegendView(Document doc, string viewName)
 }
 ```
 
-### Pattern 10 — ExcelInteropService: Đọc sheet names và Named Ranges
+### Pattern 10 — ExcelInteropService: Đọc sheet names và Named Ranges (V5.3)
 
 ```csharp
 // Mở rộng V5.2 → V5.3: thêm 3 method mới phục vụ ExcelToRevit V3.0.
 // Gọi Dispose() ngay sau khi đọc xong — không giữ Excel mở lâu hơn cần thiết.
+// using (var svc = new ExcelInteropService()) { svc.OpenFile(path); ... }
 
 public List<string> GetSheetNames()
 {
@@ -427,24 +460,22 @@ public List<string> GetNamedRanges(string sheetName)
     var result = new List<string>();
     if (_workbook == null) return result;
 
-    // Duyệt Names collection của workbook, lọc theo scope của sheet
     foreach (Name name in _workbook.Names)
     {
         try
         {
-            // RefersToRange.Worksheet.Name để check scope
             Range r = name.RefersToRange;
             if (r?.Worksheet?.Name == sheetName)
                 result.Add(name.Name);
             if (r != null) Marshal.ReleaseComObject(r);
         }
-        catch { /* Named Range có thể trỏ đến vùng không hợp lệ → bỏ qua */ }
+        catch { /* Named Range trỏ đến vùng không hợp lệ → bỏ qua */ }
         Marshal.ReleaseComObject(name);
     }
     return result;
 }
 
-/// <param name="regionName">null = Print Area → UsedRange fallback</param>
+/// <param name="regionName">null = PrintArea → UsedRange fallback tự động</param>
 public bool ExportRegion(string sheetName, string regionName, string outputPath)
 {
     Worksheet ws = null;
@@ -452,15 +483,12 @@ public bool ExportRegion(string sheetName, string regionName, string outputPath)
 
     try
     {
-        // Lấy sheet theo tên
         ws = _workbook.Worksheets[sheetName] as Worksheet;
         if (ws == null) return false;
 
         // Ưu tiên: Named Range → Print Area → UsedRange
         if (!string.IsNullOrEmpty(regionName))
-        {
             try { targetRange = ws.Range[regionName]; } catch { }
-        }
 
         if (targetRange == null)
         {
@@ -482,6 +510,48 @@ public bool ExportRegion(string sheetName, string regionName, string outputPath)
 }
 ```
 
+### Pattern 11 — ArcToolSettingsService: Cách gọi đúng từ caller
+
+```csharp
+// GetSettingsPath() và LoadMappings() đều throw InvalidOperationException
+// nếu doc.PathName rỗng. Caller PHẢI wrap try-catch và hiện dialog.
+
+// ── Cách load đúng ──
+List<ExcelMapping> mappings;
+try
+{
+    mappings = ArcToolSettingsService.LoadMappings(doc);
+}
+catch (InvalidOperationException ex)
+{
+    // doc.PathName rỗng — file Revit chưa được lưu
+    TaskDialog.Show("ArcTool", ex.Message);
+    return Result.Failed;
+}
+
+// ── Cách save đúng ──
+try
+{
+    ArcToolSettingsService.SaveMappings(doc, mappings);
+}
+catch (InvalidOperationException ex)
+{
+    TaskDialog.Show("ArcTool", ex.Message);
+    return Result.Failed;
+}
+catch (IOException ex)
+{
+    // Disk đầy, quyền truy cập, file bị lock
+    TaskDialog.Show("ArcTool Error", $"Không thể lưu settings: {ex.Message}");
+    return Result.Failed;
+}
+
+// ── Check trạng thái per-row ──
+bool exists    = ArcToolSettingsService.FileExists(mapping);
+bool hasChange = ArcToolSettingsService.HasFileChanged(mapping);
+// Không cần try-catch — cả hai đã handle exception nội bộ, trả về false khi lỗi
+```
+
 ---
 
 ## 7. DO's & DON'Ts NHANH
@@ -490,10 +560,14 @@ public bool ExportRegion(string sheetName, string regionName, string outputPath)
 - Null field gốc SAU khi gọi `ReleaseComObject()`
 - Đọc `ImageInstance.Width/Height` TRƯỚC khi `doc.Delete()`
 - Dùng `IsValidObject` để guard trước khi truy cập Revit element
-- Lưu JSON cạnh `.rvt` để setting đi theo project
+- Lưu JSON cạnh `.rvt` — setting đi theo project folder
 - Ưu tiên tên Legend template `ArcTool_LegendTemplate` để dễ identify
-- Check `File.Exists()` trước khi compare timestamp
+- Check `File.Exists()` qua `ArcToolSettingsService.FileExists()` trước khi compare timestamp
 - Dùng `using` cho `ExcelInteropService` — không giữ Excel mở lâu hơn cần
+- **Dùng `ArcToolSettingsService.SaveMappings()` — không tự gọi `File.WriteAllText()` cho JSON**
+- **Dùng `DateTime.Now` (local time) khi gán `LastModified`** — nhất quán với `File.GetLastWriteTime()`
+- **Cache `JsonSerializerOptions` dưới dạng `static readonly`** — không allocate mới mỗi call
+- Wrap `LoadMappings()` và `SaveMappings()` trong try-catch — cả hai có thể throw
 
 ### DON'T ❌
 - `(int)elem.Category.Id.Value` → Integer Overflow, luôn dùng `(long)`
@@ -503,4 +577,7 @@ public bool ExportRegion(string sheetName, string regionName, string outputPath)
 - Null biến local trong `ReleaseObject()` — vô nghĩa, null field gốc ở caller
 - Giữ reference Revit element sau khi Transaction kết thúc — có thể bị invalidate
 - `DisplayUnitType` — đã deprecated, dùng `UnitTypeId` (ForgeTypeId)
-- **Đặt tên enum `ViewType` hoặc `RegionType` trong Models** — CS0104 collision với `Autodesk.Revit.DB.ViewType` ở bất kỳ file nào import cả hai namespace. Luôn dùng domain prefix: `ExcelViewType`, `ExcelRegionType`
+- **Đặt tên enum `ViewType` hoặc `RegionType` trong Models** — CS0104 collision
+- **`File.WriteAllText()` trực tiếp cho JSON settings** — không atomic, có thể corrupt nếu crash
+- **`DateTime.UtcNow` cho `LastModified`** — `File.GetLastWriteTime()` trả về local, mix = so sánh sai
+- **Tạo `JsonSerializerOptions` mới** trong code ngoài `ArcToolSettingsService` — dùng instance đã có

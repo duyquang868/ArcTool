@@ -3,6 +3,10 @@
   "WorkspaceRootPath": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\quang mini\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\services\\arctoolsettingsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|solutionrelative:arctool.core\\services\\arctoolsettingsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\quang mini\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\models\\excelmapping.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|solutionrelative:arctool.core\\models\\excelmapping.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
@@ -31,6 +35,19 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "ArcToolSettingsService.cs",
+              "DocumentMoniker": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Services\\ArcToolSettingsService.cs",
+              "RelativeDocumentMoniker": "ArcTool.Core\\Services\\ArcToolSettingsService.cs",
+              "ToolTip": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Services\\ArcToolSettingsService.cs",
+              "RelativeToolTip": "ArcTool.Core\\Services\\ArcToolSettingsService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAMwAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-28T12:53:55.698Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
               "Title": "ExcelMapping.cs",
               "DocumentMoniker": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Models\\ExcelMapping.cs",
               "RelativeDocumentMoniker": "ArcTool.Core\\Models\\ExcelMapping.cs",
@@ -38,8 +55,7 @@
               "RelativeToolTip": "ArcTool.Core\\Models\\ExcelMapping.cs",
               "ViewState": "AgIAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-27T13:22:21.473Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-04-27T13:22:21.473Z"
             }
           ]
         }

@@ -1,7 +1,7 @@
 # ARCTOOL — AI SESSION CONTEXT
 > Paste file này vào ĐẦU mỗi session chat mới với AI.
 > Cập nhật sau mỗi session làm việc.
-> Last updated: 2026-04-28 — Session 6.1: Phase 1A complete — Models/ExcelMapping.cs ✅ build success
+> Last updated: 2026-04-29 — Session 6.2: Phase 1B complete — Services/ArcToolSettingsService.cs ✅ build success
 
 ---
 
@@ -39,7 +39,8 @@ ArcTool/
 │   │   ├── FilterManagerCommand.cs
 │   │   └── ExcelToRevitCommand.cs      ← V1.0 stable (V3.0 đang trong roadmap)
 │   ├── Services/
-│   │   └── ExcelInteropService.cs      ← V5.2 stable
+│   │   ├── ExcelInteropService.cs      ← V5.2 stable
+│   │   └── ArcToolSettingsService.cs   ← V1.0 ✅ STABLE — Load/Save JSON, atomic write
 │   ├── UI/
 │   │   ├── FilterWindow.xaml
 │   │   └── FilterWindow.xaml.cs
@@ -97,6 +98,7 @@ ArcTool/
 - Scale factor: 35x cố định
 - Có IDisposable, COM release đúng thứ tự child → parent
 - Có GetActiveSheetName() để lấy tên sheet đang active
+- ⏳ Cần thêm (V5.3): `GetSheetNames()`, `GetNamedRanges(sheetName)`, `ExportRegion(sheetName, regionName, outputPath)`
 
 ### F. Excel to Revit — `ExcelToRevitCommand.cs` (V1.0 — STABLE, chờ V3.0)
 - Pipeline hiện tại: Excel → PNG → ImageType.Create() → ImageInstance.Create()
@@ -118,6 +120,30 @@ ArcTool/
 - Computed helpers `[JsonIgnore]`: `IsFirstImport`, `HasStoredDimensions`, `BuildViewName()`
 - Sentinel values đã chốt: `ImageInstanceId = 0`, `StoredWidth/Height = 0.0`, `LastModified = DateTime.MinValue`
 - `Region = null` (không phải `""`) → "chưa chọn Named Range, dùng PrintArea/UsedRange"
+
+### I. Settings Service — `Services/ArcToolSettingsService.cs` (V1.0 ✅ STABLE — Session 6.2)
+- Static class, không phụ thuộc Revit API ngoài `Document` (chỉ đọc `doc.PathName`)
+- **Atomic write pattern**: ghi vào `.tmp` cùng thư mục → `File.Replace()` / `File.Move()`
+  - `File.Replace()` nếu JSON đích đã tồn tại (lần 2 trở đi)
+  - `File.Move()` nếu JSON chưa tồn tại (lần đầu tiên)
+  - Cả hai đều atomic trên cùng NTFS volume → không bao giờ corrupt JSON giữa chừng
+- **JsonSerializerOptions** cached dưới dạng `static readonly` — tránh allocate mỗi call
+  - `JsonStringEnumConverter`: serialize enum thành string (`"DraftingView"`) thay vì số (`0`)
+  - `PropertyNameCaseInsensitive = true`: tolerate case mismatch khi đọc JSON cũ
+  - `WriteIndented = true`: JSON dễ đọc/debug bằng text editor
+- **LoadMappings()**: trả về `List<ExcelMapping>` rỗng nếu file không tồn tại hoặc corrupt
+  - Bắt `JsonException` riêng → log + backup `.corrupt_[timestamp]` (tối đa 5 bản)
+  - Bắt `Exception` (IOException, UnauthorizedAccess) → log + trả về List rỗng
+- **SaveMappings()**: throw `IOException` nếu ghi thất bại — caller phải hiện dialog
+- **GetSettingsPath()**: throw `InvalidOperationException` khi `doc.PathName` rỗng
+- **FileExists(mapping)**: check `File.Exists(mapping.FilePath)` — guard cho Status Dot vàng
+- **HasFileChanged(mapping)**: so sánh `File.GetLastWriteTime()` > `mapping.LastModified`
+  - Dùng **local time** (không phải UTC) — phải nhất quán với `DateTime.Now` khi gán `LastModified`
+  - Trả về `false` (không throw) nếu file không tồn tại — caller dùng `FileExists()` riêng
+- ⚠️ KNOWN LIMITATION: `JsonStringEnumConverter` sẽ throw `DeserializeException` nếu JSON cũ
+  chứa enum dạng số nguyên (`"viewType": 0`) — cần migration logic khi upgrade từ phiên bản cũ hơn
+- ⚠️ KNOWN LIMITATION: Atomic write không đảm bảo nếu `.rvt` và `.tmp` nằm khác volume
+  (edge case không thực tế trong môi trường làm việc bình thường)
 
 ---
 
@@ -161,6 +187,11 @@ ArcTool/
 | JSON lưu cạnh file .rvt | Setting đi theo project folder | Mất nếu copy .rvt sang thư mục khác mà không copy JSON |
 | Legend View: Duplicate thay vì Create | Revit API 2026 không có method tạo Legend mới | User phải tạo thủ công 1 Legend View rỗng làm template lần đầu |
 | Enum prefix `Excel` (ExcelViewType, ExcelRegionType) | Tránh `CS0104` collision với `Autodesk.Revit.DB.ViewType` khi import cả hai namespace | Tên dài hơn spec gốc — đây là quyết định bắt buộc, không phải tuỳ chọn |
+| Atomic write: `.tmp` → `File.Replace()`/`File.Move()` | Không bao giờ để JSON ở trạng thái corrupt nếu crash | `.tmp` không được dọn nếu crash ở bước 2; vô hại vì sẽ bị overwrite lần sau |
+| `JsonStringEnumConverter` cho enum fields | Forward-compatible khi thêm enum value mới; JSON dễ đọc | Sẽ `DeserializeException` nếu JSON cũ chứa enum dạng số nguyên |
+| `DateTime` local time cho `LastModified` | `File.GetLastWriteTime()` trả về local time; nhất quán với nhau | Nếu người dùng đổi timezone máy tính, so sánh timestamp có thể sai |
+| `JsonSerializerOptions` là `static readonly` | Tránh allocate object mỗi lần call Load/Save | Không thread-safe nếu có code sửa options — nhưng options này là immutable sau init |
+| File corrupt → backup `.corrupt_[timestamp]`, tối đa 5 bản | Giữ lại để debug, không để disk đầy | Nếu corrupt liên tục (ví dụ bug serialize), vẫn tích lũy 5 file; cần monitor |
 
 ---
 
@@ -187,18 +218,18 @@ File JSON lưu tại: **cùng folder với file .rvt**, tên `ArcTool_ExcelSync.
 {
   "Mappings": [
     {
-      "Id": "guid-string",
-      "ViewName": "BudgetOverview",
-      "AutoSync": true,
-      "LastModified": "2024-04-22T14:53:00",
-      "WorkSheet": "Budget Overview",
-      "Region": "ChartTest",
-      "RegionType": "NamedRange",
-      "ViewType": "LegendView",
-      "FilePath": "C:\\Project\\Chart-Sample.xlsx",
-      "ImageInstanceId": 12345,
-      "StoredWidth": 2.5,
-      "StoredHeight": 1.8
+      "id": "guid-string",
+      "viewName": "BudgetOverview",
+      "autoSync": true,
+      "lastModified": "2024-04-22T14:53:00",
+      "workSheet": "Budget Overview",
+      "region": "ChartTest",
+      "regionType": "NamedRange",
+      "viewType": "LegendView",
+      "filePath": "C:\\Project\\Chart-Sample.xlsx",
+      "imageInstanceId": 12345,
+      "storedWidth": 2.5,
+      "storedHeight": 1.8
     }
   ]
 }
@@ -208,18 +239,18 @@ File JSON lưu tại: **cùng folder với file .rvt**, tên `ArcTool_ExcelSync.
 
 | Field | Type | Mô tả |
 |---|---|---|
-| `Id` | GUID string | Unique identifier của mapping |
-| `ViewName` | string | Tên View Revit = SheetName, hoặc "SheetName_RegionName" nếu là Named Range |
-| `AutoSync` | bool | true = tự động update khi dialog mở + file đã thay đổi |
-| `LastModified` | DateTime | Timestamp lần update thành công cuối cùng (thủ công hoặc auto) |
-| `WorkSheet` | string | Tên sheet trong file Excel |
-| `Region` | string? | null = dùng Print Area / UsedRange; tên = Named Range cụ thể |
-| `RegionType` | enum | `"NamedRange"` / `"PrintArea"` / `"UsedRange"` |
-| `ViewType` | enum | `"LegendView"` / `"DraftingView"` |
-| `FilePath` | string | Đường dẫn tuyệt đối tới file Excel |
-| `ImageInstanceId` | long | `ElementId.Value` của ImageInstance trong Revit |
-| `StoredWidth` | double | Width (feet) của ImageInstance — đọc từ Revit, không phải % |
-| `StoredHeight` | double | Height (feet) của ImageInstance — đọc từ Revit |
+| `id` | GUID string | Unique identifier của mapping |
+| `viewName` | string | Tên View Revit = SheetName, hoặc "SheetName_RegionName" nếu là Named Range |
+| `autoSync` | bool | true = tự động update khi dialog mở + file đã thay đổi |
+| `lastModified` | DateTime | Local time của lần update thành công cuối cùng |
+| `workSheet` | string | Tên sheet trong file Excel |
+| `region` | string? | null = dùng Print Area / UsedRange; tên = Named Range cụ thể |
+| `regionType` | enum string | `"NamedRange"` / `"PrintArea"` / `"UsedRange"` |
+| `viewType` | enum string | `"LegendView"` / `"DraftingView"` |
+| `filePath` | string | Đường dẫn tuyệt đối tới file Excel |
+| `imageInstanceId` | long | `ElementId.Value` của ImageInstance trong Revit |
+| `storedWidth` | double | Width (feet) của ImageInstance |
+| `storedHeight` | double | Height (feet) của ImageInstance |
 
 **Logic Region:**
 - `RegionType = "NamedRange"`: gọi `worksheet.Names` để lấy range
@@ -240,7 +271,7 @@ File JSON lưu tại: **cùng folder với file .rvt**, tên `ArcTool_ExcelSync.
 | # | Column | Control | Ghi chú |
 |---|---|---|---|
 | 1 | Select | CheckBox | Chọn nhiều dòng để thực hiện batch action |
-| 2 | Status Dot | Ellipse fill | Xanh = synced, Đỏ = file Excel mới hơn LastModified |
+| 2 | Status Dot | Ellipse fill | Xanh = synced, Đỏ = file Excel mới hơn LastModified, Vàng = file không tìm thấy |
 | 3 | View Name | TextBlock (read-only) | Auto-generated, không cho user sửa trực tiếp |
 | 4 | Auto Sync | CheckBox | true → nút Update per-row bị disabled |
 | 5 | Last Modified | TextBlock | Format: "dd/MM/yyyy HH:mm" |
@@ -262,16 +293,17 @@ File JSON lưu tại: **cùng folder với file .rvt**, tên `ArcTool_ExcelSync.
 ```
 [ExcelToRevitCommand.Execute()]
   │
-  ├─ 1. Load JSON (ArcTool_ExcelSync.json cạnh .rvt)
+  ├─ 1. ArcToolSettingsService.LoadMappings(doc)
   │      → Deserialize thành List<ExcelMapping>
+  │      → Nếu doc.PathName rỗng → throw → hiện dialog yêu cầu save file
   │
   ├─ 2. Với mỗi mapping:
-  │      ├─ Check File.Exists(FilePath)
-  │      │    └─ Không tồn tại → Status = FileNotFound (icon cảnh báo khác)
-  │      ├─ So sánh: File.GetLastWriteTime(FilePath) > LastModified
-  │      │    └─ Nếu mới hơn → HasChanges = true → Status Dot đỏ
-  │      └─ Nếu AutoSync = true && HasChanges = true
-  │           → ExecuteUpdate(mapping, doc) tự động
+  │      ├─ ArcToolSettingsService.FileExists(mapping)
+  │      │    └─ false → Status = FileNotFound (Status Dot vàng)
+  │      ├─ ArcToolSettingsService.HasFileChanged(mapping)
+  │      │    └─ true → HasChanges = true → Status Dot đỏ
+  │      └─ Nếu AutoSync = true && HasChanges = true && FileExists = true
+  │           → ExcelSyncEngine.ExecuteUpdate(mapping, doc) tự động
   │
   └─ 3. Show dialog với bảng đã populate
 ```
@@ -284,24 +316,26 @@ File JSON lưu tại: **cùng folder với file .rvt**, tên `ArcTool_ExcelSync.
 User nhấn "+"
   │
   ├─ Tạo dòng mới với giá trị mặc định:
-  │    AutoSync = false
-  │    ViewType = "DraftingView" (mặc định)
-  │    Region = null (UsedRange)
+  │    AutoSync = false, ViewType = "DraftingView", Region = null
   │
   ├─ FilePath column: user click Browse button
   │    └─ OpenFileDialog → chọn .xlsx / .xls
   │         └─ Sau khi chọn:
-  │              ├─ ExcelInteropService.OpenFile() → đọc sheet names
-  │              ├─ WorkSheet dropdown: populate sheet names
-  │              └─ ExcelInteropService.Dispose() ngay sau khi đọc xong
+  │              ├─ using (var svc = new ExcelInteropService())
+  │              │    svc.OpenFile() → svc.GetSheetNames()
+  │              │    svc.Dispose() ngay sau khi đọc xong
+  │              └─ WorkSheet dropdown: populate sheet names
   │
   ├─ User chọn WorkSheet
-  │    └─ Region dropdown: populate (Print Areas + Named Ranges của sheet đó)
+  │    └─ using (var svc = new ExcelInteropService())
+  │         svc.OpenFile() → svc.GetNamedRanges(sheetName)
+  │         svc.Dispose() ngay sau khi đọc xong
+  │       → Region dropdown: populate (Print Area + Named Ranges)
   │
-  ├─ ViewName: tự điền = SheetName (hoặc SheetName_RegionName nếu chọn Named Range)
-  │    → ViewName tự cập nhật khi WorkSheet hoặc Region thay đổi
+  ├─ ViewName: tự điền = mapping.BuildViewName()
+  │    → Tự cập nhật khi WorkSheet hoặc Region thay đổi
   │
-  └─ User chọn ViewType → OK
+  └─ User nhấn OK / nhấn Update
 ```
 
 ---
@@ -309,69 +343,68 @@ User nhấn "+"
 ### 6.6 Luồng Khi Nhấn Update (Per Row hoặc Update All)
 
 ```
-ExecuteUpdate(ExcelMapping mapping, Document doc)
+ExcelSyncEngine.ExecuteUpdate(ExcelMapping mapping, Document doc)
   │
   ├─ 1. Export Excel → Temp PNG
-  │      ExcelInteropService.OpenFile(mapping.FilePath)
-  │      ExcelInteropService.ExportRegion(mapping.WorkSheet, mapping.Region, tempPng)
-  │      ExcelInteropService.Dispose()
+  │      using (var svc = new ExcelInteropService())
+  │        svc.OpenFile(mapping.FilePath)
+  │        svc.ExportRegion(mapping.WorkSheet, mapping.Region, tempPng)
+  │        svc.Dispose()
   │
-  ├─ 2. Đọc StoredWidth/StoredHeight TRƯỚC KHI xóa ảnh cũ
-  │      var existingInst = doc.GetElement(mapping.ImageInstanceId) as ImageInstance
+  ├─ 2. Đọc StoredWidth/StoredHeight TRƯỚC KHI xóa ảnh cũ (Smart Scale)
+  │      var existingInst = doc.GetElement(new ElementId(mapping.ImageInstanceId)) as ImageInstance
   │      if (existingInst != null && existingInst.IsValidObject)
   │      {
-  │          mapping.StoredWidth  = existingInst.Width   ← đọc kích thước thực
-  │          mapping.StoredHeight = existingInst.Height    (phản ánh resize của user)
+  │          storedWidth  = existingInst.Width
+  │          storedHeight = existingInst.Height
   │      }
-  │      // Nếu không tìm thấy instance → dùng giá trị StoredWidth/Height từ JSON
+  │      else { storedWidth = mapping.StoredWidth; storedHeight = mapping.StoredHeight; }
   │
   ├─ 3. Transaction("ArcTool: Refresh Excel Image")
-  │      ├─ GetOrCreateView(mapping.ViewName, mapping.ViewType) → targetView
-  │      │    ├─ Nếu view đã tồn tại → ghi đè (xóa ImageInstance cũ trong view đó)
-  │      │    └─ Nếu chưa có → tạo mới (ViewDrafting.Create hoặc View.CreateLegend)
-  │      ├─ Nếu existingInst valid → doc.Delete(existingInst.Id)
+  │      ├─ GetOrCreateView(mapping.ViewName, mapping.ViewType, doc) → targetView
+  │      ├─ if (existingInst valid) → doc.Delete(existingInst.Id)
   │      ├─ ImageType.Create(doc, tempPng) → imageType
   │      ├─ ImageInstance.Create(doc, targetView, ...) → newInst
-  │      ├─ newInst.Width  = mapping.StoredWidth   ← áp lại kích thước đã lưu
-  │      ├─ newInst.Height = mapping.StoredHeight
+  │      ├─ if (storedWidth > 0 && storedHeight > 0)
+  │      │    newInst.Width = storedWidth; newInst.Height = storedHeight
   │      └─ Commit()
   │
-  ├─ 4. Cập nhật mapping trong JSON:
-  │      mapping.LastModified   = DateTime.Now
+  ├─ 4. Cập nhật mapping:
+  │      mapping.LastModified    = DateTime.Now   ← local time, nhất quán với HasFileChanged()
   │      mapping.ImageInstanceId = newInst.Id.Value
-  │      mapping.StoredWidth    = newInst.Width
-  │      mapping.StoredHeight   = newInst.Height
-  │      SaveJson()
+  │      mapping.StoredWidth     = newInst.Width
+  │      mapping.StoredHeight    = newInst.Height
+  │      ArcToolSettingsService.SaveMappings(doc, allMappings)
   │
   ├─ 5. Cập nhật UI: Status Dot → xanh
   │
   └─ 6. TryDeleteFile(tempPng)
 ```
 
-**Lưu ý quan trọng — Smart Scale:**
-- Lần import đầu tiên: `StoredWidth` và `StoredHeight` = giá trị mặc định của Revit sau khi create (100% scale)
-- Giá trị này KHÔNG hiển thị cho user và KHÔNG có dialog nhập %
-- Sau khi user kéo resize ảnh trực tiếp trong Revit → lần Update tiếp theo sẽ đọc Width/Height mới → lưu → áp lại
+**Lưu ý — Smart Scale:**
+- Lần import đầu tiên (`IsFirstImport = true`): `StoredWidth/Height` = kích thước mặc định Revit
+- Không có dialog nhập % — scale được quyết định hoàn toàn bởi kéo resize trực tiếp trong Revit
+- Lần Update tiếp theo: đọc Width/Height thực → lưu JSON → áp lại cho instance mới
 
 ---
 
 ### 6.7 Xử Lý File Excel Không Tìm Thấy
 
 ```
-Khi dialog mở + File.Exists(FilePath) == false:
-  ├─ Status Dot = màu vàng (warning, khác với đỏ = has changes)
+ArcToolSettingsService.FileExists(mapping) == false:
+  ├─ Status Dot = màu vàng (FileNotFound — khác với đỏ = HasChanges)
   ├─ Nút Update = disabled
-  ├─ Tooltip trên dòng: "File not found. Click to relocate."
-  └─ User click vào icon warning:
+  ├─ Tooltip: "File không tìm thấy. Click để chọn lại đường dẫn."
+  └─ User click icon warning:
        └─ OpenFileDialog → chọn file mới
             ├─ mapping.FilePath = newPath
-            ├─ SaveJson()
-            └─ Re-check status (compare timestamp)
+            ├─ ArcToolSettingsService.SaveMappings(doc, mappings)
+            └─ Re-check: HasFileChanged(mapping) → cập nhật Status Dot
 ```
 
 ---
 
-### 6.8 ExcelInteropService — Mở Rộng Cần Thêm
+### 6.8 ExcelInteropService — Mở Rộng Cần Thêm (V5.3)
 
 Service hiện tại (V5.2) chỉ có `ExportPrintAreaAsHighResImage()`. V3.0 cần thêm:
 
@@ -379,13 +412,15 @@ Service hiện tại (V5.2) chỉ có `ExportPrintAreaAsHighResImage()`. V3.0 c�
 // Lấy tất cả sheet names trong file
 public List<string> GetSheetNames()
 
-// Lấy tất cả Named Ranges trong một sheet cụ thể
+// Lấy tất cả Named Ranges thuộc về một sheet cụ thể
 public List<string> GetNamedRanges(string sheetName)
 
-// Export theo sheet + region cụ thể (thay thế ExportPrintAreaAsHighResImage)
+// Export theo sheet + region cụ thể
+// regionName = null → PrintArea → UsedRange (fallback tự động)
 public bool ExportRegion(string sheetName, string regionName, string outputPath)
-// regionName = null → Print Area → UsedRange (fallback tự động)
 ```
+
+Pattern implement: xem SKILL.md Pattern 10.
 
 ---
 
@@ -394,7 +429,6 @@ public bool ExportRegion(string sheetName, string regionName, string outputPath)
 #### Drafting View — ✅ API đầy đủ, stable
 
 ```csharp
-// Tạo Drafting View mới hoàn toàn — không cần template
 ViewFamilyType draftingType = new FilteredElementCollector(doc)
     .OfClass(typeof(ViewFamilyType))
     .Cast<ViewFamilyType>()
@@ -406,88 +440,20 @@ view.Name = viewName;
 
 #### Legend View — ⚠️ KHÔNG CÓ API TẠO MỚI — Dùng Workaround Duplicate
 
-**Thực trạng đã xác nhận:** Revit API đến phiên bản 2026 **không cung cấp method tạo Legend View mới từ đầu**. `ViewFamily.Legend` enum chỉ dùng để *đọc/lọc*, không có `Create()` tương ứng. Đây là giới hạn lâu năm của Autodesk, cộng đồng đã request nhiều lần nhưng chưa được giải quyết.
-
-**Quyết định: Phương án B — Duplicate từ Legend Template**
-
-Yêu cầu bắt buộc: Project Revit **phải có sẵn ít nhất 1 Legend View rỗng** đóng vai trò template. ArcTool sẽ duplicate cái đó và đặt tên theo sheet.
-
-```csharp
-/// <summary>
-/// Tìm Legend View template (rỗng, dùng để duplicate).
-/// Convention: tên phải là "ArcTool_LegendTemplate" hoặc bất kỳ Legend View nào trong project.
-/// Phải gọi trong Transaction đang active.
-/// </summary>
-private View GetOrCreateLegendView(Document doc, string viewName)
-{
-    // Bước 1: Kiểm tra Legend View với tên đích đã tồn tại chưa
-    var existing = new FilteredElementCollector(doc)
-        .OfClass(typeof(View))
-        .Cast<View>()
-        .FirstOrDefault(v => v.ViewType == ViewType.Legend
-                          && string.Equals(v.Name, viewName, StringComparison.OrdinalIgnoreCase));
-    if (existing != null) return existing; // Ghi đè: dùng view cũ (xóa ImageInstance cũ bên trong)
-
-    // Bước 2: Tìm Legend View template để duplicate
-    View legendTemplate = new FilteredElementCollector(doc)
-        .OfClass(typeof(View))
-        .Cast<View>()
-        .FirstOrDefault(v => v.ViewType == ViewType.Legend && !v.IsTemplate);
-
-    if (legendTemplate == null)
-    {
-        // Không có Legend View nào trong project → báo lỗi rõ ràng cho user
-        throw new InvalidOperationException(
-            "Không tìm thấy Legend View nào trong project.\n\n" +
-            "Để dùng tính năng này, hãy tạo thủ công 1 Legend View rỗng trong Revit " +
-            "(View tab → Legend), sau đó chạy lại lệnh.");
-    }
-
-    // Bước 3: Duplicate với detailing (giữ lại các element annotation nếu có)
-    ElementId newViewId = legendTemplate.Duplicate(ViewDuplicateOption.WithDetailing);
-    View newLegendView = doc.GetElement(newViewId) as View;
-
-    // Đổi tên theo sheet Excel
-    try   { newLegendView.Name = viewName; }
-    catch { newLegendView.Name = $"{viewName}_{DateTime.Now:HHmmss}"; } // fallback nếu tên trùng
-
-    return newLegendView;
-}
-```
-
-**UX Flow khi không có Legend Template:**
-
-```
-User chọn ViewType = "Legend View" cho một mapping
-  └─ Khi nhấn Update:
-       └─ GetOrCreateLegendView() throw InvalidOperationException
-            └─ Tool hiển thị dialog:
-                 "Không tìm thấy Legend View nào trong project.
-                  Hãy tạo 1 Legend View rỗng trong Revit (View tab → Legend),
-                  sau đó nhấn Update lại."
-```
-
-**Trade-off đã chấp nhận:**
-- User phải tạo thủ công 1 Legend View rỗng lần đầu tiên
-- Nếu project có nhiều Legend View, tool sẽ dùng cái tìm thấy đầu tiên làm template
-- Nếu Legend template có annotation elements → chúng sẽ bị copy sang view mới (WithDetailing)
-  → Khuyến nghị: đặt tên template rõ ràng, ví dụ "ArcTool_Template", để dễ quản lý
+Revit API 2026 **không có method tạo Legend View mới từ đầu**. Workaround: `view.Duplicate(ViewDuplicateOption.WithDetailing)`. Yêu cầu: project phải có sẵn ít nhất 1 Legend View rỗng. Pattern implement: xem SKILL.md Pattern 9.
 
 ---
 
-### 6.10 JSON Service — ArcToolSettingsService
+### 6.10 JSON Service — ArcToolSettingsService (✅ IMPLEMENTED — Session 6.2)
 
-File mới cần tạo: `Services/ArcToolSettingsService.cs`
+Public API:
 
 ```csharp
-public class ArcToolSettingsService
-{
-    // Path: [rvt_folder]\ArcTool_ExcelSync.json
-    public static string GetSettingsPath(Document doc)
-
-    public static List<ExcelMapping> LoadMappings(Document doc)
-    public static void SaveMappings(Document doc, List<ExcelMapping> mappings)
-}
+public static string GetSettingsPath(Document doc)       // throw nếu doc.PathName rỗng
+public static List<ExcelMapping> LoadMappings(Document doc)   // trả về [] nếu không có/corrupt
+public static void SaveMappings(Document doc, List<ExcelMapping> mappings) // atomic write
+public static bool FileExists(ExcelMapping mapping)       // check file Excel tồn tại
+public static bool HasFileChanged(ExcelMapping mapping)   // so sánh timestamp local time
 ```
 
 ---
@@ -497,10 +463,14 @@ public class ArcToolSettingsService
 ```
 Phase 1 — Models & Services (không phụ thuộc UI)
   [x] Tạo Models/ExcelMapping.cs ✅ Session 6.1 — build success
-        NOTE: Enum đổi tên ExcelViewType / ExcelRegionType (tránh collision DB.ViewType)
+        NOTE: Enum ExcelViewType / ExcelRegionType (tránh collision DB.ViewType)
         NOTE: Region = null (không phải "") cho "chưa chọn Named Range"
-        NOTE: LastModified default = DateTime.MinValue (file luôn "changed" lần đầu — đúng ý)
-  [ ] Tạo Services/ArcToolSettingsService.cs (Load/Save JSON)
+        NOTE: LastModified default = DateTime.MinValue (file luôn "changed" lần đầu)
+  [x] Tạo Services/ArcToolSettingsService.cs ✅ Session 6.2 — build success
+        NOTE: Atomic write pattern (.tmp → Replace/Move)
+        NOTE: JsonStringEnumConverter (enum → string trong JSON)
+        NOTE: DateTime local time cho HasFileChanged() và LastModified
+        NOTE: File corrupt → backup .corrupt_[timestamp], tối đa 5 bản
   [ ] Mở rộng Services/ExcelInteropService.cs → V5.3:
         [ ] GetSheetNames()
         [ ] GetNamedRanges(sheetName)
@@ -508,20 +478,20 @@ Phase 1 — Models & Services (không phụ thuộc UI)
   [x] Verify Legend View creation API tại revitapidocs.com/2026 ✅ (không có Create())
 
 Phase 2 — Logic Layer (không phụ thuộc UI)
-  [ ] Viết ExcelSyncEngine.cs:
-        [ ] CheckForChanges(List<ExcelMapping>, Document)
-        [ ] ExecuteUpdate(ExcelMapping, Document)
-        [ ] GetOrCreateView(viewName, viewType, Document) — trong Transaction
+  [ ] Viết Services/ExcelSyncEngine.cs:
+        [ ] CheckForChanges(List<ExcelMapping>, Document) → dùng ArcToolSettingsService
+        [ ] ExecuteUpdate(ExcelMapping, Document) → Smart Scale + atomic save
+        [ ] GetOrCreateView(viewName, ExcelViewType, Document) — trong Transaction
 
 Phase 3 — UI
-  [ ] Thiết kế ExcelToRevitWindow.xaml (WPF DataGrid theo UI Spec 6.3)
-  [ ] ExcelToRevitWindow.xaml.cs:
-        [ ] Load data vào DataGrid
+  [ ] Thiết kế UI/ExcelToRevitWindow.xaml (WPF DataGrid theo UI Spec 6.3)
+  [ ] UI/ExcelToRevitWindow.xaml.cs:
+        [ ] Load data → DataGrid (dùng LoadMappings + HasFileChanged + FileExists)
         [ ] Handle "+" / "-" buttons
         [ ] Handle Update per-row button
         [ ] Handle "Update All" button
         [ ] Handle Browse file button
-        [ ] Handle File Not Found warning
+        [ ] Handle File Not Found warning click
 
 Phase 4 — Integration
   [ ] Sửa ExcelToRevitCommand.cs để mở ExcelToRevitWindow thay vì pipeline cũ
@@ -540,12 +510,15 @@ Tất cả 5 bug nghiêm trọng + 4 COM bug đã fix.
 - Implement Copy/Paste Filter bằng ParameterFilterElement API
 - Hoàn thiện MVVM binding
 
-### Giai đoạn 3 — Excel to Revit V3.0 🔧 TIẾP THEO
-- Xem chi tiết tại Section 6
+### Giai đoạn 3 — Excel to Revit V3.0 🔧 ĐANG TIẾN HÀNH
+- Phase 1A ✅: ExcelMapping.cs
+- Phase 1B ✅: ArcToolSettingsService.cs
+- Phase 1C ⏳: ExcelInteropService.cs V5.3 (GetSheetNames, GetNamedRanges, ExportRegion)
+- Phase 2 ⏳: ExcelSyncEngine.cs
+- Phase 3 ⏳: ExcelToRevitWindow.xaml + .cs
 
 ### Giai đoạn 4 — Quick Dim (R&D) 📋 TƯƠNG LAI
 - Nghiên cứu ReferenceArray extraction từ Wall, Column, Beam
-- Revit Dim qua Reference, khác AutoCAD qua tọa độ điểm
 
 ---
 
@@ -577,21 +550,21 @@ if (existingInst?.IsValidObject == true)
     storedWidth  = existingInst.Width;
     storedHeight = existingInst.Height;
     doc.Delete(existingInst.Id);
-    // KHÔNG ReleaseComObject — Revit managed object
 }
 
-// 7. JSON settings lưu cạnh .rvt
-string dir = Path.GetDirectoryName(doc.PathName);
-string jsonPath = Path.Combine(dir, "ArcTool_ExcelSync.json");
+// 7. JSON: atomic write — KHÔNG dùng File.WriteAllText() trực tiếp
+// Dùng ArcToolSettingsService.SaveMappings() — đã xử lý atomic write
 
-// 8. Verify Legend View API trước khi code
-// → site:revitapidocs.com/2026 Legend View Create
+// 8. DateTime: LUÔN dùng DateTime.Now (local) cho LastModified
+// HasFileChanged() dùng File.GetLastWriteTime() cũng trả về local
+// Không mix DateTime.UtcNow và DateTime.Now
 
 // 9. Enum trong Models PHẢI có prefix để tránh collision với Revit API
-// Sai:  public enum ViewType   → CS0104 khi file import Autodesk.Revit.DB
+// Sai:  public enum ViewType   → CS0104
 // Đúng: public enum ExcelViewType
-// Sai:  public enum RegionType → tiềm năng collision tương lai
-// Đúng: public enum ExcelRegionType
+
+// 10. JsonSerializerOptions: dùng instance static readonly đã có trong ArcToolSettingsService
+// Không tạo JsonSerializerOptions mới trong code khác
 ```
 
 ---
@@ -605,16 +578,20 @@ string jsonPath = Path.Combine(dir, "ArcTool_ExcelSync.json");
 | `ImageInstance.Width` / `.Height` | Đọc kích thước thực (feet) — Smart Scale |
 | `ImageInstance.IsValidObject` | Guard trước khi đọc/xóa |
 | `ViewDrafting.Create(doc, typeId)` | Tạo Drafting View — API đầy đủ, stable |
-| `view.Duplicate(ViewDuplicateOption.WithDetailing)` | Tạo Legend View mới bằng cách duplicate template — workaround bắt buộc vì không có Create() |
-| `ViewType.Legend` | Dùng để filter/đọc Legend View hiện có, không có Create() tương ứng |
+| `view.Duplicate(ViewDuplicateOption.WithDetailing)` | Tạo Legend View mới — workaround bắt buộc |
+| `ViewType.Legend` | Dùng để filter/đọc Legend View hiện có, không có Create() |
 | `ParameterFilterElement` | API cho Filter Manager |
 | `View.AddFilter()` / `View.GetFilters()` | Copy/Paste filter |
 | `Marshal.ReleaseComObject()` | COM release — child trước parent |
-| `File.GetLastWriteTime(path)` | Check timestamp Excel file |
+| `File.GetLastWriteTime(path)` | Check timestamp Excel file — trả về local time |
+| `File.Replace(source, dest, null)` | Atomic rename — NTFS, cùng volume |
+| `ArcToolSettingsService.LoadMappings(doc)` | Load JSON — không throw nếu corrupt |
+| `ArcToolSettingsService.SaveMappings(doc, list)` | Save JSON — atomic write |
+| `ArcToolSettingsService.HasFileChanged(mapping)` | So sánh timestamp local time |
 
 > **Tra cứu API bắt buộc:** https://www.revitapidocs.com/2026/
 
 ---
 
 *ArcTool © 2026 — Internal development documentation*
-*Session 6.1: Phase 1A — ExcelMapping.cs ✅ build success + enum naming decision locked*
+*Session 6.2: Phase 1B — ArcToolSettingsService.cs ✅ build success + atomic write pattern locked*

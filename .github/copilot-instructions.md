@@ -34,7 +34,7 @@ CONTEXT.md, SKILL.md, ArcTool_Instructions.md:
 - FilterManagerCommand.cs
 
 ### Services/
-- ExcelInteropService.cs (trừ khi prompt ghi rõ file này)
+- ExcelInteropService.cs
 
 ### UI/
 - FilterWindow.xaml

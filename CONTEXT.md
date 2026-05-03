@@ -1,7 +1,7 @@
 # ARCTOOL — AI SESSION CONTEXT
 > Paste file này vào ĐẦU mỗi session chat mới với AI.
 > Cập nhật sau mỗi session làm việc.
-> Last updated: 2026-04-29 — Session 6.2: Phase 1B complete — Services/ArcToolSettingsService.cs ✅ build success
+> Last updated: 2026-05-03 — Session 6.3: Phase 1C complete — Services/ExcelInteropService.cs V5.3 ✅ build success
 
 ---
 
@@ -39,7 +39,7 @@ ArcTool/
 │   │   ├── FilterManagerCommand.cs
 │   │   └── ExcelToRevitCommand.cs      ← V1.0 stable (V3.0 đang trong roadmap)
 │   ├── Services/
-│   │   ├── ExcelInteropService.cs      ← V5.2 stable
+│   │   ├── ExcelInteropService.cs      ← V5.3 ✅ STABLE — thêm GetSheetNames/GetNamedRanges/ExportRegion
 │   │   └── ArcToolSettingsService.cs   ← V1.0 ✅ STABLE — Load/Save JSON, atomic write
 │   ├── UI/
 │   │   ├── FilterWindow.xaml
@@ -93,12 +93,22 @@ ArcTool/
 - Dùng TransactionGroup để gộp toàn bộ thao tác vào 1 lần Undo
 - Filter: LinearDimensionSelectionFilter (chỉ cho phép chọn Linear Dim)
 
-### E. Excel Export Engine — `ExcelInteropService.cs` (V5.2 — STABLE)
+### E. Excel Export Engine — `ExcelInteropService.cs` (V5.3 ✅ STABLE — Session 6.3)
 - Đọc file Excel (hidden mode), export Print Area hoặc UsedRange thành PNG
 - Scale factor: 35x cố định
 - Có IDisposable, COM release đúng thứ tự child → parent
-- Có GetActiveSheetName() để lấy tên sheet đang active
-- ⏳ Cần thêm (V5.3): `GetSheetNames()`, `GetNamedRanges(sheetName)`, `ExportRegion(sheetName, regionName, outputPath)`
+- **Public API đầy đủ:**
+  - `OpenFile(filePath)` — mở file Excel, hidden mode
+  - `GetActiveSheetName()` — tên sheet đang active
+  - `ExportPrintAreaAsHighResImage(outputPath)` — export Print Area / UsedRange của active sheet
+  - `GetSheetNames()` ✅ V5.3 — list tất cả tên sheet trong workbook
+  - `GetNamedRanges(sheetName)` ✅ V5.3 — list Named Ranges thuộc 1 sheet cụ thể
+  - `ExportRegion(sheetName, regionName, outputPath)` ✅ V5.3 — export theo sheet + region (Named Range → Print Area → UsedRange fallback)
+- **Quyết định thiết kế V5.3 đã chốt:**
+  - `Sheets` và `Names` COM wrapper phải release riêng sau khi duyệt xong (không chỉ release từng item)
+  - `ExportRegion()` swap `_activeSheet` tạm thời → gọi `ExportRangeInternal()` → restore trong `finally`
+  - Restore `_activeSheet` **TRƯỚC KHI** release `ws` local — tránh trỏ vào COM đã revoke
+  - Named Range lỗi (formula, deleted, cross-sheet) bị bỏ qua trong try-catch per item, không dừng iteration
 
 ### F. Excel to Revit — `ExcelToRevitCommand.cs` (V1.0 — STABLE, chờ V3.0)
 - Pipeline hiện tại: Excel → PNG → ImageType.Create() → ImageInstance.Create()
@@ -184,14 +194,16 @@ ArcTool/
 | WinForms cho Family dialog | Đơn giản, không cần MVVM | UI không đồng nhất WPF |
 | COM release: child trước parent | Tránh InvalidComObjectException | — |
 | KHÔNG ReleaseComObject sau Delete() | Delete đã revoke COM handle | — |
-| JSON lưu cạnh file .rvt | Setting đi theo project folder | Mất nếu copy .rvt sang thư mục khác mà không copy JSON |
+| JSON lưu cạnh file .rvt | Setting đi theo project folder | Mất nếu copy .rvt mà không copy JSON |
 | Legend View: Duplicate thay vì Create | Revit API 2026 không có method tạo Legend mới | User phải tạo thủ công 1 Legend View rỗng làm template lần đầu |
-| Enum prefix `Excel` (ExcelViewType, ExcelRegionType) | Tránh `CS0104` collision với `Autodesk.Revit.DB.ViewType` khi import cả hai namespace | Tên dài hơn spec gốc — đây là quyết định bắt buộc, không phải tuỳ chọn |
-| Atomic write: `.tmp` → `File.Replace()`/`File.Move()` | Không bao giờ để JSON ở trạng thái corrupt nếu crash | `.tmp` không được dọn nếu crash ở bước 2; vô hại vì sẽ bị overwrite lần sau |
-| `JsonStringEnumConverter` cho enum fields | Forward-compatible khi thêm enum value mới; JSON dễ đọc | Sẽ `DeserializeException` nếu JSON cũ chứa enum dạng số nguyên |
-| `DateTime` local time cho `LastModified` | `File.GetLastWriteTime()` trả về local time; nhất quán với nhau | Nếu người dùng đổi timezone máy tính, so sánh timestamp có thể sai |
-| `JsonSerializerOptions` là `static readonly` | Tránh allocate object mỗi lần call Load/Save | Không thread-safe nếu có code sửa options — nhưng options này là immutable sau init |
-| File corrupt → backup `.corrupt_[timestamp]`, tối đa 5 bản | Giữ lại để debug, không để disk đầy | Nếu corrupt liên tục (ví dụ bug serialize), vẫn tích lũy 5 file; cần monitor |
+| Enum prefix `Excel` (ExcelViewType, ExcelRegionType) | Tránh `CS0104` collision với `Autodesk.Revit.DB.ViewType` | Tên dài hơn — bắt buộc, không phải tuỳ chọn |
+| Atomic write: `.tmp` → `File.Replace()`/`File.Move()` | Không để JSON corrupt nếu crash | `.tmp` không được dọn nếu crash ở bước 2; vô hại |
+| `JsonStringEnumConverter` cho enum fields | Forward-compatible khi thêm enum value mới; JSON dễ đọc | `DeserializeException` nếu JSON cũ chứa enum dạng số |
+| `DateTime` local time cho `LastModified` | `File.GetLastWriteTime()` trả về local time; nhất quán | Nếu user đổi timezone, so sánh timestamp có thể sai |
+| `JsonSerializerOptions` là `static readonly` | Tránh allocate object mỗi lần call Load/Save | Không thread-safe nếu có code sửa options — nhưng options là immutable sau init |
+| File corrupt → backup `.corrupt_[timestamp]`, tối đa 5 bản | Giữ lại để debug, không để disk đầy | Nếu corrupt liên tục, vẫn tích lũy 5 file |
+| `ExportRegion()` swap `_activeSheet` thay vì truyền ws vào `ExportRangeInternal()` | Không sửa code cũ đã stable; ExportRangeInternal dùng _activeSheet | Tạm thời thay đổi state của instance — được vì Revit single-thread |
+| Release `Sheets`/`Names` COM wrapper sau forEach | COM wrapper là object riêng, không tự release khi GC | Pattern bổ sung so với Pattern 10 gốc trong SKILL.md |
 
 ---
 
@@ -235,28 +247,11 @@ File JSON lưu tại: **cùng folder với file .rvt**, tên `ArcTool_ExcelSync.
 }
 ```
 
-**Giải thích từng field:**
-
-| Field | Type | Mô tả |
-|---|---|---|
-| `id` | GUID string | Unique identifier của mapping |
-| `viewName` | string | Tên View Revit = SheetName, hoặc "SheetName_RegionName" nếu là Named Range |
-| `autoSync` | bool | true = tự động update khi dialog mở + file đã thay đổi |
-| `lastModified` | DateTime | Local time của lần update thành công cuối cùng |
-| `workSheet` | string | Tên sheet trong file Excel |
-| `region` | string? | null = dùng Print Area / UsedRange; tên = Named Range cụ thể |
-| `regionType` | enum string | `"NamedRange"` / `"PrintArea"` / `"UsedRange"` |
-| `viewType` | enum string | `"LegendView"` / `"DraftingView"` |
-| `filePath` | string | Đường dẫn tuyệt đối tới file Excel |
-| `imageInstanceId` | long | `ElementId.Value` của ImageInstance trong Revit |
-| `storedWidth` | double | Width (feet) của ImageInstance |
-| `storedHeight` | double | Height (feet) của ImageInstance |
-
 **Logic Region:**
-- `RegionType = "NamedRange"`: gọi `worksheet.Names` để lấy range
+- `RegionType = "NamedRange"`: gọi `ExcelInteropService.GetNamedRanges(sheetName)`
 - `RegionType = "PrintArea"`: dùng `worksheet.PageSetup.PrintArea`
 - `RegionType = "UsedRange"`: fallback — `worksheet.UsedRange`
-- Ưu tiên khi export: NamedRange → PrintArea → UsedRange
+- Ưu tiên khi export: NamedRange → PrintArea → UsedRange (ExportRegion() xử lý tự động)
 
 **Logic ViewName:**
 - Dùng Print Area / UsedRange → `ViewName = SheetName`
@@ -322,13 +317,13 @@ User nhấn "+"
   │    └─ OpenFileDialog → chọn .xlsx / .xls
   │         └─ Sau khi chọn:
   │              ├─ using (var svc = new ExcelInteropService())
-  │              │    svc.OpenFile() → svc.GetSheetNames()
+  │              │    svc.OpenFile() → svc.GetSheetNames()   ← V5.3
   │              │    svc.Dispose() ngay sau khi đọc xong
   │              └─ WorkSheet dropdown: populate sheet names
   │
   ├─ User chọn WorkSheet
   │    └─ using (var svc = new ExcelInteropService())
-  │         svc.OpenFile() → svc.GetNamedRanges(sheetName)
+  │         svc.OpenFile() → svc.GetNamedRanges(sheetName)  ← V5.3
   │         svc.Dispose() ngay sau khi đọc xong
   │       → Region dropdown: populate (Print Area + Named Ranges)
   │
@@ -348,7 +343,7 @@ ExcelSyncEngine.ExecuteUpdate(ExcelMapping mapping, Document doc)
   ├─ 1. Export Excel → Temp PNG
   │      using (var svc = new ExcelInteropService())
   │        svc.OpenFile(mapping.FilePath)
-  │        svc.ExportRegion(mapping.WorkSheet, mapping.Region, tempPng)
+  │        svc.ExportRegion(mapping.WorkSheet, mapping.Region, tempPng)  ← V5.3
   │        svc.Dispose()
   │
   ├─ 2. Đọc StoredWidth/StoredHeight TRƯỚC KHI xóa ảnh cũ (Smart Scale)
@@ -370,7 +365,7 @@ ExcelSyncEngine.ExecuteUpdate(ExcelMapping mapping, Document doc)
   │      └─ Commit()
   │
   ├─ 4. Cập nhật mapping:
-  │      mapping.LastModified    = DateTime.Now   ← local time, nhất quán với HasFileChanged()
+  │      mapping.LastModified    = DateTime.Now   ← local time
   │      mapping.ImageInstanceId = newInst.Id.Value
   │      mapping.StoredWidth     = newInst.Width
   │      mapping.StoredHeight    = newInst.Height
@@ -381,18 +376,13 @@ ExcelSyncEngine.ExecuteUpdate(ExcelMapping mapping, Document doc)
   └─ 6. TryDeleteFile(tempPng)
 ```
 
-**Lưu ý — Smart Scale:**
-- Lần import đầu tiên (`IsFirstImport = true`): `StoredWidth/Height` = kích thước mặc định Revit
-- Không có dialog nhập % — scale được quyết định hoàn toàn bởi kéo resize trực tiếp trong Revit
-- Lần Update tiếp theo: đọc Width/Height thực → lưu JSON → áp lại cho instance mới
-
 ---
 
 ### 6.7 Xử Lý File Excel Không Tìm Thấy
 
 ```
 ArcToolSettingsService.FileExists(mapping) == false:
-  ├─ Status Dot = màu vàng (FileNotFound — khác với đỏ = HasChanges)
+  ├─ Status Dot = màu vàng
   ├─ Nút Update = disabled
   ├─ Tooltip: "File không tìm thấy. Click để chọn lại đường dẫn."
   └─ User click icon warning:
@@ -404,23 +394,47 @@ ArcToolSettingsService.FileExists(mapping) == false:
 
 ---
 
-### 6.8 ExcelInteropService — Mở Rộng Cần Thêm (V5.3)
-
-Service hiện tại (V5.2) chỉ có `ExportPrintAreaAsHighResImage()`. V3.0 cần thêm:
+### 6.8 ExcelInteropService — Public API Đầy Đủ (V5.3 ✅)
 
 ```csharp
-// Lấy tất cả sheet names trong file
+// Mở file, bắt buộc gọi trước mọi method khác
+public bool OpenFile(string filePath)
+
+// Lấy tên sheet active — dùng cho V1.0 pipeline
+public string GetActiveSheetName()
+
+// Export Print Area / UsedRange của active sheet — dùng cho V1.0 pipeline
+public bool ExportPrintAreaAsHighResImage(string outputPath)
+
+// [V5.3] Lấy tất cả tên sheet trong workbook
+// Dùng để populate WorkSheet ComboBox khi user chọn file Excel
+// Release Sheets wrapper + từng Worksheet COM ngay sau khi duyệt
 public List<string> GetSheetNames()
 
-// Lấy tất cả Named Ranges thuộc về một sheet cụ thể
+// [V5.3] Lấy Named Ranges thuộc 1 sheet cụ thể
+// Named Range lỗi (formula, deleted, cross-sheet) bị skip — không dừng iteration
+// Release Names wrapper + từng Name + từng Range COM
 public List<string> GetNamedRanges(string sheetName)
 
-// Export theo sheet + region cụ thể
-// regionName = null → PrintArea → UsedRange (fallback tự động)
+// [V5.3] Export theo sheet + region cụ thể
+// regionName = null/empty → fallback Print Area → UsedRange tự động
+// Swap _activeSheet tạm, restore trong finally TRƯỚC KHI release ws
 public bool ExportRegion(string sheetName, string regionName, string outputPath)
+
+// Dispose: sheet → workbook → app, GC.Collect() × 2
+public void Dispose()
 ```
 
-Pattern implement: xem SKILL.md Pattern 10.
+**Pattern sử dụng V5.3 trong ExcelSyncEngine:**
+```csharp
+// Mở 1 lần, gọi method cần thiết, Dispose ngay
+using (var svc = new ExcelInteropService())
+{
+    if (!svc.OpenFile(mapping.FilePath)) return false;
+    bool ok = svc.ExportRegion(mapping.WorkSheet, mapping.Region, tempPng);
+    // Dispose() tự gọi khi ra khỏi using
+}
+```
 
 ---
 
@@ -449,11 +463,11 @@ Revit API 2026 **không có method tạo Legend View mới từ đầu**. Workar
 Public API:
 
 ```csharp
-public static string GetSettingsPath(Document doc)       // throw nếu doc.PathName rỗng
-public static List<ExcelMapping> LoadMappings(Document doc)   // trả về [] nếu không có/corrupt
-public static void SaveMappings(Document doc, List<ExcelMapping> mappings) // atomic write
-public static bool FileExists(ExcelMapping mapping)       // check file Excel tồn tại
-public static bool HasFileChanged(ExcelMapping mapping)   // so sánh timestamp local time
+public static string GetSettingsPath(Document doc)                          // throw nếu doc.PathName rỗng
+public static List<ExcelMapping> LoadMappings(Document doc)                 // trả về [] nếu không có/corrupt
+public static void SaveMappings(Document doc, List<ExcelMapping> mappings)  // atomic write
+public static bool FileExists(ExcelMapping mapping)                         // check file Excel tồn tại
+public static bool HasFileChanged(ExcelMapping mapping)                     // so sánh timestamp local time
 ```
 
 ---
@@ -471,17 +485,19 @@ Phase 1 — Models & Services (không phụ thuộc UI)
         NOTE: JsonStringEnumConverter (enum → string trong JSON)
         NOTE: DateTime local time cho HasFileChanged() và LastModified
         NOTE: File corrupt → backup .corrupt_[timestamp], tối đa 5 bản
-  [ ] Mở rộng Services/ExcelInteropService.cs → V5.3:
-        [ ] GetSheetNames()
-        [ ] GetNamedRanges(sheetName)
-        [ ] ExportRegion(sheetName, regionName, outputPath)
+  [x] Mở rộng Services/ExcelInteropService.cs → V5.3 ✅ Session 6.3 — build success
+        NOTE: GetSheetNames() — release Sheets wrapper sau forEach
+        NOTE: GetNamedRanges() — release Names wrapper + từng Name + Range; skip lỗi
+        NOTE: ExportRegion() — swap _activeSheet, restore TRƯỚC release ws
+        NOTE: regionName = null → PrintArea → UsedRange fallback tự động
   [x] Verify Legend View creation API tại revitapidocs.com/2026 ✅ (không có Create())
 
-Phase 2 — Logic Layer (không phụ thuộc UI)
+Phase 2 — Logic Layer (không phụ thuộc UI) ← NEXT
   [ ] Viết Services/ExcelSyncEngine.cs:
-        [ ] CheckForChanges(List<ExcelMapping>, Document) → dùng ArcToolSettingsService
         [ ] ExecuteUpdate(ExcelMapping, Document) → Smart Scale + atomic save
-        [ ] GetOrCreateView(viewName, ExcelViewType, Document) — trong Transaction
+        [ ] GetOrCreateDraftingView(viewName, Document) — trong Transaction
+        [ ] GetOrCreateLegendView(viewName, Document) — Duplicate workaround
+        [ ] private TryDeleteTempFile(path)
 
 Phase 3 — UI
   [ ] Thiết kế UI/ExcelToRevitWindow.xaml (WPF DataGrid theo UI Spec 6.3)
@@ -490,7 +506,8 @@ Phase 3 — UI
         [ ] Handle "+" / "-" buttons
         [ ] Handle Update per-row button
         [ ] Handle "Update All" button
-        [ ] Handle Browse file button
+        [ ] Handle Browse file button + reload GetSheetNames() sau khi chọn file mới
+        [ ] Handle WorkSheet ComboBox selection → reload GetNamedRanges()
         [ ] Handle File Not Found warning click
 
 Phase 4 — Integration
@@ -511,10 +528,10 @@ Tất cả 5 bug nghiêm trọng + 4 COM bug đã fix.
 - Hoàn thiện MVVM binding
 
 ### Giai đoạn 3 — Excel to Revit V3.0 🔧 ĐANG TIẾN HÀNH
-- Phase 1A ✅: ExcelMapping.cs
-- Phase 1B ✅: ArcToolSettingsService.cs
-- Phase 1C ⏳: ExcelInteropService.cs V5.3 (GetSheetNames, GetNamedRanges, ExportRegion)
-- Phase 2 ⏳: ExcelSyncEngine.cs
+- Phase 1A ✅: ExcelMapping.cs (Session 6.1)
+- Phase 1B ✅: ArcToolSettingsService.cs (Session 6.2)
+- Phase 1C ✅: ExcelInteropService.cs V5.3 (Session 6.3)
+- Phase 2 ⏳: ExcelSyncEngine.cs ← **NEXT SESSION**
 - Phase 3 ⏳: ExcelToRevitWindow.xaml + .cs
 
 ### Giai đoạn 4 — Quick Dim (R&D) 📋 TƯƠNG LAI
@@ -538,13 +555,18 @@ elem.Category.Id.Value == (long)BuiltInCategory.OST_Walls  // ĐÚNG
 // 4. COM release: child → parent, null field gốc, KHÔNG release sau Delete()
 if (_activeSheet != null) { ReleaseObject(_activeSheet); _activeSheet = null; }
 
-// 5. Quick filter trước slow filter
+// 5. COM wrapper (Sheets, Names): phải release riêng sau forEach
+Sheets sheets = _workbook.Worksheets;
+// ... duyệt xong ...
+Marshal.ReleaseComObject(sheets); // KHÔNG bỏ qua bước này
+
+// 6. Quick filter trước slow filter
 new FilteredElementCollector(doc)
     .OfClass(typeof(Wall))          // quick — index-based
     .OfCategory(...)                // quick
     .Where(w => ...)                // slow — sau cùng
 
-// 6. Smart Scale pattern — đọc kích thước TRƯỚC KHI xóa
+// 7. Smart Scale pattern — đọc kích thước TRƯỚC KHI xóa
 if (existingInst?.IsValidObject == true)
 {
     storedWidth  = existingInst.Width;
@@ -552,19 +574,22 @@ if (existingInst?.IsValidObject == true)
     doc.Delete(existingInst.Id);
 }
 
-// 7. JSON: atomic write — KHÔNG dùng File.WriteAllText() trực tiếp
+// 8. JSON: atomic write — KHÔNG dùng File.WriteAllText() trực tiếp
 // Dùng ArcToolSettingsService.SaveMappings() — đã xử lý atomic write
 
-// 8. DateTime: LUÔN dùng DateTime.Now (local) cho LastModified
+// 9. DateTime: LUÔN dùng DateTime.Now (local) cho LastModified
 // HasFileChanged() dùng File.GetLastWriteTime() cũng trả về local
-// Không mix DateTime.UtcNow và DateTime.Now
 
-// 9. Enum trong Models PHẢI có prefix để tránh collision với Revit API
+// 10. Enum trong Models PHẢI có prefix để tránh collision với Revit API
 // Sai:  public enum ViewType   → CS0104
 // Đúng: public enum ExcelViewType
 
-// 10. JsonSerializerOptions: dùng instance static readonly đã có trong ArcToolSettingsService
-// Không tạo JsonSerializerOptions mới trong code khác
+// 11. ExcelInteropService: Dispose ngay sau khi đọc xong
+using (var svc = new ExcelInteropService())
+{
+    svc.OpenFile(path);
+    var sheets = svc.GetSheetNames();
+} // Dispose() tự gọi — không giữ Excel mở lâu hơn cần
 ```
 
 ---
@@ -588,10 +613,13 @@ if (existingInst?.IsValidObject == true)
 | `ArcToolSettingsService.LoadMappings(doc)` | Load JSON — không throw nếu corrupt |
 | `ArcToolSettingsService.SaveMappings(doc, list)` | Save JSON — atomic write |
 | `ArcToolSettingsService.HasFileChanged(mapping)` | So sánh timestamp local time |
+| `ExcelInteropService.GetSheetNames()` | [V5.3] List tên sheet trong workbook |
+| `ExcelInteropService.GetNamedRanges(sheetName)` | [V5.3] List Named Ranges của 1 sheet |
+| `ExcelInteropService.ExportRegion(sheet, region, path)` | [V5.3] Export vùng cụ thể → PNG |
 
 > **Tra cứu API bắt buộc:** https://www.revitapidocs.com/2026/
 
 ---
 
 *ArcTool © 2026 — Internal development documentation*
-*Session 6.2: Phase 1B — ArcToolSettingsService.cs ✅ build success + atomic write pattern locked*
+*Session 6.3: Phase 1C — ExcelInteropService.cs V5.3 ✅ build success + 3 method mới locked*

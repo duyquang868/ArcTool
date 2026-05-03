@@ -38,11 +38,18 @@ Tôi là kiến trúc sư với **20 năm kinh nghiệm thực chiến** trong n
 - Tịnh tiến Dim cách đều theo Snap Distance × View Scale
 - TransactionGroup → 1 lần Undo
 
-### E. Excel Export Engine — `ExcelInteropService.cs` (V5.2 — STABLE)
+### E. Excel Export Engine — `ExcelInteropService.cs` (V5.3 ✅ STABLE — Session 6.3)
 - Hidden Excel, export Print Area / UsedRange → PNG 35x scale
 - COM release đúng thứ tự child → parent
-- Method hiện có: `OpenFile()`, `GetActiveSheetName()`, `ExportPrintAreaAsHighResImage()`
-- ⏳ Cần thêm (V5.3): `GetSheetNames()`, `GetNamedRanges(sheetName)`, `ExportRegion(sheetName, regionName, outputPath)`
+- **Public API đầy đủ:**
+  - `OpenFile()`, `GetActiveSheetName()`, `ExportPrintAreaAsHighResImage()` — V5.2 cũ
+  - `GetSheetNames()` ✅ — list tất cả tên sheet trong workbook
+  - `GetNamedRanges(sheetName)` ✅ — list Named Ranges thuộc 1 sheet
+  - `ExportRegion(sheetName, regionName, outputPath)` ✅ — export vùng cụ thể, fallback tự động
+- **Quyết định thiết kế đã chốt (không được thay đổi):**
+  - `Sheets`/`Names` COM wrapper phải release riêng sau forEach (ngoài việc release từng item)
+  - `ExportRegion()` swap `_activeSheet` tạm → gọi `ExportRangeInternal()` → restore trong `finally`
+  - Restore `_activeSheet` **TRƯỚC KHI** `Marshal.ReleaseComObject(ws)` — bất biến
 
 ### F. Excel to Revit — `ExcelToRevitCommand.cs` (V1.0 — STABLE, chờ V3.0)
 - Pipeline đơn giản: chọn Excel → export PNG → ImageType.Create() → ImageInstance
@@ -88,14 +95,14 @@ Tôi là kiến trúc sư với **20 năm kinh nghiệm thực chiến** trong n
 | T2 | Change Detection | Check timestamp khi dialog mở. AutoSync = tự update. Thủ công = nhấn Update per-row |
 | T3 | Smart Scale | Lưu Width/Height (feet) của ImageInstance vào JSON. Áp lại khi refresh |
 
-### File mới cần tạo
+### Trạng thái implementation
 
 | File | Mô tả | Trạng thái |
 |---|---|---|
 | `Models/ExcelMapping.cs` | POCO: Id, ViewName, AutoSync, LastModified, WorkSheet, Region, **ExcelRegionType**, **ExcelViewType**, FilePath, ImageInstanceId, StoredWidth, StoredHeight | ✅ DONE — Session 6.1 |
-| `Services/ArcToolSettingsService.cs` | Load/Save JSON cạnh .rvt — atomic write pattern, FileExists(), HasFileChanged() | ✅ DONE — Session 6.2 |
-| `Services/ExcelInteropService.cs` (mở rộng) | Thêm GetSheetNames(), GetNamedRanges(), ExportRegion() → V5.3 | ⏳ Phase 1C |
-| `Services/ExcelSyncEngine.cs` | CheckForChanges(), ExecuteUpdate(), GetOrCreateView() | ⏳ Phase 2 |
+| `Services/ArcToolSettingsService.cs` | Load/Save JSON cạnh .rvt — atomic write, FileExists(), HasFileChanged() | ✅ DONE — Session 6.2 |
+| `Services/ExcelInteropService.cs` (V5.3) | GetSheetNames(), GetNamedRanges(), ExportRegion() | ✅ DONE — Session 6.3 |
+| `Services/ExcelSyncEngine.cs` | ExecuteUpdate(), GetOrCreateDraftingView(), GetOrCreateLegendView() | ⏳ Phase 2 — NEXT |
 | `UI/ExcelToRevitWindow.xaml` + `.cs` | WPF DataGrid 10 cột theo UI spec | ⏳ Phase 3 |
 
 ### Legend View — Giới hạn API đã verify
@@ -199,80 +206,94 @@ ArcTool.Core\Bin\x64\Debug\net8.0-windows\
 
 ---
 
-### Test 5: Excel to Revit V3.0 (Sau khi implement)
+### Test 5: ExcelInteropService V5.3 (Unit-level — Session 6.3)
+
+**Setup:** File Excel có ít nhất 2 sheet; 1 sheet có Named Range; 1 sheet có Print Area.
+
+#### Test 5A — GetSheetNames()
+1. Gọi `svc.OpenFile(path)` → `svc.GetSheetNames()` → `svc.Dispose()`
+2. Kiểm tra Task Manager
+
+**Assertions:**
+- [ ] Trả về đúng danh sách tên sheet theo thứ tự trong workbook
+- [ ] `EXCEL.EXE` không còn trong Task Manager sau Dispose()
+
+#### Test 5B — GetNamedRanges()
+1. Gọi `svc.GetNamedRanges("TênSheet")` sau OpenFile
+
+**Assertions:**
+- [ ] Trả về Named Ranges thuộc đúng sheet được chỉ định
+- [ ] Named Range của sheet khác không xuất hiện trong kết quả
+- [ ] Sheet không có Named Range → trả về List rỗng (không crash)
+
+#### Test 5C — ExportRegion() với Named Range
+1. Gọi `svc.ExportRegion("TênSheet", "TênNamedRange", tempPath)`
+
+**Assertions:**
+- [ ] File PNG xuất hiện tại `tempPath`
+- [ ] Nội dung PNG là vùng Named Range, không phải toàn sheet
+- [ ] `EXCEL.EXE` thoát sạch sau Dispose()
+
+#### Test 5D — ExportRegion() fallback (regionName = null)
+1. Gọi `svc.ExportRegion("TênSheet", null, tempPath)`
+
+**Assertions:**
+- [ ] Nếu sheet có Print Area: PNG = Print Area
+- [ ] Nếu không có Print Area: PNG = UsedRange
+- [ ] Không crash khi `regionName = null`
+
+---
+
+### Test 6: Excel to Revit V3.0 (Sau khi implement Phase 2 + 3)
 
 **Setup:** File Excel có nhiều sheet, một số sheet có Named Ranges. File Revit đã lưu (có PathName).
 
-#### Test 5A — Import lần đầu (Drafting View)
+#### Test 6A — Import lần đầu (Drafting View)
 1. Mở dialog Excel to Revit
 2. Nhấn `+` → Browse chọn file Excel
 3. WorkSheet dropdown: chọn sheet có Named Range
 4. Region dropdown: chọn Named Range
-5. View Type: Drafting View
-6. Nhấn Update
+5. View Type: Drafting View → Nhấn Update
 
 **Assertions:**
 - [ ] Drafting View mới tạo, tên = `[SheetName]_[RegionName]`
-- [ ] Ảnh đặt tại tâm View
-- [ ] Status Dot = xanh
+- [ ] Ảnh đặt tại tâm View, Status Dot = xanh
 - [ ] JSON lưu đúng: FilePath, WorkSheet, Region, ImageInstanceId, StoredWidth, StoredHeight
 - [ ] LastModified = `DateTime.Now` (local time)
 
-#### Test 5B — Import lần đầu (Legend View)
+#### Test 6B — Import lần đầu (Legend View)
 1. Tạo trước: 1 Legend View rỗng tên `ArcTool_LegendTemplate` trong Revit
-2. Mở dialog, `+` → chọn Excel, sheet, region
-3. View Type: Legend View
-4. Nhấn Update
+2. View Type: Legend View → Nhấn Update
 
 **Assertions:**
-- [ ] Legend View mới tạo bằng cách Duplicate template
-- [ ] Tên đúng = `[SheetName]` hoặc `[SheetName]_[RegionName]`
+- [ ] Legend View mới tạo bằng cách Duplicate template, tên đúng convention
 - [ ] Nếu không có Legend View nào trong project → hiện error dialog rõ ràng
 
-#### Test 5C — Smart Scale
-1. Sau Test 5A: kéo resize ảnh trực tiếp trong Revit View
-2. Sửa nội dung file Excel và lưu
-3. Mở lại dialog Excel to Revit
-4. Status Dot = đỏ (file mới hơn LastModified)
-5. Nhấn Update
+#### Test 6C — Smart Scale
+1. Sau 6A: kéo resize ảnh trực tiếp trong Revit View
+2. Sửa file Excel → lưu → mở lại dialog (Status Dot = đỏ) → Nhấn Update
 
 **Assertions:**
 - [ ] Ảnh mới có cùng Width/Height với ảnh đã resize (không reset về 100%)
-- [ ] JSON cập nhật: StoredWidth/Height = kích thước mới
-- [ ] Status Dot → xanh sau update
+- [ ] JSON cập nhật: StoredWidth/Height, Status Dot → xanh
 
-#### Test 5D — AutoSync
-1. Check AutoSync = true cho 1 mapping
-2. Sửa file Excel và lưu
-3. Đóng và mở lại dialog
+#### Test 6D — AutoSync
+1. Check AutoSync = true → Sửa file Excel → Đóng và mở lại dialog
 
 **Assertions:**
-- [ ] Khi dialog mở: mapping có AutoSync=true tự động update (không cần nhấn nút)
+- [ ] Mapping có AutoSync=true tự động update khi dialog mở
 - [ ] Nút Update per-row bị disabled khi AutoSync=true
-- [ ] LastModified cập nhật = `DateTime.Now`
 
-#### Test 5E — File Not Found
-1. Di chuyển file Excel sang thư mục khác
-2. Mở dialog
+#### Test 6E — File Not Found
+1. Di chuyển file Excel → Mở dialog
 
 **Assertions:**
-- [ ] Status Dot = màu vàng (`ArcToolSettingsService.FileExists()` trả về false)
-- [ ] Nút Update disabled
+- [ ] Status Dot = màu vàng, nút Update disabled
 - [ ] Click icon warning → OpenFileDialog cho phép chọn lại đường dẫn
 
-#### Test 5F — ArcToolSettingsService (Unit-level)
-1. Chạy lệnh khi file `.rvt` chưa được lưu (doc.PathName rỗng)
-
-**Assertions:**
-- [ ] `GetSettingsPath()` throw `InvalidOperationException` — dialog yêu cầu lưu file
-- [ ] Không crash NullReferenceException
-
-2. Corrupt thủ công file `ArcTool_ExcelSync.json` (xóa một nửa nội dung)
-3. Mở lại dialog
-
-**Assertions:**
-- [ ] Tool vẫn mở được, DataGrid rỗng (không crash)
-- [ ] File `.corrupt_[timestamp]` xuất hiện cạnh JSON
+#### Test 6F — ArcToolSettingsService edge cases
+1. Chạy lệnh khi file `.rvt` chưa lưu → `GetSettingsPath()` throw, dialog rõ ràng
+2. Corrupt `ArcTool_ExcelSync.json` → Mở dialog → DataGrid rỗng, file `.corrupt_[timestamp]` xuất hiện
 
 ---
 
@@ -299,15 +320,18 @@ ArcTool Tab (3 Panels)
 |---|---|---|
 | CS0104: TaskDialog ambiguous | Import WinForms + Revit.UI | Dùng alias: `using RevitTaskDialog = Autodesk.Revit.UI.TaskDialog;` |
 | CS0104: ViewType ambiguous | Import `ArcTool.Core.Models` + `Autodesk.Revit.DB` trong cùng file | Enum trong Models phải có prefix: `ExcelViewType`, `ExcelRegionType` |
-| Excel process vẫn còn trong Task Manager | COM object chưa release đúng | Kiểm tra Dispose() có null đủ `_activeSheet`, `_workbook`, `_excelApp` không |
+| Excel process vẫn còn sau GetSheetNames/GetNamedRanges | COM wrapper `Sheets`/`Names` chưa release | Kiểm tra `Marshal.ReleaseComObject(sheets)` và `Marshal.ReleaseComObject(allNames)` sau forEach |
+| Excel process vẫn còn sau ExportRegion | `_activeSheet` swap không restore, hoặc `ws` không release | Kiểm tra thứ tự `finally`: restore `_activeSheet` → release `targetRange` → release `ws` |
+| Excel process vẫn còn (chung) | COM object khác chưa release đúng | Kiểm tra Dispose() null đủ `_activeSheet`, `_workbook`, `_excelApp` |
+| `ExportRegion()` export sai sheet | `_activeSheet` không được swap trước `ExportRangeInternal` | Đảm bảo `_activeSheet = ws` trước khi gọi `ExportRangeInternal(targetRange, outputPath)` |
+| Named Ranges dropdown rỗng dù sheet có Named Range | Named Range là workbook-scoped hoặc cross-sheet | `GetNamedRanges()` chỉ trả về range mà `r.Worksheet.Name == sheetName` — behavior đúng |
 | Ảnh quá nhỏ sau import | ScaleFactor sai | Đọc Width/Height từ `ImageInstance` sau Create, nhân với factor |
 | Legend View không tạo được | Không có Legend View template | Tạo thủ công 1 Legend View rỗng tên `ArcTool_LegendTemplate` trong Revit |
-| JSON không lưu được | File .rvt chưa được lưu lần nào | `doc.PathName` rỗng → `GetSettingsPath()` throw → hiện dialog yêu cầu lưu file |
-| Status Dot không đổi sang đỏ | Timestamp compare sai hoặc mix UTC/local | `HasFileChanged()` dùng local time; `LastModified` phải gán `DateTime.Now` |
+| JSON không lưu được | File .rvt chưa lưu | `doc.PathName` rỗng → `GetSettingsPath()` throw → hiện dialog yêu cầu lưu file |
+| Status Dot không đổi sang đỏ | Mix UTC/local time | `HasFileChanged()` dùng local time; `LastModified` phải gán `DateTime.Now` |
 | Smart Scale reset về mặc định sau Update | Quên đọc Width/Height trước Delete | Đọc `existingInst.Width/Height` TRƯỚC `doc.Delete(existingInst.Id)` |
 | JSON bị corrupt sau crash | `File.WriteAllText()` trực tiếp | Luôn dùng `ArcToolSettingsService.SaveMappings()` — atomic write |
 | Enum deserialize lỗi từ JSON cũ | JSON cũ lưu enum dạng số (0, 1) | JSON mới dùng string ("DraftingView") — cần migration nếu upgrade |
-| Named Ranges không hiện trong dropdown | Sheet chưa được chọn | `GetNamedRanges()` phụ thuộc tên sheet, cần chọn WorkSheet trước |
 | Dimension skip một số Dim | `Dim.Curve == null` | `ArrangeDimensionCommand` có guard `if (baseLine == null) return false` |
 | Integer Overflow trong filter | `(int)Category.Id.Value` | Luôn dùng `(long)BuiltInCategory.OST_Walls` |
 
@@ -321,17 +345,44 @@ ArcTool Tab (3 Panels)
 3. Trong `App.cs`: tạo `PushButtonData` trỏ đến class mới
 4. Thêm vào panel tương ứng
 
-### Thêm method mới vào ExcelInteropService
-1. Mở file Excel trước: `OpenFile(path)` phải được gọi trước
-2. Method mới thao tác với `_workbook` hoặc `_activeSheet`
-3. Release mọi COM object tạm thời ngay trong method (không để lại)
-4. Đặt `using var svc = new ExcelInteropService()` ở caller — đảm bảo Dispose()
+### Gọi ExcelInteropService V5.3 đúng cách
+```csharp
+// Mở 1 lần → dùng → Dispose ngay. KHÔNG giữ instance qua nhiều user action.
+
+// Lấy sheet names khi user chọn file
+using (var svc = new ExcelInteropService())
+{
+    if (!svc.OpenFile(filePath)) { /* hiện lỗi */ return; }
+    var sheetNames = svc.GetSheetNames();
+} // Dispose() tự gọi → Excel đóng ngay
+
+// Lấy Named Ranges khi user chọn WorkSheet
+using (var svc = new ExcelInteropService())
+{
+    svc.OpenFile(filePath);
+    var ranges = svc.GetNamedRanges(selectedSheet);
+}
+
+// Export khi user nhấn Update (trong ExcelSyncEngine)
+using (var svc = new ExcelInteropService())
+{
+    if (!svc.OpenFile(mapping.FilePath)) return false;
+    bool ok = svc.ExportRegion(mapping.WorkSheet, mapping.Region, tempPng);
+    // mapping.Region = null → fallback PrintArea → UsedRange tự động
+}
+```
+
+### Thêm method mới vào ExcelInteropService (nếu cần trong tương lai)
+1. `OpenFile(path)` phải được gọi trước — check `if (_workbook == null) return`
+2. Nếu method duyệt `_workbook.Worksheets` hoặc `_workbook.Names`: tạo biến wrapper, release sau forEach
+3. Nếu method dùng `_activeSheet.ChartObjects()`: áp dụng swap pattern như `ExportRegion()`
+4. Release mọi COM object cục bộ trong `finally` — không để lại handle
+5. Caller luôn dùng `using var svc = new ExcelInteropService()` — đảm bảo Dispose()
 
 ### Thêm field mới vào ExcelMapping (JSON)
-1. Thêm property vào `Models/ExcelMapping.cs`
-2. Nếu field mới không có trong JSON cũ → đặt default value hợp lý (nullable hoặc default)
-3. `ArcToolSettingsService` không cần sửa — `JsonSerializer` tự xử lý field mới với default value
-4. Cập nhật DataGrid binding trong `ExcelToRevitWindow.xaml`
+1. Thêm property vào `Models/ExcelMapping.cs` với default value hợp lý
+2. `ArcToolSettingsService` không cần sửa — `JsonSerializer` tự xử lý field mới
+3. Cập nhật DataGrid binding trong `ExcelToRevitWindow.xaml`
 
 ### Gọi ArcToolSettingsService đúng cách
 ```csharp
@@ -344,22 +395,32 @@ try { ArcToolSettingsService.SaveMappings(doc, mappings); }
 catch (InvalidOperationException ex) { TaskDialog.Show("ArcTool", ex.Message); return Result.Failed; }
 catch (IOException ex) { TaskDialog.Show("ArcTool Error", $"Không thể lưu: {ex.Message}"); return Result.Failed; }
 
-// Check status — không cần try-catch, cả hai handle exception nội bộ
+// Check status per-row — không cần try-catch, cả hai handle exception nội bộ
 bool exists    = ArcToolSettingsService.FileExists(mapping);
 bool hasChange = ArcToolSettingsService.HasFileChanged(mapping);
 ```
 
+### Implement ExcelSyncEngine.ExecuteUpdate() (Phase 2 — NEXT)
+Xem **SKILL.md Pattern 12** để có skeleton đầy đủ. Thứ tự bắt buộc:
+1. Export Excel → temp PNG **ngoài Transaction** (COM không cần Transaction)
+2. Đọc `existingInst.Width/Height` **TRƯỚC khi xóa** (Smart Scale)
+3. Mở Transaction → xóa ảnh cũ → tạo/lấy View → tạo ImageType → tạo ImageInstance → áp kích thước → Commit
+4. Cập nhật `mapping.LastModified = DateTime.Now` và gọi `SaveMappings()` **SAU Commit**
+5. `TryDeleteTempFile(tempPng)` trong `finally` — Revit đã nhúng ảnh sau Commit
+
 ### Debug Excel COM issue
 1. Build và chạy trong Revit
 2. Mở Task Manager → Processes → tìm `EXCEL.EXE`
-3. Nếu còn sau khi lệnh kết thúc → COM object chưa được release đúng
-4. Đặt breakpoint tại `Dispose()` → kiểm tra từng field
+3. Nếu còn sau khi lệnh kết thúc → COM object chưa release đúng
+4. Kiểm tra: `Sheets`/`Names` wrapper có được release sau forEach không
+5. Kiểm tra: `_activeSheet` trong `ExportRegion()` có restore trước khi release `ws` không
+6. Đặt breakpoint tại `Dispose()` → kiểm tra từng field `_activeSheet`, `_workbook`, `_excelApp`
 
 ### Debug JSON settings issue
 1. Mở thư mục chứa file `.rvt`
 2. Kiểm tra `ArcTool_ExcelSync.json` tồn tại và đúng format
-3. Nếu thấy file `.tmp` → lần save trước bị interrupt giữa chừng (vô hại, sẽ bị overwrite lần sau)
-4. Nếu thấy file `.corrupt_[timestamp]` → JSON đã bị corrupt, tool đã tự backup và reset về List rỗng
+3. File `.tmp` → lần save trước bị interrupt (vô hại, sẽ bị overwrite lần sau)
+4. File `.corrupt_[timestamp]` → JSON đã bị corrupt, tool đã tự backup và reset về List rỗng
 
 ---
 
@@ -373,4 +434,4 @@ bool hasChange = ArcToolSettingsService.HasFileChanged(mapping);
 ---
 
 *ArcTool Development & Usage Instructions © 2026*
-*Last updated: Session 6.2 — ArcToolSettingsService.cs ✅ build success + atomic write pattern locked*
+*Last updated: Session 6.3 — ExcelInteropService.cs V5.3 ✅ build success — Phase 1 hoàn thành, Phase 2 (ExcelSyncEngine) là NEXT*

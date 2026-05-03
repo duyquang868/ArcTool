@@ -435,66 +435,138 @@ private View GetOrCreateLegendView(Document doc, string viewName)
 }
 ```
 
-### Pattern 10 — ExcelInteropService: Đọc sheet names và Named Ranges (V5.3)
+### Pattern 10 — ExcelInteropService: GetSheetNames, GetNamedRanges, ExportRegion (✅ V5.3 IMPLEMENTED)
 
 ```csharp
-// Mở rộng V5.2 → V5.3: thêm 3 method mới phục vụ ExcelToRevit V3.0.
-// Gọi Dispose() ngay sau khi đọc xong — không giữ Excel mở lâu hơn cần thiết.
-// using (var svc = new ExcelInteropService()) { svc.OpenFile(path); ... }
+// ══════════════════════════════════════════════════════════════════════════════
+// ĐIỂM MẤU CHỐT — phải nắm trước khi đọc code:
+//
+// 1. COM WRAPPER RELEASE: _workbook.Worksheets và _workbook.Names trả về COM wrapper
+//    objects (Sheets và Names). Wrapper này là COM object riêng — phải release
+//    bằng Marshal.ReleaseComObject() sau khi duyệt xong, ngoài việc release từng item.
+//    Bỏ qua bước này → Excel process không thoát được kể cả sau Dispose().
+//
+// 2. _activeSheet SWAP trong ExportRegion():
+//    ExportRangeInternal() dùng _activeSheet.ChartObjects() (field của instance).
+//    Để export sheet khác mà không sửa ExportRangeInternal():
+//      - Lưu _activeSheet vào savedActiveSheet
+//      - Gán _activeSheet = ws (sheet đích)
+//      - Gọi ExportRangeInternal()
+//      - Restore: _activeSheet = savedActiveSheet (trong finally, TRƯỚC khi release ws)
+//    Nếu restore SAU release ws → _activeSheet trỏ vào COM đã revoked → crash.
+//
+// 3. PER-ITEM try/catch/finally trong GetNamedRanges():
+//    Named Range có thể là formula phức tạp, deleted range, hoặc cross-sheet range.
+//    RefersToRange throw COMException trong những trường hợp này.
+//    Dùng try/catch bên trong vòng lặp để skip item lỗi mà không dừng iteration.
+//    finally trong vòng lặp đảm bảo release Name COM kể cả khi throw.
+// ══════════════════════════════════════════════════════════════════════════════
 
+// Pattern sử dụng từ caller — Dispose ngay sau khi đọc xong
+using (var svc = new ExcelInteropService())
+{
+    if (!svc.OpenFile(filePath)) return;
+    var sheetNames = svc.GetSheetNames();
+    // svc.Dispose() tự gọi → Excel đóng ngay
+}
+
+// ── GetSheetNames() ──────────────────────────────────────────────────────────
 public List<string> GetSheetNames()
 {
-    var names = new List<string>();
+    var names  = new List<string>();
     if (_workbook == null) return names;
 
-    foreach (Worksheet ws in _workbook.Worksheets)
+    Sheets sheets = null;   // COM wrapper — phải release riêng
+    try
     {
-        names.Add(ws.Name);
-        Marshal.ReleaseComObject(ws);
+        sheets = _workbook.Worksheets;
+        foreach (Worksheet ws in sheets)
+        {
+            names.Add(ws.Name);
+            Marshal.ReleaseComObject(ws);   // release ngay, không tích lũy handles
+        }
+    }
+    catch (Exception ex)
+    {
+        System.Diagnostics.Debug.WriteLine($"GetSheetNames Error: {ex.Message}");
+    }
+    finally
+    {
+        if (sheets != null) Marshal.ReleaseComObject(sheets);   // release wrapper
     }
     return names;
 }
 
+// ── GetNamedRanges() ─────────────────────────────────────────────────────────
 public List<string> GetNamedRanges(string sheetName)
 {
     var result = new List<string>();
-    if (_workbook == null) return result;
+    if (_workbook == null || string.IsNullOrWhiteSpace(sheetName)) return result;
 
-    foreach (Name name in _workbook.Names)
+    Names allNames = null;   // COM wrapper — phải release riêng
+    try
     {
-        try
+        allNames = _workbook.Names;
+        foreach (Name namedRange in allNames)
         {
-            Range r = name.RefersToRange;
-            if (r?.Worksheet?.Name == sheetName)
-                result.Add(name.Name);
-            if (r != null) Marshal.ReleaseComObject(r);
+            try
+            {
+                Range r = namedRange.RefersToRange;   // COMException nếu range không hợp lệ
+                if (r?.Worksheet?.Name == sheetName)
+                    result.Add(namedRange.Name);
+                if (r != null) Marshal.ReleaseComObject(r);
+            }
+            catch { /* Named Range lỗi (formula, deleted, cross-sheet) → bỏ qua */ }
+            finally
+            {
+                // finally bên trong vòng lặp — release Name kể cả khi throw
+                Marshal.ReleaseComObject(namedRange);
+            }
         }
-        catch { /* Named Range trỏ đến vùng không hợp lệ → bỏ qua */ }
-        Marshal.ReleaseComObject(name);
+    }
+    catch (Exception ex)
+    {
+        System.Diagnostics.Debug.WriteLine($"GetNamedRanges Error: {ex.Message}");
+    }
+    finally
+    {
+        if (allNames != null) Marshal.ReleaseComObject(allNames);   // release wrapper
     }
     return result;
 }
 
-/// <param name="regionName">null = PrintArea → UsedRange fallback tự động</param>
+// ── ExportRegion() ───────────────────────────────────────────────────────────
+// regionName = null/empty → PrintArea → UsedRange (fallback tự động)
 public bool ExportRegion(string sheetName, string regionName, string outputPath)
 {
-    Worksheet ws = null;
-    Range targetRange = null;
+    if (_workbook == null || string.IsNullOrWhiteSpace(sheetName)) return false;
+
+    Worksheet ws          = null;
+    Range     targetRange = null;
+
+    // Lưu _activeSheet hiện tại để restore — ExportRangeInternal() dùng _activeSheet
+    Worksheet savedActiveSheet = _activeSheet;
 
     try
     {
         ws = _workbook.Worksheets[sheetName] as Worksheet;
         if (ws == null) return false;
 
-        // Ưu tiên: Named Range → Print Area → UsedRange
-        if (!string.IsNullOrEmpty(regionName))
+        _activeSheet = ws;   // swap trước khi gọi ExportRangeInternal
+
+        // Resolve vùng: Named Range → Print Area → UsedRange
+        if (!string.IsNullOrWhiteSpace(regionName))
             try { targetRange = ws.Range[regionName]; } catch { }
 
         if (targetRange == null)
         {
-            string printArea = ws.PageSetup.PrintArea;
-            if (!string.IsNullOrEmpty(printArea))
-                targetRange = ws.Range[printArea];
+            try
+            {
+                string printArea = ws.PageSetup.PrintArea;
+                if (!string.IsNullOrEmpty(printArea))
+                    targetRange = ws.Range[printArea];
+            }
+            catch { }
         }
 
         if (targetRange == null)
@@ -502,9 +574,19 @@ public bool ExportRegion(string sheetName, string regionName, string outputPath)
 
         return ExportRangeInternal(targetRange, outputPath);
     }
+    catch (Exception ex)
+    {
+        System.Diagnostics.Debug.WriteLine($"ExportRegion Error: {ex.Message}");
+        return false;
+    }
     finally
     {
+        // THỨ TỰ BẮT BUỘC:
+        // 1. Restore _activeSheet TRƯỚC — tránh trỏ vào COM đã revoked
+        _activeSheet = savedActiveSheet;
+        // 2. Release targetRange (child)
         if (targetRange != null) Marshal.ReleaseComObject(targetRange);
+        // 3. Release ws (parent của range) — độc lập với savedActiveSheet
         if (ws != null) Marshal.ReleaseComObject(ws);
     }
 }
@@ -552,6 +634,174 @@ bool hasChange = ArcToolSettingsService.HasFileChanged(mapping);
 // Không cần try-catch — cả hai đã handle exception nội bộ, trả về false khi lỗi
 ```
 
+### Pattern 12 — ExcelSyncEngine: Skeleton cấu trúc (Phase 2 — NEXT)
+
+```csharp
+// ExcelSyncEngine là static class, không có state — mọi dependency truyền qua parameter.
+// Phụ thuộc: ExcelInteropService (V5.3), ArcToolSettingsService, Revit API (Transaction).
+// PHẢI gọi trong Revit API context (Execute() của IExternalCommand hoặc IExternalEventHandler).
+//
+// GetOrCreateDraftingView(): gọi ngoài Transaction để check tồn tại; tạo mới bên trong Transaction.
+// GetOrCreateLegendView(): tương tự — xem Pattern 9.
+// ExecuteUpdate(): tự mở Transaction; caller không cần wrap thêm.
+// TryDeleteTempFile(): best-effort, không throw — gọi sau Commit().
+
+public static class ExcelSyncEngine
+{
+    /// <summary>
+    /// Entry point chính. Gọi từ Update button (per row) hoặc Update All.
+    /// Tự xử lý Transaction — caller không cần wrap.
+    /// Throw nếu doc.PathName rỗng (propagate từ ArcToolSettingsService).
+    /// </summary>
+    public static bool ExecuteUpdate(ExcelMapping mapping, Document doc,
+                                     List<ExcelMapping> allMappings)
+    {
+        string tempPng = Path.Combine(Path.GetTempPath(),
+                                      $"ArcTool_{Guid.NewGuid():N}.png");
+        try
+        {
+            // 1. Export Excel → PNG (ngoài Transaction — COM không cần Transaction)
+            using (var svc = new ExcelInteropService())
+            {
+                if (!svc.OpenFile(mapping.FilePath)) return false;
+                if (!svc.ExportRegion(mapping.WorkSheet, mapping.Region, tempPng))
+                    return false;
+            }
+
+            // 2. Đọc kích thước ImageInstance hiện tại TRƯỚC khi xóa (Smart Scale)
+            double storedWidth  = mapping.StoredWidth;
+            double storedHeight = mapping.StoredHeight;
+
+            if (mapping.ImageInstanceId != 0)
+            {
+                var existingInst = doc.GetElement(
+                    new ElementId(mapping.ImageInstanceId)) as ImageInstance;
+                if (existingInst?.IsValidObject == true)
+                {
+                    storedWidth  = existingInst.Width;
+                    storedHeight = existingInst.Height;
+                }
+            }
+
+            // 3. Transaction: xóa ảnh cũ → tạo view → tạo ảnh mới
+            using (var tx = new Transaction(doc, "ArcTool: Refresh Excel Image"))
+            {
+                tx.Start();
+                try
+                {
+                    // Xóa ImageInstance cũ nếu tồn tại
+                    if (mapping.ImageInstanceId != 0)
+                    {
+                        var old = doc.GetElement(
+                            new ElementId(mapping.ImageInstanceId)) as ImageInstance;
+                        if (old?.IsValidObject == true)
+                            doc.Delete(old.Id);
+                    }
+
+                    // Lấy hoặc tạo View đích
+                    Autodesk.Revit.DB.View targetView =
+                        mapping.ViewType == ExcelViewType.DraftingView
+                            ? GetOrCreateDraftingView(doc, mapping.ViewName)
+                            : GetOrCreateLegendView(doc, mapping.ViewName);
+
+                    // Tạo ImageType từ PNG
+                    var imgOpts = new ImageTypeOptions(tempPng, false, ImageTypeSource.Import)
+                    {
+                        Resolution = 300
+                    };
+                    ImageType imageType = ImageType.Create(doc, imgOpts);
+
+                    // Đặt ảnh tại tâm View
+                    XYZ center = GetViewCenter(targetView);
+                    var placementOpts = new ImagePlacementOptions(center, BoxPlacement.Center);
+                    ImageInstance newInst = ImageInstance.Create(
+                        doc, targetView, imageType.Id, placementOpts);
+
+                    // Áp lại kích thước (Smart Scale)
+                    if (storedWidth > 0 && storedHeight > 0)
+                    {
+                        newInst.Width  = storedWidth;
+                        newInst.Height = storedHeight;
+                    }
+
+                    // Cập nhật mapping
+                    mapping.ImageInstanceId = newInst.Id.Value;
+                    mapping.StoredWidth     = newInst.Width;
+                    mapping.StoredHeight    = newInst.Height;
+                    mapping.LastModified    = DateTime.Now;   // local time — nhất quán với HasFileChanged()
+
+                    tx.Commit();
+                }
+                catch
+                {
+                    tx.RollBack();
+                    throw;
+                }
+            }
+
+            // 4. Lưu JSON sau khi Commit thành công
+            ArcToolSettingsService.SaveMappings(doc, allMappings);
+
+            return true;
+        }
+        finally
+        {
+            // 5. Dọn temp file — sau Commit, Revit đã nhúng ảnh vào project
+            TryDeleteTempFile(tempPng);
+        }
+    }
+
+    // ── Private helpers (skeleton — implement đầy đủ ở Phase 2) ──────────────
+
+    private static Autodesk.Revit.DB.View GetOrCreateDraftingView(Document doc, string viewName)
+    {
+        // Tìm Drafting View đã tồn tại theo tên
+        var existing = new FilteredElementCollector(doc)
+            .OfClass(typeof(ViewDrafting))
+            .Cast<ViewDrafting>()
+            .FirstOrDefault(v => string.Equals(v.Name, viewName,
+                                               StringComparison.OrdinalIgnoreCase));
+        if (existing != null) return existing;
+
+        // Tạo mới — phải gọi trong Transaction đang active
+        ViewFamilyType draftingType = new FilteredElementCollector(doc)
+            .OfClass(typeof(ViewFamilyType))
+            .Cast<ViewFamilyType>()
+            .First(t => t.ViewFamily == ViewFamily.Drafting);
+
+        ViewDrafting newView = ViewDrafting.Create(doc, draftingType.Id);
+        try   { newView.Name = viewName; }
+        catch { newView.Name = $"{viewName}_{DateTime.Now:HHmmss}"; }
+        return newView;
+    }
+
+    // GetOrCreateLegendView() — xem Pattern 9 để implement đầy đủ
+
+    private static XYZ GetViewCenter(Autodesk.Revit.DB.View view)
+    {
+        try
+        {
+            BoundingBoxXYZ cropBox = view.CropBox;
+            if (cropBox?.Enabled == true)
+            {
+                XYZ local = new XYZ(
+                    (cropBox.Min.X + cropBox.Max.X) / 2.0,
+                    (cropBox.Min.Y + cropBox.Max.Y) / 2.0, 0);
+                return cropBox.Transform.OfPoint(local);
+            }
+        }
+        catch { }
+        return XYZ.Zero;
+    }
+
+    private static void TryDeleteTempFile(string path)
+    {
+        try { if (path != null && File.Exists(path)) File.Delete(path); }
+        catch { /* best-effort, không throw */ }
+    }
+}
+```
+
 ---
 
 ## 7. DO's & DON'Ts NHANH
@@ -564,6 +814,9 @@ bool hasChange = ArcToolSettingsService.HasFileChanged(mapping);
 - Ưu tiên tên Legend template `ArcTool_LegendTemplate` để dễ identify
 - Check `File.Exists()` qua `ArcToolSettingsService.FileExists()` trước khi compare timestamp
 - Dùng `using` cho `ExcelInteropService` — không giữ Excel mở lâu hơn cần
+- **Release COM wrapper (Sheets, Names) sau forEach** — wrapper là object riêng, không tự GC
+- **Restore `_activeSheet` TRƯỚC khi release `ws` trong ExportRegion()** — thứ tự trong finally là bất biến
+- **Dùng `try/catch/finally` bên trong vòng lặp** khi duyệt Named Ranges — skip lỗi per item
 - **Dùng `ArcToolSettingsService.SaveMappings()` — không tự gọi `File.WriteAllText()` cho JSON**
 - **Dùng `DateTime.Now` (local time) khi gán `LastModified`** — nhất quán với `File.GetLastWriteTime()`
 - **Cache `JsonSerializerOptions` dưới dạng `static readonly`** — không allocate mới mỗi call
@@ -581,3 +834,6 @@ bool hasChange = ArcToolSettingsService.HasFileChanged(mapping);
 - **`File.WriteAllText()` trực tiếp cho JSON settings** — không atomic, có thể corrupt nếu crash
 - **`DateTime.UtcNow` cho `LastModified`** — `File.GetLastWriteTime()` trả về local, mix = so sánh sai
 - **Tạo `JsonSerializerOptions` mới** trong code ngoài `ArcToolSettingsService` — dùng instance đã có
+- **Bỏ qua release COM wrapper `Sheets`/`Names`** sau forEach — Excel process không thoát được
+- **Restore `_activeSheet` sau khi release `ws`** trong ExportRegion() — trỏ vào COM đã revoked = crash
+- **Gọi ExportRegion() mà không có savedActiveSheet guard** — _activeSheet swap không an toàn nếu exception xảy ra trước khi restore

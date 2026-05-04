@@ -1,0 +1,547 @@
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using ArcTool.Core.Models;
+using Autodesk.Revit.DB;
+using RevitView = Autodesk.Revit.DB.View;
+
+namespace ArcTool.Core.Services
+{
+    // ══════════════════════════════════════════════════════════════════════════
+    //  SUPPORTING TYPES — định nghĩa trong cùng file để tránh thêm file nhỏ lẻ
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Trạng thái sync của một ExcelMapping, trả về từ CheckForChanges().
+    /// Immutable — UI layer đọc, không được sửa.
+    /// </summary>
+    public sealed class MappingSyncStatus
+    {
+        /// <summary>File Excel vẫn tồn tại tại FilePath đã lưu.</summary>
+        public bool FileExists { get; }
+
+        /// <summary>
+        /// File Excel có thay đổi kể từ lần sync cuối không.
+        /// Luôn false nếu FileExists = false — tránh false positive.
+        /// </summary>
+        public bool HasChanges { get; }
+
+        /// <summary>
+        /// Màu Status Dot để hiển thị trong DataGrid.
+        /// Quy tắc: Yellow > Red > Green (thứ tự ưu tiên hiển thị vấn đề).
+        /// </summary>
+        public SyncDotColor DotColor =>
+            !FileExists  ? SyncDotColor.Yellow  // file bị move/xóa
+            : HasChanges ? SyncDotColor.Red      // file thay đổi chưa sync
+                         : SyncDotColor.Green;   // đã sync
+
+        public MappingSyncStatus(bool fileExists, bool hasChanges)
+        {
+            FileExists = fileExists;
+            // Guard: HasChanges chỉ có nghĩa khi file tồn tại
+            HasChanges = fileExists && hasChanges;
+        }
+    }
+
+    /// <summary>Màu Status Dot — dùng để binding WPF Ellipse.Fill trong Phase 3.</summary>
+    public enum SyncDotColor
+    {
+        Green,   // Synced — ellipse xanh lá
+        Red,     // Has changes — ellipse đỏ
+        Yellow   // File not found — ellipse vàng
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    //  EXCEL SYNC ENGINE
+    // ══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Logic layer thuần — không có UI code, không có static mutable state.
+    /// Tất cả dependency truyền qua parameter để dễ unit test.
+    ///
+    /// PHẢI gọi trong Revit API context (Execute() của IExternalCommand
+    /// hoặc IExternalEventHandler) — vì ExecuteUpdate() dùng Transaction.
+    ///
+    /// Threading: mọi method đều single-threaded (Revit API yêu cầu).
+    ///
+    /// V1.0 — Phase 2, phục vụ ExcelToRevit V3.0
+    /// </summary>
+    public static class ExcelSyncEngine
+    {
+        // ── PUBLIC API ────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Kiểm tra trạng thái sync của tất cả mappings mà không thay đổi bất kỳ state nào.
+        /// Không mở file Excel, không đọc Revit document — chỉ so sánh filesystem timestamp.
+        ///
+        /// Trả về Dictionary keyed by mapping.Id để UI layer lookup O(1).
+        /// Mapping có Id null/rỗng sẽ bị bỏ qua (defensive guard).
+        /// </summary>
+        /// <param name="mappings">Danh sách mappings cần kiểm tra. null → trả về dict rỗng.</param>
+        /// <returns>
+        /// IReadOnlyDictionary&lt;mappingId, MappingSyncStatus&gt;.
+        /// Không bao giờ trả về null.
+        /// </returns>
+        public static IReadOnlyDictionary<string, MappingSyncStatus> CheckForChanges(
+            IEnumerable<ExcelMapping> mappings)
+        {
+            var result = new Dictionary<string, MappingSyncStatus>(StringComparer.Ordinal);
+
+            if (mappings == null)
+                return result;
+
+            foreach (ExcelMapping m in mappings)
+            {
+                // Guard: mapping hoặc Id bị null → bỏ qua, không crash
+                if (m == null || string.IsNullOrWhiteSpace(m.Id))
+                    continue;
+
+                // ArcToolSettingsService.FileExists/HasFileChanged đều handle exception nội bộ
+                // → không cần try-catch ở đây
+                bool exists     = ArcToolSettingsService.FileExists(m);
+                bool hasChanged = ArcToolSettingsService.HasFileChanged(m); // false nếu !exists
+
+                result[m.Id] = new MappingSyncStatus(exists, hasChanged);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// Thực thi full pipeline: Export Excel → Replace ảnh trong Revit → Lưu JSON.
+        ///
+        /// Thứ tự thực thi (bất biến):
+        ///   1. Export Excel → temp PNG  (ngoài Transaction — COM không cần Tx)
+        ///   2. Đọc Width/Height của ImageInstance cũ  (Smart Scale, TRƯỚC KHI xóa)
+        ///   3. Transaction: xóa ảnh cũ → get/create View → create ImageType → create ImageInstance → áp kích thước
+        ///   4. Cập nhật mapping fields + SaveMappings()  (SAU Commit)
+        ///   5. TryDeleteTempFile()  (trong finally — luôn chạy)
+        ///
+        /// Error handling:
+        ///   - Soft failures (file không mở được, export thất bại) → return false, không throw
+        ///   - Hard failures (Revit API lỗi, disk đầy khi SaveMappings) → throw, caller xử lý dialog
+        ///
+        /// PHẢI gọi trong Revit API context. Tự mở Transaction — caller KHÔNG wrap thêm.
+        /// </summary>
+        /// <param name="mapping">Mapping cần update. Sẽ bị mutate khi thành công.</param>
+        /// <param name="doc">Revit Document hiện tại.</param>
+        /// <param name="allMappings">Toàn bộ danh sách mappings — cần để SaveMappings() ghi đúng file.</param>
+        /// <returns>true nếu pipeline hoàn tất thành công, false nếu soft failure.</returns>
+        /// <exception cref="ArgumentNullException">Khi bất kỳ parameter nào là null.</exception>
+        /// <exception cref="InvalidOperationException">
+        /// Khi mapping.ViewName rỗng, hoặc ViewFamilyType Drafting không tìm thấy,
+        /// hoặc không có Legend View nào trong project để Duplicate.
+        /// </exception>
+        /// <exception cref="IOException">Khi SaveMappings() không ghi được JSON.</exception>
+        public static bool ExecuteUpdate(
+            ExcelMapping     mapping,
+            Document         doc,
+            List<ExcelMapping> allMappings)
+        {
+            if (mapping    == null) throw new ArgumentNullException(nameof(mapping));
+            if (doc        == null) throw new ArgumentNullException(nameof(doc));
+            if (allMappings == null) throw new ArgumentNullException(nameof(allMappings));
+
+            // Validate ViewName sớm — tránh lãng phí export Excel rồi mới fail
+            if (string.IsNullOrWhiteSpace(mapping.ViewName))
+                throw new InvalidOperationException(
+                    $"Mapping '{mapping.Id}' có ViewName rỗng. " +
+                    "Vui lòng chọn WorkSheet và Region trước khi Update.");
+
+            // Đường dẫn temp PNG — GUID đảm bảo không trùng nếu có nhiều lệnh song song
+            string tempPng = Path.Combine(
+                Path.GetTempPath(),
+                $"ArcTool_ExcelSync_{Guid.NewGuid():N}.png");
+
+            try
+            {
+                // ── BƯỚC 1: EXPORT EXCEL → TEMP PNG (ngoài Transaction) ──────────────
+                using (var svc = new ExcelInteropService())
+                {
+                    if (!svc.OpenFile(mapping.FilePath))
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[ExcelSyncEngine] Không mở được file: '{mapping.FilePath}'");
+                        return false; // soft failure — file bị lock hoặc không tồn tại
+                    }
+
+                    // mapping.Region = null → ExportRegion tự fallback PrintArea → UsedRange
+                    if (!svc.ExportRegion(mapping.WorkSheet, mapping.Region, tempPng))
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[ExcelSyncEngine] ExportRegion thất bại: " +
+                            $"sheet='{mapping.WorkSheet}', region='{mapping.Region ?? "(null)"}'");
+                        return false; // soft failure — sheet không có data, hoặc protected
+                    }
+                } // Dispose() gọi → Excel đóng ngay
+
+                // Kiểm tra thêm: ExportRegion trả về true nhưng file không được tạo
+                // (edge case: chart export thành công nhưng PNG write bị block)
+                if (!File.Exists(tempPng))
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[ExcelSyncEngine] ExportRegion báo success nhưng PNG không tồn tại: '{tempPng}'");
+                    return false;
+                }
+
+                // ── BƯỚC 2: ĐỌC WIDTH/HEIGHT CỦA INSTANCE CŨ (Smart Scale) ─────────
+                // PHẢI đọc TRƯỚC khi xóa — sau doc.Delete() sẽ không truy cập được.
+                // Fallback về StoredWidth/Height trong JSON nếu instance không tìm thấy.
+                double storedWidth  = mapping.StoredWidth;   // 0.0 = lần đầu import
+                double storedHeight = mapping.StoredHeight;  // 0.0 = lần đầu import
+
+                if (mapping.ImageInstanceId != 0)
+                {
+                    try
+                    {
+                        // ElementId constructor nhận long kể từ Revit 2024
+                        var existingInst = doc.GetElement(
+                            new ElementId(mapping.ImageInstanceId)) as ImageInstance;
+
+                        if (existingInst != null && existingInst.IsValidObject)
+                        {
+                            // Đọc kích thước THỰC TẾ — có thể khác StoredWidth/Height trong JSON
+                            // nếu user đã resize trực tiếp trong Revit sau lần sync trước
+                            storedWidth  = existingInst.Width;
+                            storedHeight = existingInst.Height;
+                        }
+                        // else: instance bị xóa ngoài tool (Undo, manual delete) → fallback JSON
+                    }
+                    catch (Exception ex)
+                    {
+                        // ElementId không hợp lệ sau Undo sâu hoặc Sync với Central
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[ExcelSyncEngine] Không đọc được ImageInstance id={mapping.ImageInstanceId}: {ex.Message}");
+                        // Tiếp tục với storedWidth/Height từ JSON — không fatal
+                    }
+                }
+
+                // ── BƯỚC 3: TRANSACTION ──────────────────────────────────────────────
+                // Capture values vào locals TRƯỚC Commit để update mapping SAU Commit.
+                // Nếu Commit fail → mapping không bị mutate, JSON không bị ghi.
+                long   committedInstanceId = 0;
+                double committedWidth      = 0.0;
+                double committedHeight     = 0.0;
+
+                using (var tx = new Transaction(doc, "ArcTool: Refresh Excel Image"))
+                {
+                    tx.Start();
+                    try
+                    {
+                        // 3a. Xóa ImageInstance cũ nếu tồn tại
+                        if (mapping.ImageInstanceId != 0)
+                        {
+                            try
+                            {
+                                var oldInst = doc.GetElement(
+                                    new ElementId(mapping.ImageInstanceId)) as ImageInstance;
+
+                                if (oldInst != null && oldInst.IsValidObject)
+                                    doc.Delete(oldInst.Id);
+                                // KHÔNG Marshal.ReleaseComObject — ImageInstance là Revit managed
+                            }
+                            catch (Exception ex)
+                            {
+                                // Element đã bị xóa hoặc không tồn tại → tiếp tục, không fatal
+                                System.Diagnostics.Debug.WriteLine(
+                                    $"[ExcelSyncEngine] Bỏ qua xóa ImageInstance cũ: {ex.Message}");
+                            }
+                        }
+
+                        // 3b. Lấy hoặc tạo View đích
+                        // GetOrCreateView phải được gọi trong Transaction đang active
+                        RevitView targetView = GetOrCreateView(mapping.ViewName, mapping.ViewType, doc);
+
+                        // 3c. Tạo ImageType từ temp PNG
+                        // ImageTypeSource.Import = nhúng ảnh vào project (không link external)
+                        // Revit sẽ đọc file PNG khi Create() → temp PNG phải tồn tại lúc này
+                        var imgOpts = new ImageTypeOptions(tempPng, false, ImageTypeSource.Import)
+                        {
+                            Resolution = 300  // DPI cao → ảnh sắc nét khi print
+                        };
+
+                        ImageType imageType = ImageType.Create(doc, imgOpts);
+
+                        if (imageType == null)
+                            throw new InvalidOperationException(
+                                "ImageType.Create() trả về null. " +
+                                "File PNG có thể bị corrupt hoặc không đúng format.");
+
+                        // 3d. Đặt ảnh tại tâm View
+                        XYZ         center        = GetViewCenter(targetView);
+                        var         placementOpts = new ImagePlacementOptions(center, BoxPlacement.Center);
+                        ImageInstance newInst     = ImageInstance.Create(
+                            doc, targetView, imageType.Id, placementOpts);
+
+                        if (newInst == null)
+                            throw new InvalidOperationException(
+                                "ImageInstance.Create() trả về null. " +
+                                "View có thể không hỗ trợ import ảnh.");
+
+                        // 3e. Áp lại kích thước đã lưu (Smart Scale)
+                        // Lần đầu import: storedWidth/storedHeight = 0 → giữ kích thước mặc định Revit
+                        // Các lần update sau: áp lại kích thước user đã resize
+                        if (storedWidth > 0.0 && storedHeight > 0.0)
+                        {
+                            newInst.Width  = storedWidth;
+                            newInst.Height = storedHeight;
+                        }
+
+                        // 3f. Capture giá trị TRƯỚC Commit để update mapping NGOÀI Transaction
+                        // Lý do: nếu Commit fail, mapping phải giữ nguyên state cũ
+                        committedInstanceId = newInst.Id.Value;
+                        committedWidth      = newInst.Width;   // có thể khác storedWidth nếu Revit clamp
+                        committedHeight     = newInst.Height;
+
+                        tx.Commit();
+                    }
+                    catch
+                    {
+                        tx.RollBack();
+                        throw; // propagate lên để caller hiện dialog
+                    }
+                } // end Transaction
+
+                // ── BƯỚC 4: UPDATE MAPPING + SAVE JSON (SAU KHI COMMIT) ──────────────
+                // Chỉ chạy nếu Transaction commit thành công (nếu không, catch sẽ throw rồi)
+                mapping.ImageInstanceId = committedInstanceId;
+                mapping.StoredWidth     = committedWidth;
+                mapping.StoredHeight    = committedHeight;
+                // DateTime.Now (local time) — KHÔNG UtcNow, nhất quán với HasFileChanged()
+                mapping.LastModified    = DateTime.Now;
+
+                // SaveMappings có thể throw IOException nếu disk đầy hoặc quyền truy cập
+                // Propagate lên caller để hiện dialog — không nuốt exception ở đây
+                ArcToolSettingsService.SaveMappings(doc, allMappings);
+
+                return true;
+            }
+            catch (ArgumentNullException) { throw; }      // programming error → propagate
+            catch (InvalidOperationException) { throw; }  // config error → caller hiện dialog
+            catch (IOException) { throw; }                // disk error → caller hiện dialog
+            catch (Exception ex)
+            {
+                // Revit API exception hoặc unexpected error
+                System.Diagnostics.Debug.WriteLine(
+                    $"[ExcelSyncEngine.ExecuteUpdate] Unexpected error: {ex.Message}");
+                throw; // propagate — không nuốt exception không xác định
+            }
+            finally
+            {
+                // ── BƯỚC 5: DỌN TEMP FILE ─────────────────────────────────────────
+                // Luôn chạy kể cả khi exception — Revit đã nhúng ảnh vào project sau Commit
+                // (hoặc Commit fail → file PNG không được embed, xóa vẫn đúng)
+                TryDeleteTempFile(tempPng);
+            }
+        }
+
+        /// <summary>
+        /// Lấy View đã tồn tại theo tên, hoặc tạo mới theo loại.
+        /// Tìm kiếm case-insensitive để tránh lỗi do người dùng nhập sai hoa/thường.
+        ///
+        /// ⚠️ PHẢI GỌI TRONG TRANSACTION ĐANG ACTIVE.
+        /// Caller (ExecuteUpdate hoặc UI) chịu trách nhiệm Start/Commit/RollBack.
+        ///
+        /// DraftingView: dùng ViewDrafting.Create() — API đầy đủ, stable.
+        /// LegendView: dùng Duplicate(WithDetailing) — Revit 2026 không có Create().
+        /// Yêu cầu cho Legend: project phải có sẵn ít nhất 1 Legend View rỗng,
+        /// ưu tiên tên "ArcTool_LegendTemplate".
+        /// </summary>
+        /// <param name="viewName">Tên View cần tạo/lấy.</param>
+        /// <param name="viewType">Loại View — DraftingView hoặc LegendView.</param>
+        /// <param name="doc">Revit Document. Phải đang trong Transaction.</param>
+        /// <returns>View đã tồn tại hoặc mới tạo. Không bao giờ trả về null.</returns>
+        /// <exception cref="ArgumentException">Khi viewName rỗng.</exception>
+        /// <exception cref="ArgumentNullException">Khi doc là null.</exception>
+        /// <exception cref="InvalidOperationException">
+        /// Khi không tìm thấy ViewFamilyType cho Drafting, hoặc không có Legend View nào để Duplicate.
+        /// </exception>
+        public static RevitView GetOrCreateView(string viewName, ExcelViewType viewType, Document doc)
+        {
+            if (string.IsNullOrWhiteSpace(viewName))
+                throw new ArgumentException("viewName không được rỗng.", nameof(viewName));
+            if (doc == null)
+                throw new ArgumentNullException(nameof(doc));
+
+            return viewType == ExcelViewType.DraftingView
+                ? GetOrCreateDraftingView(doc, viewName)
+                : GetOrCreateLegendView(doc, viewName);
+        }
+
+        // ── PRIVATE HELPERS ───────────────────────────────────────────────────
+
+        /// <summary>
+        /// Tìm hoặc tạo Drafting View theo tên. Gọi trong Transaction đang active.
+        /// </summary>
+        private static View GetOrCreateDraftingView(Document doc, string viewName)
+        {
+            // Tìm Drafting View đã tồn tại — case-insensitive
+            // OfClass(typeof(ViewDrafting)): quick filter — index-based, scan O(1)
+            var existing = new FilteredElementCollector(doc)
+                .OfClass(typeof(ViewDrafting))
+                .Cast<ViewDrafting>()
+                .FirstOrDefault(v => string.Equals(v.Name, viewName, StringComparison.OrdinalIgnoreCase));
+
+            if (existing != null)
+                return existing;
+
+            // Tạo mới — cần ViewFamilyType có ViewFamily.Drafting
+            ViewFamilyType draftingType = new FilteredElementCollector(doc)
+                .OfClass(typeof(ViewFamilyType))
+                .Cast<ViewFamilyType>()
+                .FirstOrDefault(t => t.ViewFamily == ViewFamily.Drafting);
+
+            if (draftingType == null)
+                throw new InvalidOperationException(
+                    "Không tìm thấy ViewFamilyType cho Drafting View trong project.\n\n" +
+                    "Kiểm tra: project có bị thiếu template không?");
+
+            ViewDrafting newView = ViewDrafting.Create(doc, draftingType.Id);
+
+            // Revit có thể throw nếu tên trùng (race condition với Undo) — fallback timestamp
+            try
+            {
+                newView.Name = viewName;
+            }
+            catch
+            {
+                // Tên trùng → thêm timestamp để tránh conflict
+                // UI sẽ thấy tên có suffix lạ — đây là safeguard, không phải happy path
+                newView.Name = $"{viewName}_{DateTime.Now:HHmmss}";
+            }
+
+            return newView;
+        }
+
+        /// <summary>
+        /// Tìm hoặc tạo Legend View theo tên.
+        ///
+        /// Revit API 2026: KHÔNG có method tạo Legend View từ đầu.
+        /// Workaround: Duplicate từ Legend View template rỗng.
+        /// Ưu tiên view tên "ArcTool_LegendTemplate"; fallback bất kỳ Legend View nào.
+        ///
+        /// Gọi trong Transaction đang active.
+        /// </summary>
+        private static View GetOrCreateLegendView(Document doc, string viewName)
+        {
+            // Bước 1: View đích đã tồn tại → dùng lại (ghi đè ImageInstance bên trong)
+            // Không Duplicate lại nếu đã có — tránh tạo thừa view
+            // ViewType.Legend là Autodesk.Revit.DB.ViewType — không collision với ExcelViewType
+            var existing = new FilteredElementCollector(doc)
+                .OfClass(typeof(View))
+                .Cast<View>()
+                .FirstOrDefault(v =>
+                    v.ViewType == ViewType.Legend &&
+                    string.Equals(v.Name, viewName, StringComparison.OrdinalIgnoreCase));
+
+            if (existing != null)
+                return existing;
+
+            // Bước 2: Tìm Legend View template để Duplicate
+            // OrderByDescending(bool) → true (ArcTool_LegendTemplate) sắp xếp trước false
+            View legendTemplate = new FilteredElementCollector(doc)
+                .OfClass(typeof(View))
+                .Cast<View>()
+                .Where(v => v.ViewType == ViewType.Legend && !v.IsTemplate)
+                .OrderByDescending(v =>
+                    string.Equals(v.Name, "ArcTool_LegendTemplate", StringComparison.OrdinalIgnoreCase))
+                .FirstOrDefault();
+
+            if (legendTemplate == null)
+                throw new InvalidOperationException(
+                    "Không tìm thấy Legend View nào trong project.\n\n" +
+                    "Hướng dẫn:\n" +
+                    "1. Vào View tab → Legends → Legend\n" +
+                    "2. Tạo một Legend View rỗng\n" +
+                    "3. Đặt tên: 'ArcTool_LegendTemplate'\n" +
+                    "4. Chạy lại lệnh Update.");
+
+            // Bước 3: Duplicate và đổi tên
+            // WithDetailing: copy cả annotation elements nếu có (template thường rỗng nên vô hại)
+            ElementId newId  = legendTemplate.Duplicate(ViewDuplicateOption.WithDetailing);
+            View      newView = doc.GetElement(newId) as View;
+
+            if (newView == null)
+                throw new InvalidOperationException(
+                    $"Duplicate Legend View '{legendTemplate.Name}' thất bại (trả về null).");
+
+            try
+            {
+                newView.Name = viewName;
+            }
+            catch
+            {
+                newView.Name = $"{viewName}_{DateTime.Now:HHmmss}";
+            }
+
+            return newView;
+        }
+
+        /// <summary>
+        /// Tính tâm của View để đặt ảnh vào chính giữa khi lần đầu import.
+        ///
+        /// Ưu tiên CropBox (phản ánh vùng hiển thị thực tế) → BoundingBox → XYZ.Zero.
+        /// Với Drafting View/Legend View mới tạo: CropBox thường chưa có → fallback XYZ.Zero là OK
+        /// vì ảnh sẽ đặt tại origin của view space, user có thể kéo sau.
+        /// </summary>
+        private static XYZ GetViewCenter(View view)
+        {
+            // Ưu tiên 1: CropBox — chính xác nhất với view có vùng hiển thị xác định
+            try
+            {
+                BoundingBoxXYZ cropBox = view.CropBox;
+                if (cropBox != null && cropBox.Enabled)
+                {
+                    XYZ localCenter = new XYZ(
+                        (cropBox.Min.X + cropBox.Max.X) / 2.0,
+                        (cropBox.Min.Y + cropBox.Max.Y) / 2.0,
+                        0.0); // Z = 0 trong không gian 2D của View
+                    // Transform chuyển local coords về model/view space
+                    return cropBox.Transform.OfPoint(localCenter);
+                }
+            }
+            catch
+            {
+                // CropBox không khả dụng → fallback
+            }
+
+            // Ưu tiên 2: BoundingBox của View
+            try
+            {
+                BoundingBoxXYZ bb = view.get_BoundingBox(view);
+                if (bb != null)
+                {
+                    return new XYZ(
+                        (bb.Min.X + bb.Max.X) / 2.0,
+                        (bb.Min.Y + bb.Max.Y) / 2.0,
+                        (bb.Min.Z + bb.Max.Z) / 2.0);
+                }
+            }
+            catch
+            {
+                // BoundingBox không khả dụng → fallback cuối
+            }
+
+            // Fallback: origin của view space — ảnh đặt tại góc trên-trái, user kéo sau
+            return XYZ.Zero;
+        }
+
+        /// <summary>
+        /// Xóa temp file an toàn. Best-effort — không throw kể cả khi thất bại.
+        /// File sẽ bị OS dọn tự động trong %TEMP% nếu method này fail.
+        /// </summary>
+        private static void TryDeleteTempFile(string path)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(path) && File.Exists(path))
+                    File.Delete(path);
+            }
+            catch
+            {
+                // Bỏ qua — file trong %TEMP%, OS sẽ dọn sau
+            }
+        }
+    }
+}

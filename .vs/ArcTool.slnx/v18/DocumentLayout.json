@@ -1,17 +1,21 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\",
+  "WorkspaceRootPath": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\services\\excelinteropservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\quang mini\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\services\\excelsyncengine.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|solutionrelative:arctool.core\\services\\excelsyncengine.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\quang mini\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\services\\excelinteropservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|solutionrelative:arctool.core\\services\\excelinteropservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\services\\arctoolsettingsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\quang mini\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\services\\arctoolsettingsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|solutionrelative:arctool.core\\services\\arctoolsettingsservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\models\\excelmapping.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "AbsoluteMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|d:\\quang mini\\onedrive - msft\\plugin revit\\arctool\\arctool.core\\models\\excelmapping.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{483F0F61-09FD-4A83-B108-9935C0288D1C}|ArcTool.Core\\ArcTool.Core.csproj|solutionrelative:arctool.core\\models\\excelmapping.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
@@ -39,36 +43,47 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "ExcelInteropService.cs",
-              "DocumentMoniker": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Services\\ExcelInteropService.cs",
-              "RelativeDocumentMoniker": "ArcTool.Core\\Services\\ExcelInteropService.cs",
-              "ToolTip": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Services\\ExcelInteropService.cs",
-              "RelativeToolTip": "ArcTool.Core\\Services\\ExcelInteropService.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Title": "ExcelSyncEngine.cs",
+              "DocumentMoniker": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Services\\ExcelSyncEngine.cs",
+              "RelativeDocumentMoniker": "ArcTool.Core\\Services\\ExcelSyncEngine.cs",
+              "ToolTip": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Services\\ExcelSyncEngine.cs",
+              "RelativeToolTip": "ArcTool.Core\\Services\\ExcelSyncEngine.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAACMCAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-05-03T06:42:08.576Z",
+              "WhenOpened": "2026-05-04T00:15:25.916Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 1,
-              "Title": "ArcToolSettingsService.cs",
-              "DocumentMoniker": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Services\\ArcToolSettingsService.cs",
-              "RelativeDocumentMoniker": "ArcTool.Core\\Services\\ArcToolSettingsService.cs",
-              "ToolTip": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Services\\ArcToolSettingsService.cs",
-              "RelativeToolTip": "ArcTool.Core\\Services\\ArcToolSettingsService.cs",
-              "ViewState": "AgIAAGEAAAAAAAAAAADwv8wAAAAAAAAAAAAAAA==",
+              "Title": "ExcelInteropService.cs",
+              "DocumentMoniker": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Services\\ExcelInteropService.cs",
+              "RelativeDocumentMoniker": "ArcTool.Core\\Services\\ExcelInteropService.cs",
+              "ToolTip": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Services\\ExcelInteropService.cs",
+              "RelativeToolTip": "ArcTool.Core\\Services\\ExcelInteropService.cs",
+              "ViewState": "AgIAABwAAAAAAAAAAAAgwAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-04-28T12:53:55.698Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-05-03T06:42:08.576Z"
             },
             {
               "$type": "Document",
               "DocumentIndex": 2,
+              "Title": "ArcToolSettingsService.cs",
+              "DocumentMoniker": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Services\\ArcToolSettingsService.cs",
+              "RelativeDocumentMoniker": "ArcTool.Core\\Services\\ArcToolSettingsService.cs",
+              "ToolTip": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Services\\ArcToolSettingsService.cs",
+              "RelativeToolTip": "ArcTool.Core\\Services\\ArcToolSettingsService.cs",
+              "ViewState": "AgIAAGEAAAAAAAAAAADwv8wAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-04-28T12:53:55.698Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
               "Title": "ExcelMapping.cs",
-              "DocumentMoniker": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Models\\ExcelMapping.cs",
+              "DocumentMoniker": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Models\\ExcelMapping.cs",
               "RelativeDocumentMoniker": "ArcTool.Core\\Models\\ExcelMapping.cs",
-              "ToolTip": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Models\\ExcelMapping.cs",
+              "ToolTip": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\Models\\ExcelMapping.cs",
               "RelativeToolTip": "ArcTool.Core\\Models\\ExcelMapping.cs",
               "ViewState": "AgIAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",

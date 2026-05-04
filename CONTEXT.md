@@ -1,7 +1,7 @@
 # ARCTOOL — AI SESSION CONTEXT
 > Paste file này vào ĐẦU mỗi session chat mới với AI.
 > Cập nhật sau mỗi session làm việc.
-> Last updated: 2026-05-03 — Session 6.3: Phase 1C complete — Services/ExcelInteropService.cs V5.3 ✅ build success
+> Last updated: 2026-05-04 — Session 6.4: Phase 2 complete — Services/ExcelSyncEngine.cs V1.0 ✅ build success (BUG-E6 fixed)
 
 ---
 
@@ -40,7 +40,8 @@ ArcTool/
 │   │   └── ExcelToRevitCommand.cs      ← V1.0 stable (V3.0 đang trong roadmap)
 │   ├── Services/
 │   │   ├── ExcelInteropService.cs      ← V5.3 ✅ STABLE — thêm GetSheetNames/GetNamedRanges/ExportRegion
-│   │   └── ArcToolSettingsService.cs   ← V1.0 ✅ STABLE — Load/Save JSON, atomic write
+│   │   ├── ArcToolSettingsService.cs   ← V1.0 ✅ STABLE — Load/Save JSON, atomic write
+│   │   └── ExcelSyncEngine.cs         ← V1.0 ✅ STABLE — CheckForChanges/ExecuteUpdate/GetOrCreateView
 │   ├── UI/
 │   │   ├── FilterWindow.xaml
 │   │   └── FilterWindow.xaml.cs
@@ -155,6 +156,32 @@ ArcTool/
 - ⚠️ KNOWN LIMITATION: Atomic write không đảm bảo nếu `.rvt` và `.tmp` nằm khác volume
   (edge case không thực tế trong môi trường làm việc bình thường)
 
+### J. Excel Sync Engine — `Services/ExcelSyncEngine.cs` (V1.0 ✅ STABLE — Session 6.4)
+- Static class, không có mutable state — mọi dependency truyền qua parameter
+- PHẢI gọi trong Revit API context (Execute() của IExternalCommand) — dùng Transaction nội bộ
+- **Supporting types định nghĩa trong cùng file:**
+  - `MappingSyncStatus` (sealed class): `FileExists`, `HasChanges`, `DotColor` — immutable, UI chỉ đọc
+  - `SyncDotColor` (enum): `Green` / `Red` / `Yellow` — dùng để bind WPF Ellipse.Fill
+- **Public API:**
+  - `CheckForChanges(IEnumerable<ExcelMapping>)` → `IReadOnlyDictionary<string, MappingSyncStatus>`
+    - Chỉ so sánh filesystem timestamp, không mở Excel, không đọc Revit
+    - Key = `mapping.Id`, null/empty Id bị bỏ qua
+  - `ExecuteUpdate(ExcelMapping, Document, List<ExcelMapping>)` → `bool`
+    - Tự mở Transaction — caller KHÔNG wrap thêm
+    - Soft failures (file không mở được, export thất bại) → return false, không throw
+    - Hard failures (Revit API lỗi, IOException) → throw, caller hiện dialog
+  - `GetOrCreateView(string viewName, ExcelViewType, Document)` → `View`
+    - PHẢI gọi trong Transaction đang active
+    - Dispatcher sang `GetOrCreateDraftingView` hoặc `GetOrCreateLegendView`
+- **Quyết định thiết kế V1.0 đã chốt:**
+  - Mapping mutation xảy ra SAU Commit — capture `committedInstanceId/Width/Height` trước, mutate sau
+    → Nếu Commit fail, mapping giữ nguyên state cũ, JSON không bị ghi
+  - `using RevitView = Autodesk.Revit.DB.View` alias bắt buộc — tránh CS0104 với `System.Windows.Forms.View`
+  - `GetOrCreateLegendView()` ưu tiên tên `ArcTool_LegendTemplate`; fallback bất kỳ Legend View nào
+  - `CheckForChanges()` gọi `ArcToolSettingsService.FileExists()` và `HasFileChanged()` — không duplicate logic
+- ⚠️ KNOWN LIMITATION: Nếu Commit thành công nhưng `SaveMappings()` throw IOException
+  → mapping trong memory đã được mutate nhưng JSON chưa được ghi. Revit restart sẽ mất sync state.
+
 ---
 
 ## 4. BUG REGISTRY — TRẠNG THÁI
@@ -173,6 +200,7 @@ ArcTool/
 | BUG-E3 | ExcelInteropService | Release chartObj sau Delete() — undefined behavior. Fix: KHÔNG release sau Delete |
 | BUG-E4 | ExcelInteropService | `_activeSheet` không được release trong Dispose(). Fix: thêm vào đầu Dispose |
 | BUG-E5 | ExcelToRevitCommand | Ambiguous reference TaskDialog + TextBox. Fix: alias RevitTaskDialog |
+| BUG-E6 | ExcelSyncEngine | CS0104: `View` ambiguous giữa `Autodesk.Revit.DB.View` và `System.Windows.Forms.View` (do `<UseWindowsForms>true</UseWindowsForms>` trong .csproj). Fix: `using RevitView = Autodesk.Revit.DB.View` |
 
 ### ⏳ CÒN TỒN TẠI
 
@@ -196,6 +224,9 @@ ArcTool/
 | KHÔNG ReleaseComObject sau Delete() | Delete đã revoke COM handle | — |
 | JSON lưu cạnh file .rvt | Setting đi theo project folder | Mất nếu copy .rvt mà không copy JSON |
 | Legend View: Duplicate thay vì Create | Revit API 2026 không có method tạo Legend mới | User phải tạo thủ công 1 Legend View rỗng làm template lần đầu |
+| Enum prefix `Excel` (ExcelViewType, ExcelRegionType) | Tránh `CS0104` collision với `Autodesk.Revit.DB.ViewType` | Tên dài hơn — bắt buộc, không phải tuỳ chọn |
+| Alias `RevitView` trong ExcelSyncEngine | Tránh `CS0104` collision với `System.Windows.Forms.View` (UseWindowsForms=true) | Phải dùng `RevitView` thay vì `View` trong toàn bộ file |
+| Mapping mutation SAU Commit trong ExecuteUpdate() | Nếu Commit fail, mapping giữ nguyên state cũ — JSON không bị ghi sai | Capture committed values vào locals trước Commit, mutate mapping sau |
 | Enum prefix `Excel` (ExcelViewType, ExcelRegionType) | Tránh `CS0104` collision với `Autodesk.Revit.DB.ViewType` | Tên dài hơn — bắt buộc, không phải tuỳ chọn |
 | Atomic write: `.tmp` → `File.Replace()`/`File.Move()` | Không để JSON corrupt nếu crash | `.tmp` không được dọn nếu crash ở bước 2; vô hại |
 | `JsonStringEnumConverter` cho enum fields | Forward-compatible khi thêm enum value mới; JSON dễ đọc | `DeserializeException` nếu JSON cũ chứa enum dạng số |
@@ -492,12 +523,14 @@ Phase 1 — Models & Services (không phụ thuộc UI)
         NOTE: regionName = null → PrintArea → UsedRange fallback tự động
   [x] Verify Legend View creation API tại revitapidocs.com/2026 ✅ (không có Create())
 
-Phase 2 — Logic Layer (không phụ thuộc UI) ← NEXT
-  [ ] Viết Services/ExcelSyncEngine.cs:
-        [ ] ExecuteUpdate(ExcelMapping, Document) → Smart Scale + atomic save
-        [ ] GetOrCreateDraftingView(viewName, Document) — trong Transaction
-        [ ] GetOrCreateLegendView(viewName, Document) — Duplicate workaround
-        [ ] private TryDeleteTempFile(path)
+Phase 2 — Logic Layer (không phụ thuộc UI) ✅ COMPLETE — Session 6.4
+  [x] Viết Services/ExcelSyncEngine.cs — build success
+        NOTE: BUG-E6 fix — alias `using RevitView = Autodesk.Revit.DB.View` tránh CS0104
+        NOTE: MappingSyncStatus (sealed) + SyncDotColor (enum) định nghĩa trong cùng file
+        NOTE: CheckForChanges() — chỉ filesystem, không mở Excel, không đọc Revit
+        NOTE: ExecuteUpdate() tự mở Transaction — caller KHÔNG wrap thêm
+        NOTE: Mapping mutation SAU Commit — capture locals trước, mutate sau Commit thành công
+        NOTE: GetOrCreateView() là dispatcher; GetOrCreate*View() là private helpers trong Transaction
 
 Phase 3 — UI
   [ ] Thiết kế UI/ExcelToRevitWindow.xaml (WPF DataGrid theo UI Spec 6.3)
@@ -531,8 +564,8 @@ Tất cả 5 bug nghiêm trọng + 4 COM bug đã fix.
 - Phase 1A ✅: ExcelMapping.cs (Session 6.1)
 - Phase 1B ✅: ArcToolSettingsService.cs (Session 6.2)
 - Phase 1C ✅: ExcelInteropService.cs V5.3 (Session 6.3)
-- Phase 2 ⏳: ExcelSyncEngine.cs ← **NEXT SESSION**
-- Phase 3 ⏳: ExcelToRevitWindow.xaml + .cs
+- Phase 2 ✅: ExcelSyncEngine.cs V1.0 (Session 6.4)
+- Phase 3 ⏳: ExcelToRevitWindow.xaml + .cs ← **NEXT SESSION**
 
 ### Giai đoạn 4 — Quick Dim (R&D) 📋 TƯƠNG LAI
 - Nghiên cứu ReferenceArray extraction từ Wall, Column, Beam
@@ -546,7 +579,10 @@ Tất cả 5 bug nghiêm trọng + 4 COM bug đã fix.
 [Transaction(TransactionMode.Manual)]
 
 // 2. Namespace alias tránh conflict
-using RevitTaskDialog = Autodesk.Revit.UI.TaskDialog;
+using RevitTaskDialog = Autodesk.Revit.UI.TaskDialog;  // tránh conflict với WinForms
+using RevitView = Autodesk.Revit.DB.View;               // tránh conflict với System.Windows.Forms.View
+                                                         // BẮT BUỘC trong ExcelSyncEngine và các file
+                                                         // import cả Autodesk.Revit.DB lẫn UseWindowsForms
 
 // 3. ElementId: luôn dùng long
 elem.Category.Id.Value == (long)BuiltInCategory.OST_Walls  // ĐÚNG
@@ -622,4 +658,4 @@ using (var svc = new ExcelInteropService())
 ---
 
 *ArcTool © 2026 — Internal development documentation*
-*Session 6.3: Phase 1C — ExcelInteropService.cs V5.3 ✅ build success + 3 method mới locked*
+*Session 6.4: Phase 2 — ExcelSyncEngine.cs V1.0 ✅ build success + BUG-E6 fixed (RevitView alias)*

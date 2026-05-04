@@ -81,6 +81,15 @@ Tôi là kiến trúc sư với **20 năm kinh nghiệm thực chiến** trong n
 - **`HasFileChanged(mapping)`**: so sánh `File.GetLastWriteTime()` (local) > `mapping.LastModified` (local)
 - ⚠️ Luôn dùng `DateTime.Now` khi gán `LastModified` — KHÔNG `DateTime.UtcNow`
 
+### J. Excel Sync Engine — `Services/ExcelSyncEngine.cs` (V1.0 ✅ STABLE — Session 6.4)
+- Static class, không có mutable state — mọi dependency truyền qua parameter
+- **Supporting types trong cùng file:** `MappingSyncStatus` (sealed) + `SyncDotColor` (enum)
+- **`CheckForChanges()`**: so sánh filesystem timestamp — không mở Excel, không đọc Revit
+- **`ExecuteUpdate()`**: full pipeline tự quản lý Transaction — caller KHÔNG wrap thêm
+- **`GetOrCreateView()`**: dispatcher → Drafting (ViewDrafting.Create) hoặc Legend (Duplicate workaround)
+- ⚠️ Mapping mutation xảy ra **SAU** `tx.Commit()` — capture locals trước, mutate sau
+- ⚠️ `using RevitView = Autodesk.Revit.DB.View` bắt buộc — tránh CS0104 với `System.Windows.Forms.View`
+
 ---
 
 ## EXCEL TO REVIT V3.0 — SPEC TÓM TẮT
@@ -102,8 +111,8 @@ Tôi là kiến trúc sư với **20 năm kinh nghiệm thực chiến** trong n
 | `Models/ExcelMapping.cs` | POCO: Id, ViewName, AutoSync, LastModified, WorkSheet, Region, **ExcelRegionType**, **ExcelViewType**, FilePath, ImageInstanceId, StoredWidth, StoredHeight | ✅ DONE — Session 6.1 |
 | `Services/ArcToolSettingsService.cs` | Load/Save JSON cạnh .rvt — atomic write, FileExists(), HasFileChanged() | ✅ DONE — Session 6.2 |
 | `Services/ExcelInteropService.cs` (V5.3) | GetSheetNames(), GetNamedRanges(), ExportRegion() | ✅ DONE — Session 6.3 |
-| `Services/ExcelSyncEngine.cs` | ExecuteUpdate(), GetOrCreateDraftingView(), GetOrCreateLegendView() | ⏳ Phase 2 — NEXT |
-| `UI/ExcelToRevitWindow.xaml` + `.cs` | WPF DataGrid 10 cột theo UI spec | ⏳ Phase 3 |
+| `Services/ExcelSyncEngine.cs` (V1.0) | CheckForChanges(), ExecuteUpdate(), GetOrCreateView() — BUG-E6 fixed (RevitView alias) | ✅ DONE — Session 6.4 |
+| `UI/ExcelToRevitWindow.xaml` + `.cs` | WPF DataGrid 10 cột theo UI spec | ⏳ Phase 3 — NEXT |
 
 ### Legend View — Giới hạn API đã verify
 Revit API 2026 **không có method tạo Legend View từ đầu**. Workaround: `view.Duplicate(ViewDuplicateOption.WithDetailing)`. Yêu cầu: project phải có sẵn 1 Legend View rỗng tên `ArcTool_LegendTemplate`.
@@ -244,9 +253,9 @@ ArcTool.Core\Bin\x64\Debug\net8.0-windows\
 
 ---
 
-### Test 6: Excel to Revit V3.0 (Sau khi implement Phase 2 + 3)
+### Test 6: ExcelSyncEngine V1.0 (Unit-level — Session 6.4)
 
-**Setup:** File Excel có nhiều sheet, một số sheet có Named Ranges. File Revit đã lưu (có PathName).
+**Setup:** File Excel có nhiều sheet, một số sheet có Named Ranges. File Revit đã lưu (có PathName). Đã tạo 1 Legend View rỗng tên `ArcTool_LegendTemplate` trong Revit.
 
 #### Test 6A — Import lần đầu (Drafting View)
 1. Mở dialog Excel to Revit
@@ -295,6 +304,24 @@ ArcTool.Core\Bin\x64\Debug\net8.0-windows\
 1. Chạy lệnh khi file `.rvt` chưa lưu → `GetSettingsPath()` throw, dialog rõ ràng
 2. Corrupt `ArcTool_ExcelSync.json` → Mở dialog → DataGrid rỗng, file `.corrupt_[timestamp]` xuất hiện
 
+#### Test 6G — ExcelSyncEngine: Smart Scale sau nhiều lần Update
+1. Import lần đầu → kích thước mặc định Revit (StoredWidth/Height ≠ 0 trong JSON)
+2. Kéo resize ảnh trực tiếp trong Revit View → lưu project
+3. Sửa file Excel → lưu → mở dialog → Status Dot đỏ → nhấn Update
+
+**Assertions:**
+- [ ] Ảnh mới có Width/Height bằng kích thước đã resize (không phải kích thước lần đầu)
+- [ ] JSON: StoredWidth/Height cập nhật giá trị mới
+- [ ] Mapping chỉ bị mutate SAU khi Transaction commit thành công
+
+#### Test 6H — ExcelSyncEngine: CheckForChanges() không side effect
+1. Gọi `CheckForChanges()` với file Excel không thay đổi
+
+**Assertions:**
+- [ ] `EXCEL.EXE` KHÔNG xuất hiện trong Task Manager (CheckForChanges không mở Excel)
+- [ ] Revit không tạo Transaction
+- [ ] Trả về `SyncDotColor.Green` cho tất cả mapping đã sync
+
 ---
 
 ## RIBBON UI LAYOUT
@@ -319,6 +346,7 @@ ArcTool Tab (3 Panels)
 | Error / Symptom | Nguyên nhân | Giải pháp |
 |---|---|---|
 | CS0104: TaskDialog ambiguous | Import WinForms + Revit.UI | Dùng alias: `using RevitTaskDialog = Autodesk.Revit.UI.TaskDialog;` |
+| CS0104: View ambiguous | `UseWindowsForms=true` inject `System.Windows.Forms.View` + import `Autodesk.Revit.DB` | Dùng alias: `using RevitView = Autodesk.Revit.DB.View;` — BẮT BUỘC trong ExcelSyncEngine |
 | CS0104: ViewType ambiguous | Import `ArcTool.Core.Models` + `Autodesk.Revit.DB` trong cùng file | Enum trong Models phải có prefix: `ExcelViewType`, `ExcelRegionType` |
 | Excel process vẫn còn sau GetSheetNames/GetNamedRanges | COM wrapper `Sheets`/`Names` chưa release | Kiểm tra `Marshal.ReleaseComObject(sheets)` và `Marshal.ReleaseComObject(allNames)` sau forEach |
 | Excel process vẫn còn sau ExportRegion | `_activeSheet` swap không restore, hoặc `ws` không release | Kiểm tra thứ tự `finally`: restore `_activeSheet` → release `targetRange` → release `ws` |
@@ -330,6 +358,7 @@ ArcTool Tab (3 Panels)
 | JSON không lưu được | File .rvt chưa lưu | `doc.PathName` rỗng → `GetSettingsPath()` throw → hiện dialog yêu cầu lưu file |
 | Status Dot không đổi sang đỏ | Mix UTC/local time | `HasFileChanged()` dùng local time; `LastModified` phải gán `DateTime.Now` |
 | Smart Scale reset về mặc định sau Update | Quên đọc Width/Height trước Delete | Đọc `existingInst.Width/Height` TRƯỚC `doc.Delete(existingInst.Id)` |
+| Smart Scale reset dù đã đọc đúng | Mapping bị mutate bên trong Transaction, Commit fail → state sai | Capture `committedWidth/Height` vào locals TRƯỚC Commit, mutate mapping SAU Commit |
 | JSON bị corrupt sau crash | `File.WriteAllText()` trực tiếp | Luôn dùng `ArcToolSettingsService.SaveMappings()` — atomic write |
 | Enum deserialize lỗi từ JSON cũ | JSON cũ lưu enum dạng số (0, 1) | JSON mới dùng string ("DraftingView") — cần migration nếu upgrade |
 | Dimension skip một số Dim | `Dim.Curve == null` | `ArrangeDimensionCommand` có guard `if (baseLine == null) return false` |
@@ -400,13 +429,50 @@ bool exists    = ArcToolSettingsService.FileExists(mapping);
 bool hasChange = ArcToolSettingsService.HasFileChanged(mapping);
 ```
 
-### Implement ExcelSyncEngine.ExecuteUpdate() (Phase 2 — NEXT)
-Xem **SKILL.md Pattern 12** để có skeleton đầy đủ. Thứ tự bắt buộc:
-1. Export Excel → temp PNG **ngoài Transaction** (COM không cần Transaction)
-2. Đọc `existingInst.Width/Height` **TRƯỚC khi xóa** (Smart Scale)
-3. Mở Transaction → xóa ảnh cũ → tạo/lấy View → tạo ImageType → tạo ImageInstance → áp kích thước → Commit
-4. Cập nhật `mapping.LastModified = DateTime.Now` và gọi `SaveMappings()` **SAU Commit**
-5. `TryDeleteTempFile(tempPng)` trong `finally` — Revit đã nhúng ảnh sau Commit
+### Gọi ExcelSyncEngine đúng cách (Phase 2 ✅ DONE)
+
+```csharp
+// CheckForChanges — KHÔNG mở Excel, KHÔNG cần Transaction
+// Gọi khi dialog mở để cập nhật Status Dot cho tất cả rows
+var statusDict = ExcelSyncEngine.CheckForChanges(mappings);
+foreach (var mapping in mappings)
+{
+    var status = statusDict[mapping.Id];
+    // status.DotColor: Green / Red / Yellow
+    // status.FileExists, status.HasChanges
+}
+
+// ExecuteUpdate — tự quản lý Transaction, caller KHÔNG wrap thêm
+// Gọi khi user nhấn Update per-row hoặc Update All
+// Soft failure → return false (hiện thông báo nhẹ)
+// Hard failure → throw (catch và hiện dialog lỗi rõ ràng)
+try
+{
+    bool ok = ExcelSyncEngine.ExecuteUpdate(mapping, doc, allMappings);
+    if (!ok)
+        TaskDialog.Show("ArcTool", "Không thể export file Excel. Kiểm tra file có đang bị mở không?");
+}
+catch (InvalidOperationException ex)
+{
+    // Cấu hình sai: ViewName rỗng, không có Legend template, v.v.
+    TaskDialog.Show("ArcTool Error", ex.Message);
+}
+catch (IOException ex)
+{
+    // Không lưu được JSON: disk đầy, quyền truy cập
+    TaskDialog.Show("ArcTool Error", $"Không thể lưu settings: {ex.Message}");
+}
+
+// AutoSync: gọi ExecuteUpdate() tự động khi dialog mở nếu HasChanges = true
+foreach (var mapping in mappings)
+{
+    var status = statusDict[mapping.Id];
+    if (mapping.AutoSync && status.HasChanges && status.FileExists)
+    {
+        ExcelSyncEngine.ExecuteUpdate(mapping, doc, allMappings); // tự xử lý exception nội bộ
+    }
+}
+```
 
 ### Debug Excel COM issue
 1. Build và chạy trong Revit
@@ -434,4 +500,4 @@ Xem **SKILL.md Pattern 12** để có skeleton đầy đủ. Thứ tự bắt bu
 ---
 
 *ArcTool Development & Usage Instructions © 2026*
-*Last updated: Session 6.3 — ExcelInteropService.cs V5.3 ✅ build success — Phase 1 hoàn thành, Phase 2 (ExcelSyncEngine) là NEXT*
+*Last updated: Session 6.4 — ExcelSyncEngine.cs V1.0 ✅ build success — Phase 2 hoàn thành, Phase 3 (ExcelToRevitWindow UI) là NEXT*

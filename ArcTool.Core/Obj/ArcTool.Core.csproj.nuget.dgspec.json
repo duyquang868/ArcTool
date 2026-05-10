@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\ArcTool.Core.csproj": {}
+    "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\ArcTool.Core.csproj": {}
   },
   "projects": {
-    "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\ArcTool.Core.csproj": {
+    "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\ArcTool.Core.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\ArcTool.Core.csproj",
+        "projectUniqueName": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\ArcTool.Core.csproj",
         "projectName": "ArcTool.Core",
-        "projectPath": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\ArcTool.Core.csproj",
-        "packagesPath": "C:\\Users\\ADMIN\\.nuget\\packages\\",
-        "outputPath": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\obj\\",
+        "projectPath": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\ArcTool.Core.csproj",
+        "packagesPath": "C:\\Users\\quangnguyen\\.nuget\\packages\\",
+        "outputPath": "D:\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\ADMIN\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\quangnguyen\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -72,6 +72,20 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[8.0.26, 8.0.26]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[8.0.26, 8.0.26]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Ref",
+              "version": "[8.0.26, 8.0.26]"
+            }
+          ],
           "frameworkReferences": {
             "Microsoft.NETCore.App": {
               "privateAssets": "all"
@@ -80,7 +94,7 @@
               "privateAssets": "none"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.203/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.202/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

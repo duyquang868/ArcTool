@@ -188,8 +188,9 @@ namespace ArcTool.Core.Services
                 // ── BƯỚC 2: ĐỌC WIDTH/HEIGHT CỦA INSTANCE CŨ (Smart Scale) ─────────
                 // PHẢI đọc TRƯỚC khi xóa — sau doc.Delete() sẽ không truy cập được.
                 // Fallback về StoredWidth/Height trong JSON nếu instance không tìm thấy.
-                double storedWidth  = mapping.StoredWidth;   // 0.0 = lần đầu import
-                double storedHeight = mapping.StoredHeight;  // 0.0 = lần đầu import
+                // storedWidth/storedHeight giữ đơn vị MILLIMETERS xuyên suốt function
+                double storedWidth  = mapping.StoredWidth;   // 0.0 = lần đầu import, đơn vị mm
+                double storedHeight = mapping.StoredHeight;  // 0.0 = lần đầu import, đơn vị mm
 
                 if (mapping.ImageInstanceId != 0)
                 {
@@ -203,8 +204,8 @@ namespace ArcTool.Core.Services
                         {
                             // Đọc kích thước THỰC TẾ — có thể khác StoredWidth/Height trong JSON
                             // nếu user đã resize trực tiếp trong Revit sau lần sync trước
-                            storedWidth  = existingInst.Width;
-                            storedHeight = existingInst.Height;
+                            storedWidth  = UnitUtils.ConvertFromInternalUnits(existingInst.Width, UnitTypeId.Millimeters);
+                            storedHeight = UnitUtils.ConvertFromInternalUnits(existingInst.Height, UnitTypeId.Millimeters);
                         }
                         // else: instance bị xóa ngoài tool (Undo, manual delete) → fallback JSON
                     }
@@ -217,16 +218,15 @@ namespace ArcTool.Core.Services
                     }
                 }
 
-                // ── BƯỚC 3: TRANSACTION ──────────────────────────────────────────────
-                // Capture values vào locals TRƯỚC Commit để update mapping SAU Commit.
-                // Nếu Commit fail → mapping không bị mutate, JSON không bị ghi.
+                // ── BƯỚC 3: TRANSACTION 1 — CREATE IMAGE ─────────────────────────────
+                // Tạo ImageInstance mới tại natural size. Width/Height sẽ được set trong Tx2.
                 long   committedInstanceId = 0;
-                double committedWidth      = 0.0;
-                double committedHeight     = 0.0;
+                double committedWidth      = storedWidth;   // fallback mặc định
+                double committedHeight     = storedHeight;
 
-                using (var tx = new Transaction(doc, "ArcTool: Refresh Excel Image"))
+                using (var tx1 = new Transaction(doc, "ArcTool: Create Excel Image"))
                 {
-                    tx.Start();
+                    tx1.Start();
                     try
                     {
                         // 3a. Xóa ImageInstance cũ nếu tồn tại
@@ -238,7 +238,17 @@ namespace ArcTool.Core.Services
                                     new ElementId(mapping.ImageInstanceId)) as ImageInstance;
 
                                 if (oldInst != null && oldInst.IsValidObject)
+                                {
+                                    // Lấy ImageType trước khi xóa instance
+                                    ElementId imageTypeId = oldInst.GetTypeId();
+
+                                    // Xóa instance trước
                                     doc.Delete(oldInst.Id);
+
+                                    // Xóa ImageType để tránh orphaned types tích tụ trong project
+                                    if (imageTypeId != null && imageTypeId != ElementId.InvalidElementId)
+                                        doc.Delete(imageTypeId);
+                                }
                                 // KHÔNG Marshal.ReleaseComObject — ImageInstance là Revit managed
                             }
                             catch (Exception ex)
@@ -279,29 +289,91 @@ namespace ArcTool.Core.Services
                                 "ImageInstance.Create() trả về null. " +
                                 "View có thể không hỗ trợ import ảnh.");
 
-                        // 3e. Áp lại kích thước đã lưu (Smart Scale)
-                        // Lần đầu import: storedWidth/storedHeight = 0 → giữ kích thước mặc định Revit
-                        // Các lần update sau: áp lại kích thước user đã resize
-                        if (storedWidth > 0.0 && storedHeight > 0.0)
-                        {
-                            newInst.Width  = storedWidth;
-                            newInst.Height = storedHeight;
-                        }
-
-                        // 3f. Capture giá trị TRƯỚC Commit để update mapping NGOÀI Transaction
-                        // Lý do: nếu Commit fail, mapping phải giữ nguyên state cũ
+                        // 3e. Capture Id — Width/Height sẽ được set trong Transaction 2
                         committedInstanceId = newInst.Id.Value;
-                        committedWidth      = newInst.Width;   // có thể khác storedWidth nếu Revit clamp
-                        committedHeight     = newInst.Height;
 
-                        tx.Commit();
+                        tx1.Commit();
                     }
                     catch
                     {
-                        tx.RollBack();
+                        tx1.RollBack();
                         throw; // propagate lên để caller hiện dialog
                     }
-                } // end Transaction
+                } // end Transaction 1
+
+                // Đọc natural size SAU Transaction 1 — fallback nếu Transaction 2 fail
+                try
+                {
+                    var naturalInst = doc.GetElement(
+                        new ElementId(committedInstanceId)) as ImageInstance;
+                    if (naturalInst != null && naturalInst.IsValidObject)
+                    {
+                        committedWidth  = UnitUtils.ConvertFromInternalUnits(naturalInst.Width, UnitTypeId.Millimeters);
+                        committedHeight = UnitUtils.ConvertFromInternalUnits(naturalInst.Height, UnitTypeId.Millimeters);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[ExcelSyncEngine] Không đọc Width/Height sau commit: {ex.Message}");
+                    // Fallback về storedWidth/storedHeight — không fatal
+                }
+
+                // ── BƯỚC 3B: TRANSACTION 2 — RESIZE IMAGE ────────────────────────────
+                // Áp kích thước đã lưu hoặc 2000mm default. Tx2 failure = soft failure.
+                using (var tx2 = new Transaction(doc, "ArcTool: Resize Excel Image"))
+                {
+                    tx2.Start();
+                    try
+                    {
+                        var resizeInst = doc.GetElement(
+                            new ElementId(committedInstanceId)) as ImageInstance;
+
+                        if (resizeInst != null && resizeInst.IsValidObject)
+                        {
+                            if (storedWidth > 0.0 && storedHeight > 0.0)
+                            {
+                                // Subsequent update — áp lại kích thước user đã resize
+                                resizeInst.Width  = UnitUtils.ConvertToInternalUnits(storedWidth, UnitTypeId.Millimeters);
+                                resizeInst.Height = UnitUtils.ConvertToInternalUnits(storedHeight, UnitTypeId.Millimeters);
+                            }
+                            else
+                            {
+                                // First import — áp 2000mm default
+                                resizeInst.Width = UnitUtils.ConvertToInternalUnits(2000.0, UnitTypeId.Millimeters);
+                                // Height: preserve aspect ratio — LockProportions handles it automatically
+                            }
+                        }
+
+                        tx2.Commit();
+
+                        // Đọc lại Width/Height SAU khi Tx2 commit thành công
+                        try
+                        {
+                            var finalInst = doc.GetElement(
+                                new ElementId(committedInstanceId)) as ImageInstance;
+                            if (finalInst != null && finalInst.IsValidObject)
+                            {
+                                committedWidth  = UnitUtils.ConvertFromInternalUnits(finalInst.Width, UnitTypeId.Millimeters);
+                                committedHeight = UnitUtils.ConvertFromInternalUnits(finalInst.Height, UnitTypeId.Millimeters);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine(
+                                $"[ExcelSyncEngine] Không đọc Width/Height sau resize: {ex.Message}");
+                            // Giữ committedWidth/committedHeight từ natural size — không fatal
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        tx2.RollBack();
+                        // Tx2 failure = soft failure — instance tồn tại ở natural size, acceptable
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[ExcelSyncEngine] Transaction 2 (resize) thất bại: {ex.Message}");
+                        // committedWidth/committedHeight giữ natural size từ giữa 2 transactions
+                    }
+                } // end Transaction 2
 
                 // ── BƯỚC 4: UPDATE MAPPING + SAVE JSON (SAU KHI COMMIT) ──────────────
                 // Chỉ chạy nếu Transaction commit thành công (nếu không, catch sẽ throw rồi)

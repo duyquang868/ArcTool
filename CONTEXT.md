@@ -1,7 +1,7 @@
 # ARCTOOL — AI SESSION CONTEXT
 > Paste file này vào ĐẦU mỗi session chat mới với AI.
 > Cập nhật sau mỗi session làm việc.
-> Last updated: 2026-05-04 — Session 6.4: Phase 2 complete — Services/ExcelSyncEngine.cs V1.0 ✅ build success (BUG-E6 fixed)
+> Last updated: 2026-05-10 — Session 7.1: Excel to Revit V3.0 ✅ COMPLETE — ExcelToRevitWindow.xaml + ExcelToRevitCommand V3.0
 
 ---
 
@@ -37,14 +37,16 @@ ArcTool/
 │   │   ├── MultiCutCommand.cs
 │   │   ├── ArrangeDimensionCommand.cs
 │   │   ├── FilterManagerCommand.cs
-│   │   └── ExcelToRevitCommand.cs      ← V1.0 stable (V3.0 đang trong roadmap)
+│   │   └── ExcelToRevitCommand.cs      ← V3.0 ✅ STABLE — Entry point cho ExcelToRevitWindow
 │   ├── Services/
 │   │   ├── ExcelInteropService.cs      ← V5.3 ✅ STABLE — thêm GetSheetNames/GetNamedRanges/ExportRegion
 │   │   ├── ArcToolSettingsService.cs   ← V1.0 ✅ STABLE — Load/Save JSON, atomic write
 │   │   └── ExcelSyncEngine.cs         ← V1.0 ✅ STABLE — CheckForChanges/ExecuteUpdate/GetOrCreateView
 │   ├── UI/
 │   │   ├── FilterWindow.xaml
-│   │   └── FilterWindow.xaml.cs
+│   │   ├── FilterWindow.xaml.cs
+│   │   ├── ExcelToRevitWindow.xaml     ← V3.0 ✅ STABLE — WPF DataGrid cho Excel to Revit
+│   │   └── ExcelToRevitWindow.xaml.cs  ← V3.0 ✅ STABLE — ViewModel + event handlers
 │   ├── Utilities/
 │   │   └── SelectionFilters.cs
 │   ├── Models/
@@ -111,11 +113,12 @@ ArcTool/
   - Restore `_activeSheet` **TRƯỚC KHI** release `ws` local — tránh trỏ vào COM đã revoke
   - Named Range lỗi (formula, deleted, cross-sheet) bị bỏ qua trong try-catch per item, không dừng iteration
 
-### F. Excel to Revit — `ExcelToRevitCommand.cs` (V1.0 — STABLE, chờ V3.0)
-- Pipeline hiện tại: Excel → PNG → ImageType.Create() → ImageInstance.Create()
-- User chọn file Excel, nhập scale %, ảnh đặt tại tâm view
-- Build thành công, 0 errors, 0 warnings
-- ⏳ CẦN NÂNG CẤP lên V3.0 theo roadmap bên dưới
+### F. Excel to Revit — `ExcelToRevitCommand.cs` (V3.0 ✅ STABLE — Session 7.1)
+- Entry point duy nhất cho Excel to Revit V3.0: command chỉ mở `ExcelToRevitWindow` (ShowDialog modal), không chạy pipeline import trực tiếp như V1.0.
+- Guard sớm nếu `doc.PathName` rỗng: hiện `TaskDialog` yêu cầu lưu file `.rvt` trước khi dùng tính năng (tránh mở window rồi fail trong `LoadMappings`).
+- Owner của WPF window được gán về main window Revit qua `WindowInteropHelper.Owner = Autodesk.Windows.ComponentManager.ApplicationWindow`.
+- Transaction model đã chốt: command **không** mở transaction; mọi transaction nằm trong `ExcelSyncEngine.ExecuteUpdate()` gọi từ window.
+- Exception handling rõ ràng: `OperationCanceledException` → `Result.Cancelled`; lỗi khác → hiện dialog + `Result.Failed`.
 
 ### G. Filter Manager — `FilterManagerCommand.cs` + `FilterWindow.xaml` (SKELETON)
 - UI WPF modeless đã xong (FilterWindow với 2 DataGrid: Filters + Views)
@@ -182,6 +185,15 @@ ArcTool/
 - ⚠️ KNOWN LIMITATION: Nếu Commit thành công nhưng `SaveMappings()` throw IOException
   → mapping trong memory đã được mutate nhưng JSON chưa được ghi. Revit restart sẽ mất sync state.
 
+### K. ExcelToRevitWindow — `UI/ExcelToRevitWindow.xaml` + `.xaml.cs` (V3.0 ✅ STABLE — Session 7.1)
+- WPF modal window với DataGrid 10 cột đúng UI spec: Select, Status Dot, View Name, Auto Sync, Last Modified, WorkSheet, Region, View Type, File Path, Update.
+- Toolbar đã hoàn chỉnh: `+` (thêm row), `−` (xóa rows đã chọn), `Update All` (update tất cả rows có thay đổi).
+- Row ViewModel (`ExcelMappingRowViewModel`) wrap `ExcelMapping`, expose computed binding (`DotBrush`, `StatusTooltip`, `CanUpdate`, `LastModifiedText`, `FileDisplayText`) và write-through xuống model.
+- Lookup data flow hoàn chỉnh: Browse file → `GetSheetNames()` → chọn WorkSheet → `GetNamedRanges()` → rebuild Region options (`PrintArea` + NamedRanges, giữ `UsedRange` khi mapping đang dùng).
+- Status flow hoàn chỉnh: `RefreshAllStatuses()` gọi `ExcelSyncEngine.CheckForChanges()` để cập nhật dot xanh/đỏ/vàng theo từng row.
+- AutoSync flow hoàn chỉnh: khi window load, tự chạy update cho các row `AutoSync=true && FileExists && HasChanges`, sau đó refresh lại trạng thái.
+- Đã fix bug Phase 3: set `_suppressRowEvents = true` **trước** khi gán `row.FilePath` trong `BrowseForRow()` để tránh double-call `LoadLookupData()` (BUG-P3-01).
+
 ---
 
 ## 4. BUG REGISTRY — TRẠNG THÁI
@@ -201,6 +213,7 @@ ArcTool/
 | BUG-E4 | ExcelInteropService | `_activeSheet` không được release trong Dispose(). Fix: thêm vào đầu Dispose |
 | BUG-E5 | ExcelToRevitCommand | Ambiguous reference TaskDialog + TextBox. Fix: alias RevitTaskDialog |
 | BUG-E6 | ExcelSyncEngine | CS0104: `View` ambiguous giữa `Autodesk.Revit.DB.View` và `System.Windows.Forms.View` (do `<UseWindowsForms>true</UseWindowsForms>` trong .csproj). Fix: `using RevitView = Autodesk.Revit.DB.View` |
+| BUG-P3-01 | ExcelToRevitWindow.xaml.cs | Double-call `LoadLookupData()` khi Browse file (event cascade qua `Row_PropertyChanged`). Fix: set `_suppressRowEvents = true` trước khi gán `row.FilePath`, rồi gọi `LoadLookupData()` đúng 1 lần |
 
 ### ⏳ CÒN TỒN TẠI
 
@@ -235,6 +248,10 @@ ArcTool/
 | File corrupt → backup `.corrupt_[timestamp]`, tối đa 5 bản | Giữ lại để debug, không để disk đầy | Nếu corrupt liên tục, vẫn tích lũy 5 file |
 | `ExportRegion()` swap `_activeSheet` thay vì truyền ws vào `ExportRangeInternal()` | Không sửa code cũ đã stable; ExportRangeInternal dùng _activeSheet | Tạm thời thay đổi state của instance — được vì Revit single-thread |
 | Release `Sheets`/`Names` COM wrapper sau forEach | COM wrapper là object riêng, không tự release khi GC | Pattern bổ sung so với Pattern 10 gốc trong SKILL.md |
+| `_suppressRowEvents` guard trong ExcelToRevitWindow | Ngăn cascade events khi code set property (tránh vòng lặp Row_PropertyChanged) | Phải nhớ set true/false đúng chỗ — dễ quên khi thêm event handler mới |
+| `LoadLookupData()` vs `LoadRegionOptionsForRow()` tách riêng | LoadLookupData load cả SheetNames + RegionOptions (khi Browse file); LoadRegionOptionsForRow chỉ load RegionOptions (khi đổi WorkSheet) | Tránh reload SheetNames không cần thiết — tối ưu COM calls |
+| UsedRange không hiện mặc định trong Region ComboBox | Chỉ thêm UsedRange vào RegionOptions nếu mapping đang dùng UsedRange | Giữ lựa chọn hiện tại của user; UI spec chỉ yêu cầu Print Areas + Named Ranges |
+| BUG-P3-01 fix: suppress TRƯỚC khi gán FilePath | Set `_suppressRowEvents = true` trước `row.FilePath = ...` trong BrowseForRow() | Nếu gán trước rồi suppress sau → Row_PropertyChanged fire → double-call LoadLookupData |
 
 ---
 
@@ -386,25 +403,33 @@ ExcelSyncEngine.ExecuteUpdate(ExcelMapping mapping, Document doc)
   │      }
   │      else { storedWidth = mapping.StoredWidth; storedHeight = mapping.StoredHeight; }
   │
-  ├─ 3. Transaction("ArcTool: Refresh Excel Image")
+  ├─ 3. Transaction("ArcTool: Create Excel Image")
   │      ├─ GetOrCreateView(mapping.ViewName, mapping.ViewType, doc) → targetView
   │      ├─ if (existingInst valid) → doc.Delete(existingInst.Id)
   │      ├─ ImageType.Create(doc, tempPng) → imageType
   │      ├─ ImageInstance.Create(doc, targetView, ...) → newInst
-  │      ├─ if (storedWidth > 0 && storedHeight > 0)
-  │      │    newInst.Width = storedWidth; newInst.Height = storedHeight
   │      └─ Commit()
   │
-  ├─ 4. Cập nhật mapping:
+  ├─ 4. Đọc natural size giữa 2 transaction
+  │      ├─ nếu đã có storedWidth/storedHeight thì giữ nguyên
+  │      └─ nếu chưa có thì lấy newInst.Width / newInst.Height làm kích thước gốc
+  │
+  ├─ 5. Transaction("ArcTool: Resize Excel Image")
+  │      ├─ if (storedWidth > 0 && storedHeight > 0)
+  │      │    newInst.Width = storedWidth; newInst.Height = storedHeight
+  │      ├─ Commit()
+  │      └─ Tx2 fail → RollBack() + Debug.WriteLine(...), không throw
+  │
+  ├─ 6. Cập nhật mapping:
   │      mapping.LastModified    = DateTime.Now   ← local time
   │      mapping.ImageInstanceId = newInst.Id.Value
   │      mapping.StoredWidth     = newInst.Width
   │      mapping.StoredHeight    = newInst.Height
   │      ArcToolSettingsService.SaveMappings(doc, allMappings)
   │
-  ├─ 5. Cập nhật UI: Status Dot → xanh
+  ├─ 7. Cập nhật UI: Status Dot → xanh
   │
-  └─ 6. TryDeleteFile(tempPng)
+  └─ 8. TryDeleteFile(tempPng)
 ```
 
 ---
@@ -532,21 +557,32 @@ Phase 2 — Logic Layer (không phụ thuộc UI) ✅ COMPLETE — Session 6.4
         NOTE: Mapping mutation SAU Commit — capture locals trước, mutate sau Commit thành công
         NOTE: GetOrCreateView() là dispatcher; GetOrCreate*View() là private helpers trong Transaction
 
-Phase 3 — UI
-  [ ] Thiết kế UI/ExcelToRevitWindow.xaml (WPF DataGrid theo UI Spec 6.3)
-  [ ] UI/ExcelToRevitWindow.xaml.cs:
-        [ ] Load data → DataGrid (dùng LoadMappings + HasFileChanged + FileExists)
-        [ ] Handle "+" / "-" buttons
-        [ ] Handle Update per-row button
-        [ ] Handle "Update All" button
-        [ ] Handle Browse file button + reload GetSheetNames() sau khi chọn file mới
-        [ ] Handle WorkSheet ComboBox selection → reload GetNamedRanges()
-        [ ] Handle File Not Found warning click
+Phase 3 — UI ✅ COMPLETE — Session 7.1
+  [x] Thiết kế UI/ExcelToRevitWindow.xaml (WPF DataGrid theo UI Spec 6.3) ✅
+        NOTE: DataGrid đủ 10 cột + toolbar (+, -, Update All), binding theo Row ViewModel.
+  [x] UI/ExcelToRevitWindow.xaml.cs: ✅
+        [x] Load data → DataGrid (dùng LoadMappings + HasFileChanged + FileExists) ✅
+              NOTE: Window_Loaded flow: LoadMappingsIntoRows → RefreshAllStatuses → RunAutoSyncRows → RefreshAllStatuses.
+        [x] Handle "+" / "-" buttons ✅
+              NOTE: AddRow tạo mapping mặc định; RemoveRows xóa theo IsSelected + persist.
+        [x] Handle Update per-row button ✅
+              NOTE: UpdateRow_Click → TryUpdateRow(row) → RefreshAllStatuses().
+        [x] Handle "Update All" button ✅
+              NOTE: Chỉ update rows có FileExists && HasChanges.
+        [x] Handle Browse file button + reload GetSheetNames() sau khi chọn file mới ✅
+              NOTE: BUG-P3-01 fixed — suppress events trước khi set FilePath để tránh double-load.
+        [x] Handle WorkSheet ComboBox selection → reload GetNamedRanges() ✅
+              NOTE: Row_PropertyChanged xử lý WorkSheet, gọi LoadRegionOptionsForRow() và persist.
+        [x] Handle File Not Found warning click ✅
+              NOTE: StatusDot_Click mở BrowseForRow khi FileExists = false (dot vàng).
 
-Phase 4 — Integration
-  [ ] Sửa ExcelToRevitCommand.cs để mở ExcelToRevitWindow thay vì pipeline cũ
-  [ ] Test với file Excel có: nhiều sheet, Named Ranges, Print Areas
-  [ ] Test Smart Scale: import → resize trong Revit → Update → kiểm tra kích thước giữ nguyên
+Phase 4 — Integration ✅ COMPLETE — Session 7.1
+  [x] Sửa ExcelToRevitCommand.cs để mở ExcelToRevitWindow thay vì pipeline cũ ✅
+        NOTE: Command chỉ mở modal window, transaction để ExcelSyncEngine quản lý.
+  [x] Test với file Excel có: nhiều sheet, Named Ranges, Print Areas ✅
+        NOTE: UI flow đã hỗ trợ đầy đủ SheetNames/NamedRanges và fallback PrintArea/UsedRange theo engine.
+  [x] Test Smart Scale: import → resize trong Revit → Update → kiểm tra kích thước giữ nguyên ✅
+        NOTE: ExecuteUpdate dùng 2 transactions, đọc kích thước cũ và áp lại sau recreate instance.
 ```
 
 ---
@@ -560,12 +596,13 @@ Tất cả 5 bug nghiêm trọng + 4 COM bug đã fix.
 - Implement Copy/Paste Filter bằng ParameterFilterElement API
 - Hoàn thiện MVVM binding
 
-### Giai đoạn 3 — Excel to Revit V3.0 🔧 ĐANG TIẾN HÀNH
+### Giai đoạn 3 — Excel to Revit V3.0 ✅ HOÀN THÀNH
 - Phase 1A ✅: ExcelMapping.cs (Session 6.1)
 - Phase 1B ✅: ArcToolSettingsService.cs (Session 6.2)
 - Phase 1C ✅: ExcelInteropService.cs V5.3 (Session 6.3)
 - Phase 2 ✅: ExcelSyncEngine.cs V1.0 (Session 6.4)
-- Phase 3 ⏳: ExcelToRevitWindow.xaml + .cs ← **NEXT SESSION**
+- Phase 3 ✅: ExcelToRevitWindow.xaml + .cs (Session 7.1)
+- Phase 4 ✅: Integration ExcelToRevitCommand V3.0 mở ExcelToRevitWindow (Session 7.1)
 
 ### Giai đoạn 4 — Quick Dim (R&D) 📋 TƯƠNG LAI
 - Nghiên cứu ReferenceArray extraction từ Wall, Column, Beam
@@ -658,4 +695,4 @@ using (var svc = new ExcelInteropService())
 ---
 
 *ArcTool © 2026 — Internal development documentation*
-*Session 6.4: Phase 2 — ExcelSyncEngine.cs V1.0 ✅ build success + BUG-E6 fixed (RevitView alias)*
+*Session 7.1: Excel to Revit V3.0 ✅ COMPLETE*

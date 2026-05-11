@@ -636,6 +636,321 @@ bool hasChange = ArcToolSettingsService.HasFileChanged(mapping);
 
 ### Pattern 12 — ExcelSyncEngine: Code production đầy đủ (✅ IMPLEMENTED — Session 6.4)
 
+### Pattern 13 — WPF Window với ViewModel: Suppress events guard (✅ IMPLEMENTED — Session 7.1)
+
+```csharp
+// ══════════════════════════════════════════════════════════════════════════════
+// ĐIỂM MẤU CHỐT — phải nắm trước khi đọc code:
+//
+// 1. CASCADE EVENTS PROBLEM:
+//    WPF PropertyChanged events có thể trigger vòng lặp vô tận:
+//      Code set row.FilePath → PropertyChanged fire → handler gọi LoadLookupData()
+//      → LoadLookupData() set row.WorkSheet → PropertyChanged fire lại → handler gọi LoadRegionOptions()
+//      → LoadRegionOptions() set row.SelectedRegionOption → PropertyChanged fire lại → ...
+//    Kết quả: double/triple load Excel file, UI lag, hoặc stack overflow.
+//
+// 2. SUPPRESS GUARD PATTERN:
+//    Dùng bool flag `_suppressRowEvents` để chặn handler khi code đang set property:
+//      _suppressRowEvents = true;
+//      try   { row.FilePath = newPath; LoadLookupData(row); }
+//      finally { _suppressRowEvents = false; }
+//    Handler check flag đầu tiên: if (_suppressRowEvents) return;
+//
+// 3. BUG-P3-01 — THỨ TỰ QUAN TRỌNG:
+//    SAI:  row.FilePath = x; _suppressRowEvents = true; LoadLookupData();
+//          → PropertyChanged đã fire trước khi suppress → double-call
+//    ĐÚNG: _suppressRowEvents = true; row.FilePath = x; LoadLookupData();
+//          → PropertyChanged bị chặn → LoadLookupData chỉ chạy 1 lần
+//
+// 4. FINALLY BLOCK BẮT BUỘC:
+//    Luôn restore flag trong finally — nếu LoadLookupData() throw exception mà không restore
+//    → flag mắc kẹt = true → mọi PropertyChanged sau đó bị chặn → UI không phản hồi
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── ROW VIEW MODEL ────────────────────────────────────────────────────────────
+
+/// <summary>
+/// ViewModel wrap ExcelMapping, expose computed properties cho WPF binding.
+/// Write-through: các property như WorkSheet, ViewType ghi trực tiếp xuống _mapping.
+/// Computed: DotBrush, StatusTooltip, CanUpdate, LastModifiedText — read-only, cập nhật qua OnPropertyChanged().
+/// </summary>
+public sealed class ExcelMappingRowViewModel : INotifyPropertyChanged
+{
+    private readonly ExcelMapping _mapping;
+    private bool _isSelected;
+    private bool _fileExists;
+    private bool _hasChanges;
+
+    public ExcelMappingRowViewModel(ExcelMapping mapping)
+    {
+        _mapping = mapping ?? throw new ArgumentNullException(nameof(mapping));
+    }
+
+    public ExcelMapping Mapping => _mapping;
+
+    // ── COMPUTED PROPERTIES (read-only, binding only) ─────────────────────────
+
+    public Brush DotBrush =>
+        !_fileExists ? Brushes.Goldenrod          // file bị move/xóa
+        : _hasChanges ? Brushes.IndianRed          // có thay đổi chưa sync
+                      : Brushes.MediumSeaGreen;    // đã sync
+
+    public string StatusTooltip =>
+        !_fileExists ? "File không tìm thấy. Click để chọn lại đường dẫn."
+        : _hasChanges ? "Excel file có thay đổi. Click để update."
+                      : "Excel file đã sync.";
+
+    public bool CanUpdate => !AutoSync && _fileExists;
+
+    // ── WRITE-THROUGH PROPERTIES (ghi xuống _mapping) ─────────────────────────
+
+    public string WorkSheet
+    {
+        get => _mapping.WorkSheet;
+        set
+        {
+            value ??= string.Empty;
+            if (_mapping.WorkSheet == value) return;
+            _mapping.WorkSheet = value;
+            UpdateViewName();  // side effect — ViewName phụ thuộc WorkSheet
+            OnPropertyChanged();
+        }
+    }
+
+    public bool AutoSync
+    {
+        get => _mapping.AutoSync;
+        set
+        {
+            if (_mapping.AutoSync == value) return;
+            _mapping.AutoSync = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(CanUpdate));  // dependent property
+            OnPropertyChanged(nameof(UpdateBrush));
+        }
+    }
+
+    // ── PUBLIC MUTATION API (gọi từ code-behind) ──────────────────────────────
+
+    /// <summary>Cập nhật FileExists/HasChanges và notify tất cả dependent properties.</summary>
+    public void SetStatus(bool fileExists, bool hasChanges)
+    {
+        _fileExists = fileExists;
+        _hasChanges = hasChanges;
+
+        OnPropertyChanged(nameof(FileExists));
+        OnPropertyChanged(nameof(HasChanges));
+        OnPropertyChanged(nameof(DotBrush));
+        OnPropertyChanged(nameof(StatusTooltip));
+        OnPropertyChanged(nameof(CanUpdate));
+        OnPropertyChanged(nameof(UpdateBrush));
+    }
+
+    public event PropertyChangedEventHandler PropertyChanged;
+
+    private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+}
+
+// ── WINDOW CODE-BEHIND ────────────────────────────────────────────────────────
+
+public partial class ExcelToRevitWindow : Window, INotifyPropertyChanged
+{
+    private readonly Document _doc;
+    private readonly List<ExcelMapping> _mappings = new List<ExcelMapping>();
+    private readonly ObservableCollection<ExcelMappingRowViewModel> _rows = new ObservableCollection<ExcelMappingRowViewModel>();
+
+    // Guards chống cascade events
+    private bool _suppressRowEvents;
+    private bool _isLoading;
+
+    public ExcelToRevitWindow(Document doc)
+    {
+        _doc = doc;
+        InitializeComponent();
+        DataContext = this;
+    }
+
+    public ObservableCollection<ExcelMappingRowViewModel> Rows => _rows;
+
+    // ── WINDOW LIFECYCLE ──────────────────────────────────────────────────────
+
+    private void Window_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (_isLoading) return;
+        _isLoading = true;
+
+        try
+        {
+            LoadMappingsIntoRows();
+            RefreshAllStatuses();
+            RunAutoSyncRows();
+            RefreshAllStatuses(); // cập nhật sau AutoSync
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void LoadMappingsIntoRows()
+    {
+        _mappings.Clear();
+        _mappings.AddRange(ArcToolSettingsService.LoadMappings(_doc));
+
+        _rows.Clear();
+        foreach (ExcelMapping mapping in _mappings)
+        {
+            var row = new ExcelMappingRowViewModel(mapping);
+            row.PropertyChanged += Row_PropertyChanged;  // subscribe event
+            _rows.Add(row);
+            LoadLookupData(row, defaultToFirstSheet: false);
+        }
+    }
+
+    // ── LOAD LOOKUP DATA (SUPPRESS PATTERN) ───────────────────────────────────
+
+    /// <summary>
+    /// Load SheetNames + RegionOptions cho một row từ file Excel.
+    ///
+    /// QUAN TRỌNG: Luôn set _suppressRowEvents = true TRƯỚC khi gọi —
+    /// vì method này set WorkSheet (→ trigger Row_PropertyChanged → vòng lặp vô tận).
+    /// </summary>
+    private void LoadLookupData(ExcelMappingRowViewModel row, bool defaultToFirstSheet)
+    {
+        _suppressRowEvents = true;  // PHẢI set trước khi gán property
+        try
+        {
+            row.ReplaceSheetNames(Array.Empty<string>());
+            row.ReplaceRegionOptions(new[] { RegionOption.PrintArea });
+            row.SyncSelectedRegionOption();
+
+            if (!ArcToolSettingsService.FileExists(row.Mapping))
+                return;
+
+            using (var excelService = new ExcelInteropService())
+            {
+                if (!excelService.OpenFile(row.FilePath))
+                    return;
+
+                List<string> sheetNames = excelService.GetSheetNames();
+                row.ReplaceSheetNames(sheetNames);
+
+                // Chọn sheet: default first nếu chưa có hoặc không tìm thấy sheet cũ
+                bool shouldSelectFirst = defaultToFirstSheet
+                    || string.IsNullOrWhiteSpace(row.WorkSheet)
+                    || !sheetNames.Any(s => string.Equals(s, row.WorkSheet, StringComparison.OrdinalIgnoreCase));
+
+                if (shouldSelectFirst && sheetNames.Count > 0)
+                    row.WorkSheet = sheetNames[0];  // PropertyChanged bị suppress
+
+                // Load region options cho sheet được chọn
+                string sheetName = row.WorkSheet;
+                List<string> namedRanges = string.IsNullOrWhiteSpace(sheetName)
+                    ? new List<string>()
+                    : excelService.GetNamedRanges(sheetName);
+
+                bool includeUsedRange = row.Mapping.RegionType == ExcelRegionType.UsedRange;
+                row.ReplaceRegionOptions(BuildRegionOptions(namedRanges, includeUsedRange));
+                row.SyncSelectedRegionOption();
+            }
+        }
+        finally
+        {
+            _suppressRowEvents = false;  // LUÔN restore trong finally
+        }
+    }
+
+    // ── ROW PROPERTY CHANGE HANDLER ────────────────────────────────────────────
+
+    /// <summary>
+    /// Lắng nghe thay đổi từ ViewModel rows để reload dữ liệu và persist.
+    /// Guard _suppressRowEvents tránh vòng lặp cascade khi code set property.
+    /// </summary>
+    private void Row_PropertyChanged(object sender, PropertyChangedEventArgs e)
+    {
+        if (_isLoading || _suppressRowEvents) return;  // CHECK FLAG ĐẦU TIÊN
+        if (sender is not ExcelMappingRowViewModel row) return;
+
+        switch (e.PropertyName)
+        {
+            case nameof(ExcelMappingRowViewModel.WorkSheet):
+                // Reload RegionOptions khi user đổi WorkSheet
+                _suppressRowEvents = true;
+                try   { LoadRegionOptionsForRow(row); }
+                finally { _suppressRowEvents = false; }
+                PersistMappings();
+                break;
+
+            case nameof(ExcelMappingRowViewModel.SelectedRegionOption):
+            case nameof(ExcelMappingRowViewModel.ViewType):
+            case nameof(ExcelMappingRowViewModel.AutoSync):
+                PersistMappings();
+                break;
+        }
+    }
+
+    // ── BROWSE FILE BUTTON (BUG-P3-01 FIX) ─────────────────────────────────────
+
+    /// <summary>
+    /// Mở OpenFileDialog cho user chọn file Excel, sau đó load SheetNames + RegionOptions.
+    ///
+    /// BUG-P3-01 FIX:
+    ///   _suppressRowEvents = true phải set TRƯỚC khi gán row.FilePath để ngăn
+    ///   Row_PropertyChanged fire và gọi LoadLookupData lần thứ hai (double-call).
+    ///   Thứ tự đúng: suppress → set FilePath → LoadLookupData (1 lần) → persist.
+    /// </summary>
+    private void BrowseForRow(ExcelMappingRowViewModel row)
+    {
+        var dialog = new Win32OpenFileDialog
+        {
+            Title  = "Chọn file Excel",
+            Filter = "Excel Files (*.xlsx;*.xls)|*.xlsx;*.xls|All Files (*.*)|*.*"
+        };
+
+        if (dialog.ShowDialog(this) != true) return;
+
+        // BUG-P3-01 FIX: suppress trước khi gán FilePath
+        // → Row_PropertyChanged bị chặn → LoadLookupData sẽ chỉ được gọi 1 lần bên dưới
+        _suppressRowEvents = true;
+        try
+        {
+            row.FilePath = dialog.FileName;       // property change bị suppress
+            LoadLookupData(row, defaultToFirstSheet: true);  // gọi đúng 1 lần
+            RefreshAllStatuses();
+        }
+        finally
+        {
+            _suppressRowEvents = false;
+        }
+
+        PersistMappings();
+    }
+
+    // ── HELPER ────────────────────────────────────────────────────────────────
+
+    private void PersistMappings()
+    {
+        if (_doc == null) return;
+        try { ArcToolSettingsService.SaveMappings(_doc, _mappings); }
+        catch (Exception ex) { RevitTaskDialog.Show("ArcTool Error", ex.Message); }
+    }
+}
+```
+
+**Khi nào dùng pattern này:**
+- WPF window với DataGrid bind vào ObservableCollection<ViewModel>
+- ViewModel có property phụ thuộc lẫn nhau (WorkSheet → RegionOptions → ViewName)
+- Code-behind cần set property mà không muốn trigger event handler
+
+**Khi nào KHÔNG dùng:**
+- Simple form không có dependent properties — không cần suppress
+- MVVM thuần với RelayCommand — command không trigger PropertyChanged cascade
+- Read-only binding — không có mutation nên không có cascade risk
+
+---
+
+
 ```csharp
 // ĐÃ IMPLEMENT HOÀN CHỈNH trong Services/ExcelSyncEngine.cs
 // Các điểm khác biệt quan trọng so với skeleton cũ:
@@ -934,6 +1249,375 @@ public static class ExcelSyncEngine
 
 ---
 
+### Pattern 14 — ExcelMapping Sentinel Values + JsonIgnore computed properties (✅ IMPLEMENTED — Session 7.1)
+
+```csharp
+// ══════════════════════════════════════════════════════════════════════════════
+// Sentinel values + computed properties là contract quan trọng giữa JSON layer,
+// UI binding, và Sync Engine. Không đổi tùy tiện vì sẽ phá backward compatibility.
+// ══════════════════════════════════════════════════════════════════════════════
+
+public class ExcelMapping
+{
+    // ── SENTINEL VALUES (persisted) ───────────────────────────────────────────
+
+    // 0 = chưa import lần nào (ElementId.InvalidElementId tương đương)
+    [JsonPropertyName("imageInstanceId")]
+    public long ImageInstanceId { get; set; } = 0;
+
+    // 0.0 = chưa có kích thước lưu; engine phải guard trước khi apply
+    [JsonPropertyName("storedWidth")]
+    public double StoredWidth { get; set; } = 0.0;
+
+    [JsonPropertyName("storedHeight")]
+    public double StoredHeight { get; set; } = 0.0;
+
+    // Lần đầu mở dialog: luôn coi là changed để buộc sync tối thiểu 1 lần
+    [JsonPropertyName("lastModified")]
+    public DateTime LastModified { get; set; } = DateTime.MinValue;
+
+    // null = không chọn Named Range, dùng PrintArea/UsedRange
+    // KHÔNG dùng string.Empty vì cần phân biệt trạng thái nghiệp vụ
+    [JsonPropertyName("region")]
+    public string Region { get; set; } = null;
+
+    // ── COMPUTED PROPERTIES (không serialize) ─────────────────────────────────
+
+    [JsonIgnore]
+    public bool IsFirstImport => ImageInstanceId == 0;
+
+    [JsonIgnore]
+    public bool HasStoredDimensions => StoredWidth > 0.0 && StoredHeight > 0.0;
+
+    public string BuildViewName()
+    {
+        if (string.IsNullOrWhiteSpace(WorkSheet))
+            return string.Empty;
+
+        if (RegionType == ExcelRegionType.NamedRange && !string.IsNullOrWhiteSpace(Region))
+            return $"{WorkSheet}_{Region}";
+
+        return WorkSheet;
+    }
+}
+```
+
+**Khi nào dùng pattern này:**
+- Model cần serialize JSON nhưng có computed helpers chỉ dùng runtime
+- Cần contract sentinel value rõ ràng giữa UI và engine
+
+**Khi nào KHÔNG dùng:**
+- Domain model không có lifecycle state
+- Giá trị null/0 không mang ý nghĩa nghiệp vụ
+
+---
+
+### Pattern 15 — Caller exception handling trong ExternalCommand (✅ IMPLEMENTED — Session 7.1)
+
+```csharp
+[Transaction(TransactionMode.Manual)]
+public class ExcelToRevitCommand : IExternalCommand
+{
+    public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
+    {
+        UIApplication uiapp = commandData.Application;
+        Document doc = uiapp.ActiveUIDocument?.Document;
+
+        if (doc == null)
+        {
+            Autodesk.Revit.UI.TaskDialog.Show("ArcTool Error", "Không có Document nào đang mở.");
+            return Result.Failed;
+        }
+
+        // Guard sớm trước khi mở window
+        if (string.IsNullOrWhiteSpace(doc.PathName))
+        {
+            Autodesk.Revit.UI.TaskDialog.Show("ArcTool — Excel to Revit",
+                "File Revit chưa được lưu.\n\n" +
+                "Vui lòng lưu file (.rvt) trước khi sử dụng tính năng Excel to Revit.\n" +
+                "File cài đặt (ArcTool_ExcelSync.json) sẽ được tạo tại cùng thư mục với file Revit.");
+            return Result.Cancelled;
+        }
+
+        try
+        {
+            var window = new ExcelToRevitWindow(doc);
+
+            // Owner = cửa sổ Revit chính, tránh dialog bị rơi ra sau
+            var helper = new System.Windows.Interop.WindowInteropHelper(window);
+            helper.Owner = Autodesk.Windows.ComponentManager.ApplicationWindow;
+
+            // ShowDialog modal vẫn chạy trong API context của Execute()
+            // → Không cần ExternalEvent cho flow này
+            window.ShowDialog();
+            return Result.Succeeded;
+        }
+        catch (Autodesk.Revit.Exceptions.OperationCanceledException)
+        {
+            return Result.Cancelled;
+        }
+        catch (Exception ex)
+        {
+            message = ex.Message;
+            Autodesk.Revit.UI.TaskDialog.Show("ArcTool Error",
+                $"Không thể mở cửa sổ Excel to Revit:\n{ex.Message}");
+            return Result.Failed;
+        }
+    }
+}
+```
+
+**Điểm chốt:**
+- Guard boundary (`doc`, `doc.PathName`) ở caller để fail-fast, UX rõ ràng.
+- OperationCanceledException trả `Result.Cancelled`, không coi là lỗi hệ thống.
+- Modal `ShowDialog()` trong `Execute()` vẫn giữ API context, không bắt buộc ExternalEvent.
+
+---
+
+### Pattern 16 — WPF DataGrid binding với dependent properties (✅ IMPLEMENTED — Session 7.1)
+
+```csharp
+public sealed class ExcelMappingRowViewModel : INotifyPropertyChanged
+{
+    private readonly ExcelMapping _mapping;
+    private bool _fileExists;
+    private bool _hasChanges;
+
+    public ExcelMappingRowViewModel(ExcelMapping mapping)
+    {
+        _mapping = mapping ?? throw new ArgumentNullException(nameof(mapping));
+    }
+
+    public bool FileExists => _fileExists;
+    public bool HasChanges => _hasChanges;
+
+    // Computed binding cho DataGrid template columns
+    public Brush DotBrush =>
+        !_fileExists ? Brushes.Goldenrod
+        : _hasChanges ? Brushes.IndianRed
+                      : Brushes.MediumSeaGreen;
+
+    public bool AutoSync
+    {
+        get => _mapping.AutoSync;
+        set
+        {
+            if (_mapping.AutoSync == value) return;
+            _mapping.AutoSync = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(CanUpdate));    // dependent property
+            OnPropertyChanged(nameof(UpdateBrush));  // dependent property
+        }
+    }
+
+    public bool CanUpdate => !AutoSync && _fileExists;
+
+    public void SetStatus(bool fileExists, bool hasChanges)
+    {
+        _fileExists = fileExists;
+        _hasChanges = hasChanges;
+
+        // Notify tất cả computed/dependent properties liên quan
+        OnPropertyChanged(nameof(FileExists));
+        OnPropertyChanged(nameof(HasChanges));
+        OnPropertyChanged(nameof(DotBrush));
+        OnPropertyChanged(nameof(StatusTooltip));
+        OnPropertyChanged(nameof(CanUpdate));
+        OnPropertyChanged(nameof(UpdateBrush));
+    }
+
+    public event PropertyChangedEventHandler PropertyChanged;
+    private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+}
+```
+
+**Điểm chốt:**
+- Property mutation + computed properties phải notify đầy đủ dependent chain.
+- Không notify thiếu (`CanUpdate`, `UpdateBrush`) vì UI sẽ lệch trạng thái.
+
+---
+
+### Pattern 17 — ImageInstance: 2-transaction pattern (Create → Resize) (✅ IMPLEMENTED — Session 7.1)
+
+```csharp
+// ══════════════════════════════════════════════════════════════════════════════
+// BUG ĐÃ FIX: Set Width/Height trong cùng Transaction với ImageInstance.Create()
+// không hoạt động đúng trong Revit API — kích thước bị reset về natural size.
+//
+// GIẢI PHÁP: Tách thành 2 transactions:
+//   Tx1: Create ImageInstance (để Revit finalize ở natural size)
+//   Tx2: Resize ImageInstance (set Width/Height trong transaction riêng)
+//
+// FALLBACK STRATEGY: Nếu Tx2 fail → instance vẫn tồn tại ở natural size (acceptable).
+// ══════════════════════════════════════════════════════════════════════════════
+
+public static bool ExecuteUpdate(ExcelMapping mapping, Document doc, List<ExcelMapping> allMappings)
+{
+    string tempPng = Path.Combine(Path.GetTempPath(), $"ArcTool_ExcelSync_{Guid.NewGuid():N}.png");
+
+    try
+    {
+        // BƯỚC 1: Export Excel → PNG (ngoài Transaction)
+        using (var svc = new ExcelInteropService())
+        {
+            if (!svc.OpenFile(mapping.FilePath)) return false;
+            if (!svc.ExportRegion(mapping.WorkSheet, mapping.Region, tempPng)) return false;
+        }
+
+        // BƯỚC 2: Đọc kích thước cũ TRƯỚC khi xóa (Smart Scale)
+        double storedWidth  = mapping.StoredWidth;   // mm
+        double storedHeight = mapping.StoredHeight;  // mm
+
+        if (mapping.ImageInstanceId != 0)
+        {
+            var existingInst = doc.GetElement(new ElementId(mapping.ImageInstanceId)) as ImageInstance;
+            if (existingInst?.IsValidObject == true)
+            {
+                storedWidth  = UnitUtils.ConvertFromInternalUnits(existingInst.Width, UnitTypeId.Millimeters);
+                storedHeight = UnitUtils.ConvertFromInternalUnits(existingInst.Height, UnitTypeId.Millimeters);
+            }
+        }
+
+        // ── TRANSACTION 1: CREATE IMAGE ───────────────────────────────────────
+        long   committedInstanceId = 0;
+        double committedWidth      = storedWidth;   // fallback mặc định
+        double committedHeight     = storedHeight;
+
+        using (var tx1 = new Transaction(doc, "ArcTool: Create Excel Image"))
+        {
+            tx1.Start();
+            try
+            {
+                // Xóa instance cũ + ImageType cũ
+                if (mapping.ImageInstanceId != 0)
+                {
+                    var oldInst = doc.GetElement(new ElementId(mapping.ImageInstanceId)) as ImageInstance;
+                    if (oldInst?.IsValidObject == true)
+                    {
+                        ElementId imageTypeId = oldInst.GetTypeId();
+                        doc.Delete(oldInst.Id);
+                        if (imageTypeId != null && imageTypeId != ElementId.InvalidElementId)
+                            doc.Delete(imageTypeId);
+                    }
+                }
+
+                // Tạo View đích
+                RevitView targetView = GetOrCreateView(mapping.ViewName, mapping.ViewType, doc);
+
+                // Tạo ImageType từ PNG
+                var imgOpts = new ImageTypeOptions(tempPng, false, ImageTypeSource.Import)
+                {
+                    Resolution = 300
+                };
+                ImageType imageType = ImageType.Create(doc, imgOpts);
+
+                // Tạo ImageInstance — KHÔNG set Width/Height ở đây
+                XYZ center = GetViewCenter(targetView);
+                ImageInstance newInst = ImageInstance.Create(
+                    doc, targetView, imageType.Id,
+                    new ImagePlacementOptions(center, BoxPlacement.Center));
+
+                committedInstanceId = newInst.Id.Value;
+                tx1.Commit();
+            }
+            catch
+            {
+                tx1.RollBack();
+                throw;
+            }
+        } // end Transaction 1
+
+        // ── GIỮA 2 TRANSACTIONS: ĐỌC NATURAL SIZE ─────────────────────────────
+        // Fallback nếu Transaction 2 fail
+        try
+        {
+            var naturalInst = doc.GetElement(new ElementId(committedInstanceId)) as ImageInstance;
+            if (naturalInst?.IsValidObject == true)
+            {
+                committedWidth  = UnitUtils.ConvertFromInternalUnits(naturalInst.Width, UnitTypeId.Millimeters);
+                committedHeight = UnitUtils.ConvertFromInternalUnits(naturalInst.Height, UnitTypeId.Millimeters);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ExcelSyncEngine] Không đọc natural size: {ex.Message}");
+        }
+
+        // ── TRANSACTION 2: RESIZE IMAGE ────────────────────────────────────────
+        using (var tx2 = new Transaction(doc, "ArcTool: Resize Excel Image"))
+        {
+            tx2.Start();
+            try
+            {
+                var resizeInst = doc.GetElement(new ElementId(committedInstanceId)) as ImageInstance;
+                if (resizeInst?.IsValidObject == true)
+                {
+                    if (storedWidth > 0.0 && storedHeight > 0.0)
+                    {
+                        // Subsequent update — áp lại kích thước user đã resize
+                        resizeInst.Width  = UnitUtils.ConvertToInternalUnits(storedWidth, UnitTypeId.Millimeters);
+                        resizeInst.Height = UnitUtils.ConvertToInternalUnits(storedHeight, UnitTypeId.Millimeters);
+                    }
+                    else
+                    {
+                        // First import — áp 2000mm default
+                        resizeInst.Width = UnitUtils.ConvertToInternalUnits(2000.0, UnitTypeId.Millimeters);
+                        // Height: LockProportions tự tính từ aspect ratio
+                    }
+                }
+
+                tx2.Commit();
+
+                // Đọc lại Width/Height SAU khi Tx2 commit thành công
+                var finalInst = doc.GetElement(new ElementId(committedInstanceId)) as ImageInstance;
+                if (finalInst?.IsValidObject == true)
+                {
+                    committedWidth  = UnitUtils.ConvertFromInternalUnits(finalInst.Width, UnitTypeId.Millimeters);
+                    committedHeight = UnitUtils.ConvertFromInternalUnits(finalInst.Height, UnitTypeId.Millimeters);
+                }
+            }
+            catch (Exception ex)
+            {
+                tx2.RollBack();
+                // Tx2 failure = SOFT FAILURE — instance tồn tại ở natural size, acceptable
+                System.Diagnostics.Debug.WriteLine($"[ExcelSyncEngine] Transaction 2 (resize) thất bại: {ex.Message}");
+                // committedWidth/committedHeight giữ natural size từ giữa 2 transactions
+            }
+        } // end Transaction 2
+
+        // BƯỚC 4: Mutate mapping SAU cả 2 transactions
+        mapping.ImageInstanceId = committedInstanceId;
+        mapping.StoredWidth     = committedWidth;
+        mapping.StoredHeight    = committedHeight;
+        mapping.LastModified    = DateTime.Now;
+
+        ArcToolSettingsService.SaveMappings(doc, allMappings);
+        return true;
+    }
+    finally
+    {
+        TryDeleteTempFile(tempPng);
+    }
+}
+```
+
+**Khi nào dùng pattern này:**
+- Revit element có property cần set SAU khi Create() finalize (Width/Height của ImageInstance)
+- Cần fallback strategy khi resize fail nhưng element đã tạo thành công
+
+**Khi nào KHÔNG dùng:**
+- Element property có thể set đúng trong cùng transaction với Create()
+- Không có fallback acceptable nếu transaction thứ 2 fail
+
+**Điểm chốt:**
+- Tx1 commit trước khi set Width/Height — để Revit finalize instance
+- Đọc natural size giữa 2 tx làm fallback nếu Tx2 fail
+- Tx2 fail = soft failure, không throw — instance ở natural size vẫn acceptable
+- Mutate mapping chỉ SAU khi cả 2 tx đã xử lý xong (thành công hoặc fail)
+
+---
+
 ## 7. DO's & DON'Ts NHANH
 
 ### DO ✅
@@ -953,6 +1637,14 @@ public static class ExcelSyncEngine
 - Wrap `LoadMappings()` và `SaveMappings()` trong try-catch — cả hai có thể throw
 - **Capture `committedInstanceId/Width/Height` vào locals TRƯỚC `tx.Commit()`** — mutate mapping SAU Commit
 - **Dùng alias `using RevitView = Autodesk.Revit.DB.View`** trong mọi file có `UseWindowsForms=true` và import `Autodesk.Revit.DB`
+- **WPF suppress events guard: set flag TRƯỚC khi gán property** — `_suppressRowEvents = true; row.FilePath = x;` (BUG-P3-01)
+- **WPF suppress events: LUÔN restore flag trong finally** — nếu không restore, UI không phản hồi sau exception
+- **WPF PropertyChanged handler: check suppress flag ĐẦU TIÊN** — `if (_suppressRowEvents) return;` trước mọi logic khác
+- **Guard `doc.PathName` sớm trong Command** trước khi mở window — fail-fast với dialog rõ ràng
+- **Set `WindowInteropHelper.Owner`** cho WPF modal dialog — tránh dialog rơi ra sau cửa sổ Revit
+- **Catch `OperationCanceledException` riêng** và return `Result.Cancelled` — không coi là lỗi hệ thống
+- **Notify đầy đủ dependent properties chain** khi mutation — `AutoSync` thay đổi phải notify `CanUpdate`, `UpdateBrush`
+- **Dùng sentinel values có ý nghĩa nghiệp vụ** — `ImageInstanceId = 0`, `LastModified = DateTime.MinValue`, `Region = null`
 
 ### DON'T ❌
 - `(int)elem.Category.Id.Value` → Integer Overflow, luôn dùng `(long)`
@@ -971,5 +1663,14 @@ public static class ExcelSyncEngine
 - **Gọi ExportRegion() mà không có savedActiveSheet guard** — _activeSheet swap không an toàn nếu exception xảy ra trước khi restore
 - **Mutate mapping fields bên trong Transaction** — nếu Commit fail, mapping ở state sai, JSON bị ghi sai
 - **Dùng `Autodesk.Revit.DB.View` trực tiếp** trong file có `UseWindowsForms=true` — dùng alias `RevitView`
+- **WPF suppress events: gán property trước khi set flag** — `row.FilePath = x; _suppressRowEvents = true;` → PropertyChanged đã fire (BUG-P3-01)
+- **WPF suppress events: quên restore flag trong finally** — flag mắc kẹt = true → UI không phản hồi
+- **WPF PropertyChanged handler: không check suppress flag** — vòng lặp cascade events → double/triple load → UI lag
+- **Mở ExcelToRevitWindow trước khi check `doc.PathName`** — lỗi sẽ dồn vào runtime trong window, UX kém
+- **Bỏ qua `WindowInteropHelper.Owner` cho modal WPF** — dialog có thể rơi sau cửa sổ Revit
+- **Dùng `Result.Failed` cho `OperationCanceledException`** — sai semantics, phải trả `Result.Cancelled`
+- **Serialize computed helpers** (`IsFirstImport`, `HasStoredDimensions`) — phải gắn `[JsonIgnore]`
+- **Dùng `string.Empty` cho `Region` khi chưa chọn NamedRange** — mất ngữ nghĩa sentinel, gây logic mơ hồ
+- **Dùng ExternalEvent cho flow modal trong `Execute()`** khi chưa cần thiết — tăng độ phức tạp không cần thiết
 
 

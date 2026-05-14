@@ -22,3 +22,7 @@ D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\Debug\net8.0-windows\Ar
 D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\Debug\net8.0-windows\refint\ArcTool.Core.dll
 D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\Debug\net8.0-windows\ArcTool.Core.pdb
 D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\Debug\net8.0-windows\ref\ArcTool.Core.dll
+d:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\Debug\net8.0-windows\ArcTool.Core.csproj.AssemblyReference.cache
+d:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\Debug\net8.0-windows\ArcTool.Core.dll
+d:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\Debug\net8.0-windows\refint\ArcTool.Core.dll
+d:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\Debug\net8.0-windows\ArcTool.Core.pdb

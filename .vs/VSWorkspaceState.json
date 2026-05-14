@@ -1,14 +1,7 @@
 {
   "ExpandedNodes": [
-    "",
-    "\\ArcTool.Core",
-    "\\ArcTool.Core\\Commands",
-    "\\ArcTool.Core\\Resources",
-    "\\ArcTool.Core\\Services",
-    "\\ArcTool.Core\\UI",
-    "\\ArcTool.TestConsole",
-    "\\ArcTool.TestConsole\\TestConsole"
+    ""
   ],
-  "SelectedNode": "\\CONTEXT.md",
+  "SelectedNode": "\\ArcTool.slnx",
   "PreviewInSolutionExplorer": false
 }

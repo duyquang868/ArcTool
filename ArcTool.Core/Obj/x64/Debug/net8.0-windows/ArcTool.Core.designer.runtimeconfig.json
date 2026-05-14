@@ -12,7 +12,7 @@
       }
     ],
     "additionalProbingPaths": [
-      "C:\\Users\\quangnguyen\\.nuget\\packages"
+      "C:\\Users\\ADMIN\\.nuget\\packages"
     ],
     "configProperties": {
       "CSWINRT_USE_WINDOWS_UI_XAML_PROJECTIONS": false,

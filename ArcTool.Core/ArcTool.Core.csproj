@@ -12,6 +12,8 @@
 		<Platforms>AnyCPU;x64</Platforms>
 
 		<NoWarn>$(NoWarn);MSB3277;NETSDK1137</NoWarn>
+
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -28,6 +30,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Autodesk.Revit.SDK" Version="2026.0.0.9999" />
+		<PackageReference Include="PDFtoImage" Version="5.2.1" />
 		<PackageReference Include="SkiaSharp" Version="3.119.2" />
 		<PackageReference Include="Svg.Skia" Version="3.4.1" />
 	</ItemGroup>

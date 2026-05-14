@@ -200,6 +200,8 @@ private bool IsPointOnLine(XYZ point, XYZ lineStart, XYZ lineEnd, double toleran
 
 ### Pattern 5 — COM Interop: Release đúng thứ tự
 
+**UPDATE Session 7.2:** Pattern bên dưới vẫn đúng cho COM release order, nhưng với `ExcelInteropService` hiện tại không còn nên cache `_activeSheet` lâu dài như field nữa. Bài học rút ra từ BUG-E9: `ActiveSheet` nên lấy theo local scope, dùng xong release ngay trong `finally`, tránh giữ RCW/COM object sống qua các luồng duyệt `Worksheets`.
+
 ```csharp
 // QUY TẮC: child → parent. KHÔNG release sau Delete(). Null field GỐC ở caller.
 private void ReleaseObject(object obj)
@@ -437,6 +439,8 @@ private View GetOrCreateLegendView(Document doc, string viewName)
 
 ### Pattern 10 — ExcelInteropService: GetSheetNames, GetNamedRanges, ExportRegion (✅ V5.3 IMPLEMENTED)
 
+**UPDATE Session 7.2:** Khối code lịch sử bên dưới giữ lại để tham chiếu evolution của service, nhưng production code hiện tại đã đổi theo 3 điểm bắt buộc: (1) không còn `_activeSheet` swap pattern trong `ExportRegion()`, thay vào đó `ExportRangeInternal(Worksheet ws, Range range, string outputPath)` nhận sheet đích trực tiếp; (2) `ActiveSheet` chỉ sống trong local scope, release ngay trong `finally`; (3) trước khi chạm vào native pipeline phải probe `pdfium.dll` và `libSkiaSharp.dll` thủ công vì Revit add-in không phải lúc nào cũng resolve native DLL theo `.deps.json` như app .NET thông thường.
+
 ```csharp
 // ══════════════════════════════════════════════════════════════════════════════
 // ĐIỂM MẤU CHỐT — phải nắm trước khi đọc code:
@@ -635,6 +639,8 @@ bool hasChange = ArcToolSettingsService.HasFileChanged(mapping);
 ```
 
 ### Pattern 12 — ExcelSyncEngine: Code production đầy đủ (✅ IMPLEMENTED — Session 6.4)
+
+**UPDATE Session 7.2:** Production code hiện tại đã thay đổi ở boundary xử lý lỗi export. Những lỗi user-facing như `OpenFile()` fail, `ExportRegion()` fail, hoặc export báo success nhưng không tạo được PNG **không còn** nên `return false` im lặng; chúng phải `throw InvalidOperationException` để UI hiện `TaskDialog` rõ ràng. Chỉ các soft failures nội bộ của Transaction 2 (resize ảnh) mới tiếp tục được nuốt có kiểm soát.
 
 ### Pattern 13 — WPF Window với ViewModel: Suppress events guard (✅ IMPLEMENTED — Session 7.1)
 
@@ -1618,6 +1624,100 @@ public static bool ExecuteUpdate(ExcelMapping mapping, Document doc, List<ExcelM
 
 ---
 
+### Pattern 18 — Native runtime deployment cho PDFtoImage + SkiaSharp trong Revit add-in (✅ IMPLEMENTED — Session 7.2)
+
+```csharp
+// ══════════════════════════════════════════════════════════════════════════════
+// ROOT CAUSE:
+// Revit add-in load ArcTool.Core.dll như plugin, không phải app .NET bình thường.
+// Vì vậy native dependencies của NuGet packages (pdfium.dll, libSkiaSharp.dll)
+// có thể KHÔNG được resolve tự động theo .deps.json như khi chạy exe standalone.
+//
+// Bài học thực chiến từ Session 7.2:
+// - Thiếu pdfium.dll  → PDFtoImage chạm native layer rồi AppDomain crash
+// - Thiếu libSkiaSharp.dll → bước crop PNG bằng SkiaSharp crash
+//
+// GIẢI PHÁP PRODUCTION:
+// 1. Probe thủ công theo nhiều path
+// 2. pdfium thiếu  → fail mềm, trả false để caller hiện dialog
+// 3. libSkia thiếu → bỏ qua crop, giữ PNG gốc đã render
+// ══════════════════════════════════════════════════════════════════════════════
+
+private static string GetRuntimeFolder()
+{
+    return RuntimeInformation.ProcessArchitecture switch
+    {
+        Architecture.X64 => "win-x64",
+        Architecture.X86 => "win-x86",
+        Architecture.Arm64 => "win-arm64",
+        _ => null
+    };
+}
+
+private static string[] GetNativeLibraryCandidates(string libraryFileName)
+{
+    string assemblyDir = Path.GetDirectoryName(typeof(ExcelInteropService).Assembly.Location);
+    if (string.IsNullOrWhiteSpace(assemblyDir))
+        return Array.Empty<string>();
+
+    string runtimeFolder = GetRuntimeFolder();
+    if (string.IsNullOrWhiteSpace(runtimeFolder))
+        return Array.Empty<string>();
+
+    return new[]
+    {
+        Path.Combine(assemblyDir, libraryFileName),
+        Path.Combine(assemblyDir, "native", libraryFileName),
+        Path.Combine(assemblyDir, "runtimes", runtimeFolder, "native", libraryFileName)
+    };
+}
+
+private static bool EnsurePdfiumLoaded()
+{
+    if (NativeLibrary.TryLoad("pdfium", out _))
+        return true;
+
+    foreach (string candidate in GetNativeLibraryCandidates("pdfium.dll"))
+    {
+        if (File.Exists(candidate) && NativeLibrary.TryLoad(candidate, out _))
+            return true;
+    }
+
+    return false;
+}
+
+private static bool EnsureSkiaSharpLoaded()
+{
+    if (NativeLibrary.TryLoad("libSkiaSharp", out _))
+        return true;
+
+    foreach (string candidate in GetNativeLibraryCandidates("libSkiaSharp.dll"))
+    {
+        if (File.Exists(candidate) && NativeLibrary.TryLoad(candidate, out _))
+            return true;
+    }
+
+    return false;
+}
+
+// Cách dùng trong pipeline export
+if (!EnsurePdfiumLoaded())
+    return false; // caller phải throw InvalidOperationException user-facing
+
+Conversion.SavePng(outputPath, pdfStream, 0, false, null,
+    new RenderOptions { Dpi = 300, WithAnnotations = false });
+
+if (!EnsureSkiaSharpLoaded())
+    return true; // PNG đã có — bỏ qua crop, không được crash Revit
+```
+
+**Deploy contract đã verify thành công trong Revit 2026:**
+- Tối thiểu phải có `pdfium.dll` và `libSkiaSharp.dll` đúng kiến trúc trong folder add-in chạy thực tế.
+- Cấu trúc an toàn nhất: đặt cả hai file native ngay cạnh `ArcTool.Core.dll`.
+- Cấu trúc chấp nhận được khác: `native\...` hoặc `runtimes\win-x64\native\...` cạnh assembly.
+
+---
+
 ## 7. DO's & DON'Ts NHANH
 
 ### DO ✅
@@ -1663,14 +1763,10 @@ public static bool ExecuteUpdate(ExcelMapping mapping, Document doc, List<ExcelM
 - **Gọi ExportRegion() mà không có savedActiveSheet guard** — _activeSheet swap không an toàn nếu exception xảy ra trước khi restore
 - **Mutate mapping fields bên trong Transaction** — nếu Commit fail, mapping ở state sai, JSON bị ghi sai
 - **Dùng `Autodesk.Revit.DB.View` trực tiếp** trong file có `UseWindowsForms=true` — dùng alias `RevitView`
-- **WPF suppress events: gán property trước khi set flag** — `row.FilePath = x; _suppressRowEvents = true;` → PropertyChanged đã fire (BUG-P3-01)
-- **WPF suppress events: quên restore flag trong finally** — flag mắc kẹt = true → UI không phản hồi
-- **WPF PropertyChanged handler: không check suppress flag** — vòng lặp cascade events → double/triple load → UI lag
-- **Mở ExcelToRevitWindow trước khi check `doc.PathName`** — lỗi sẽ dồn vào runtime trong window, UX kém
-- **Bỏ qua `WindowInteropHelper.Owner` cho modal WPF** — dialog có thể rơi sau cửa sổ Revit
-- **Dùng `Result.Failed` cho `OperationCanceledException`** — sai semantics, phải trả `Result.Cancelled`
-- **Serialize computed helpers** (`IsFirstImport`, `HasStoredDimensions`) — phải gắn `[JsonIgnore]`
-- **Dùng `string.Empty` cho `Region` khi chưa chọn NamedRange** — mất ngữ nghĩa sentinel, gây logic mơ hồ
-- **Dùng ExternalEvent cho flow modal trong `Execute()`** khi chưa cần thiết — tăng độ phức tạp không cần thiết
+- **Probe native runtime thủ công cho PDF/Skia khi chạy trong Revit add-in** — `pdfium.dll` và `libSkiaSharp.dll` có thể không được resolve theo `.deps.json`, phải thử assembly root / `native` / `runtimes\win-*\native`
+- **Nếu thiếu `pdfium.dll` thì fail mềm, không để AppDomain crash** — caller phải hiện lỗi user-facing rõ ràng
+- **Nếu thiếu `libSkiaSharp.dll` thì bỏ qua bước crop, giữ PNG gốc** — ảnh còn viền trắng vẫn tốt hơn crash Revit
+- **Không cache `ActiveSheet` như COM field sống lâu** — lấy theo local scope và release ngay trong `finally` để tránh RCW/COM invalid state
+- **Các lỗi export user-facing trong `ExecuteUpdate()` phải throw `InvalidOperationException`** — không `return false` im lặng ở boundary UI
 
 

@@ -163,7 +163,8 @@ namespace ArcTool.Core.Services
                     {
                         System.Diagnostics.Debug.WriteLine(
                             $"[ExcelSyncEngine] Không mở được file: '{mapping.FilePath}'");
-                        return false; // soft failure — file bị lock hoặc không tồn tại
+                        throw new InvalidOperationException(
+                            $"Không mở được file Excel:\n{mapping.FilePath}\n\nFile có thể không tồn tại, đang bị khóa, hoặc Excel không đọc được file này.");
                     }
 
                     // mapping.Region = null → ExportRegion tự fallback PrintArea → UsedRange
@@ -172,7 +173,8 @@ namespace ArcTool.Core.Services
                         System.Diagnostics.Debug.WriteLine(
                             $"[ExcelSyncEngine] ExportRegion thất bại: " +
                             $"sheet='{mapping.WorkSheet}', region='{mapping.Region ?? "(null)"}'");
-                        return false; // soft failure — sheet không có data, hoặc protected
+                        throw new InvalidOperationException(
+                            $"Không thể xuất hình từ Excel.\n\nSheet: {mapping.WorkSheet}\nRegion: {mapping.Region ?? "(PrintArea/UsedRange)"}\n\nNguyên nhân thường gặp: vùng dữ liệu rỗng, sheet/protected sheet không đọc được Print Area, hoặc pdfium.dll chưa được deploy đúng.");
                     }
                 } // Dispose() gọi → Excel đóng ngay
 
@@ -182,7 +184,8 @@ namespace ArcTool.Core.Services
                 {
                     System.Diagnostics.Debug.WriteLine(
                         $"[ExcelSyncEngine] ExportRegion báo success nhưng PNG không tồn tại: '{tempPng}'");
-                    return false;
+                    throw new InvalidOperationException(
+                        "Excel export báo thành công nhưng không tạo ra file ảnh PNG. Pipeline export ảnh đang lỗi hoặc bị chặn khi ghi file tạm.");
                 }
 
                 // ── BƯỚC 2: ĐỌC WIDTH/HEIGHT CỦA INSTANCE CŨ (Smart Scale) ─────────

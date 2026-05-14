@@ -12,4 +12,7 @@
   <ItemGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
     <SourceRoot Include="C:\Users\quangnguyen\.nuget\packages\" />
   </ItemGroup>
+  <ImportGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
+    <Import Project="$(NuGetPackageRoot)pdftoimage\5.2.1\buildTransitive\PDFtoImage.props" Condition="Exists('$(NuGetPackageRoot)pdftoimage\5.2.1\buildTransitive\PDFtoImage.props')" />
+  </ImportGroup>
 </Project>

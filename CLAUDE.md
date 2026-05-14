@@ -224,6 +224,12 @@ ArcTool/
 | BUG-E11 | ExcelInteropService | Revit crash khi `SkiaSharp` không resolve được native `libSkiaSharp.dll` ở bước crop. Fix: thêm `EnsureSkiaSharpLoaded()`; nếu thiếu native lib thì bỏ qua crop và giữ PNG gốc đã render |
 | BUG-E12 | ExcelSyncEngine | Export fail nhưng UI im lặng vì `ExecuteUpdate()` chỉ `return false`. Fix: chuyển các lỗi export/user-facing quan trọng sang `InvalidOperationException` để `TaskDialog` hiện lỗi rõ ràng |
 
+### 🕘 LỊCH SỬ BUG / ĐÃ OBSOLETE TRONG CODE HIỆN TẠI
+
+| ID | File | Mô tả | Trạng thái |
+|---|---|---|---|
+| BUG-E8 | ExcelInteropService | `CopyPicture(xlScreen)` bị cắt ~20 dòng do virtual DC giới hạn trong hidden mode | Obsolete — chỉ còn giá trị lịch sử vì pipeline `CopyPicture` đã bị xóa và thay bằng `ExportAsFixedFormat` → `PDFtoImage` → PNG |
+
 ### ⏳ CÒN TỒN TẠI
 
 | ID | File | Mô tả | Priority |
@@ -231,7 +237,6 @@ ArcTool/
 | BUG-06 | ArrangeDimensionCommand | Không check `activeView.Scale == 0` (3D view) | Medium |
 | BUG-07 | FilterManagerCommand | Idling event là anti-pattern cho model lớn | Low |
 | BUG-08 | CreateVoidFromLink | `SetParam("Height", -beamHeight)` gán âm là workaround | Low |
-| BUG-E8 | ExcelInteropService | `CopyPicture(xlScreen)` bị cắt ~20 dòng do virtual DC giới hạn trong hidden mode | High |
 
 ---
 

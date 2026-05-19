@@ -1,17 +1,23 @@
 ﻿using Autodesk.Revit.UI;
+using Autodesk.Revit.DB;
 using System;
 using System.Reflection;
 using System.Windows.Media.Imaging;
 using System.IO;
 using System.Drawing; // Cần Add Reference: System.Drawing
 using System.Windows.Media; // Cần Add Reference: PresentationCore
+using ArcTool.Core.Services;
 
 namespace ArcTool.Core
 {
     public class App : IExternalApplication
     {
+        private AddInId _addInId;
+
         public Result OnStartup(UIControlledApplication application)
         {
+            _addInId = application.ActiveAddInId;
+
             string tabName = "ArcTool";
             string voidPanelName = "Void Tools";
             string annotationPanelName = "Annotation Tools"; // Tên Panel mới cho các lệnh Dim/Text
@@ -123,12 +129,72 @@ namespace ArcTool.Core
 
             excelPanel.AddItem(importImageBtnData);
 
+            // --- D. NHÓM LỆNH COORDINATE TOOLS (PHASE A) ---
+            string coordinateToolsName = "Coordinate Tools";
+            RibbonPanel coordinatePanel = null;
+            foreach (RibbonPanel p in application.GetRibbonPanels(tabName))
+            {
+                if (p.Name == coordinateToolsName)
+                {
+                    coordinatePanel = p;
+                    break;
+                }
+            }
+            if (coordinatePanel == null) coordinatePanel = application.CreateRibbonPanel(tabName, coordinateToolsName);
+
+            PushButtonData registerCoordParamsBtnData = new PushButtonData(
+                "btnRegisterCoordParams",
+                "Register\nCoord Params",
+                assemblyPath,
+                "ArcTool.Core.Commands.RegisterCoordParamsCommand"
+            );
+
+            registerCoordParamsBtnData.ToolTip = "Creates AT_CoordX / AT_CoordY / AT_CoordZ shared parameters and binds them to Structural Columns. Safe to run multiple times.";
+
+            coordinatePanel.AddItem(registerCoordParamsBtnData);
+
+            PushButtonData runBatchBtnData = new PushButtonData(
+                "btnRunCoordBatch",
+                "Write\nCoordinates",
+                assemblyPath,
+                "ArcTool.Core.Commands.RunCoordBatchCommand");
+            runBatchBtnData.ToolTip =
+                "Reads coordinates of all Structural Columns and writes them into " +
+                "AT_CoordX / AT_CoordY / AT_CoordZ shared parameters. " +
+                "Skips elements whose values have not changed. " +
+                "Run 'Register Coord Params' first if this is a new project.";
+            coordinatePanel.AddItem(runBatchBtnData);
+
+            application.ControlledApplication.DocumentOpened += OnDocumentOpened;
+            application.ControlledApplication.DocumentCreated += OnDocumentCreated;
+            application.ControlledApplication.DocumentClosing += OnDocumentClosing;
+
             return Result.Succeeded;
         }
 
         public Result OnShutdown(UIControlledApplication application)
         {
             return Result.Succeeded;
+        }
+
+        private void OnDocumentOpened(object sender, Autodesk.Revit.DB.Events.DocumentOpenedEventArgs e)
+        {
+            CoordinateUpdaterService.RegisterForDocument(e.Document, _addInId);
+        }
+
+        private void OnDocumentCreated(object sender, Autodesk.Revit.DB.Events.DocumentCreatedEventArgs e)
+        {
+            if (e.Document == null)
+            {
+                return;
+            }
+
+            CoordinateUpdaterService.RegisterForDocument(e.Document, _addInId);
+        }
+
+        private void OnDocumentClosing(object sender, Autodesk.Revit.DB.Events.DocumentClosingEventArgs e)
+        {
+            CoordinateUpdaterService.UnregisterForDocument(e.Document, _addInId);
         }
 
         // --- HÀM HỖ TRỢ CHUYỂN ĐỔI ẢNH TỪ RESOURCE SANG REVIT ---

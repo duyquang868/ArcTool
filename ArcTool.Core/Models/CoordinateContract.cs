@@ -43,6 +43,11 @@ namespace ArcTool.Core.Models
         /// Stores the coordinate parameter output unit key, such as Meters, Millimeters, or Feet.
         /// </summary>
         public const string Unit = "AT_CoordUnit";
+
+        /// <summary>
+        /// Stores the supported coordinate trigger filter key, such as StructuralColumns or StructuralFoundations.
+        /// </summary>
+        public const string TriggerFilter = "AT_CoordTriggerFilter";
     }
 
     /// <summary>
@@ -82,6 +87,49 @@ namespace ArcTool.Core.Models
         /// Coordinate parameter values are written in feet.
         /// </summary>
         public const string Feet = "Feet";
+    }
+
+    /// <summary>
+    /// Stable string keys persisted in AT_CoordTriggerFilter.
+    /// These keys define which supported category the coordinate batch and updater should process.
+    /// </summary>
+    public static class CoordTriggerFilterKeys
+    {
+        /// <summary>
+        /// Process Structural Columns only.
+        /// </summary>
+        public const string StructuralColumns = "StructuralColumns";
+
+        /// <summary>
+        /// Process Structural Foundations only.
+        /// </summary>
+        public const string StructuralFoundations = "StructuralFoundations";
+
+        /// <summary>
+        /// Process registered Detail Item types only.
+        /// </summary>
+        public const string DetailItems = "DetailItems";
+    }
+
+    /// <summary>
+    /// Runtime-safe trigger filter choice parsed from AT_CoordTriggerFilter.
+    /// </summary>
+    public enum CoordTriggerFilter
+    {
+        /// <summary>
+        /// Process Structural Columns only.
+        /// </summary>
+        StructuralColumns = 0,
+
+        /// <summary>
+        /// Process Structural Foundations only.
+        /// </summary>
+        StructuralFoundations = 1,
+
+        /// <summary>
+        /// Process registered Detail Item types only.
+        /// </summary>
+        DetailItems = 2
     }
 
     /// <summary>
@@ -175,21 +223,67 @@ namespace ArcTool.Core.Models
 
     /// <summary>
     /// Locks the functional boundary of Coordinate Feature V1.
-    /// A centralized scope contract prevents accidental category creep before the batch workflow is proven stable.
+    /// A centralized scope contract prevents accidental category creep beyond validated coordinate rules.
     /// </summary>
     public static class CoordV1Scope
     {
         /// <summary>
-        /// The only category supported in V1.
-        /// This hard lock protects the roadmap decision to ship deterministic Structural Column behavior before any broader expansion.
+        /// Original V1 category supported by the coordinate feature.
+        /// Kept for compatibility with existing code paths that still refer to the column target explicitly.
         /// </summary>
         public const Autodesk.Revit.DB.BuiltInCategory TargetCategory = Autodesk.Revit.DB.BuiltInCategory.OST_StructuralColumns;
+
+        /// <summary>
+        /// Structural Foundation category added after the column workflow was validated.
+        /// The extraction rule intentionally matches the column V1 rule: LocationPoint, LocationCurve start point, otherwise unsupported.
+        /// </summary>
+        public const Autodesk.Revit.DB.BuiltInCategory FoundationCategory = Autodesk.Revit.DB.BuiltInCategory.OST_StructuralFoundation;
+
+        /// <summary>
+        /// Detail Item category supported only through registered type names and LocationPoint extraction.
+        /// </summary>
+        public const Autodesk.Revit.DB.BuiltInCategory DetailItemCategory = Autodesk.Revit.DB.BuiltInCategory.OST_DetailComponents;
+
+        /// <summary>
+        /// 3D element categories registered by the Register Element Type command.
+        /// Detail Items intentionally use a separate registration pipeline.
+        /// </summary>
+        public static readonly Autodesk.Revit.DB.BuiltInCategory[] ElementTypeCategories =
+        {
+            TargetCategory,
+            FoundationCategory
+        };
+
+        /// <summary>
+        /// All categories currently supported by the coordinate extraction, batch write, and updater workflow.
+        /// </summary>
+        public static readonly Autodesk.Revit.DB.BuiltInCategory[] TargetCategories =
+        {
+            TargetCategory,
+            FoundationCategory,
+            DetailItemCategory
+        };
+
+        /// <summary>
+        /// Gets the single category represented by the selected trigger filter.
+        /// </summary>
+        /// <param name="triggerFilter">Selected trigger filter.</param>
+        /// <returns>The Revit built-in category processed by the selected filter.</returns>
+        public static Autodesk.Revit.DB.BuiltInCategory GetCategory(CoordTriggerFilter triggerFilter)
+        {
+            return triggerFilter switch
+            {
+                CoordTriggerFilter.StructuralFoundations => FoundationCategory,
+                CoordTriggerFilter.DetailItems => DetailItemCategory,
+                _ => TargetCategory
+            };
+        }
 
         /// <summary>
         /// Explicit contract version for diagnostics and dossier tracking.
         /// Naming the version in code makes support discussions less ambiguous than relying on session notes alone.
         /// </summary>
-        public const string FeatureVersion = "1.0";
+        public const string FeatureVersion = "1.1";
 
         /// <summary>
         /// Diagnostic-only location subtype names recognized by V1 extraction rules.
@@ -200,6 +294,57 @@ namespace ArcTool.Core.Models
             "LocationPoint",
             "LocationCurve"
         };
+
+        /// <summary>
+        /// Returns true when the category is part of the validated coordinate workflow scope.
+        /// </summary>
+        /// <param name="category">Built-in category to test.</param>
+        /// <returns>True when the category is currently supported; otherwise false.</returns>
+        public static bool IsSupportedCategory(Autodesk.Revit.DB.BuiltInCategory category)
+        {
+            foreach (Autodesk.Revit.DB.BuiltInCategory targetCategory in TargetCategories)
+            {
+                if (targetCategory == category)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Returns a stable support label for diagnostics and user-facing messages.
+        /// </summary>
+        /// <returns>Supported category names.</returns>
+        public static string GetSupportedCategoryLabel()
+        {
+            return "Structural Columns / Structural Foundations / registered Detail Items";
+        }
+
+        /// <summary>
+        /// Returns the stable label for categories handled by the Register Element Type command.
+        /// </summary>
+        /// <returns>Supported 3D element category names.</returns>
+        public static string GetElementTypeCategoryLabel()
+        {
+            return "Structural Columns / Structural Foundations";
+        }
+
+        /// <summary>
+        /// Returns a stable support label for the selected trigger filter.
+        /// </summary>
+        /// <param name="triggerFilter">Selected trigger filter.</param>
+        /// <returns>Selected category name.</returns>
+        public static string GetCategoryLabel(CoordTriggerFilter triggerFilter)
+        {
+            return triggerFilter switch
+            {
+                CoordTriggerFilter.StructuralFoundations => "Structural Foundations",
+                CoordTriggerFilter.DetailItems => "Detail Items",
+                _ => "Structural Columns"
+            };
+        }
     }
 
     /// <summary>

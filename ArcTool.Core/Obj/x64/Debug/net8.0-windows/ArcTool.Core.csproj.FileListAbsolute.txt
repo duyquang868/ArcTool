@@ -141,3 +141,5 @@ D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-window
 D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\runtimes\win-x86\native\libSkiaSharp.dll
 D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\runtimes\win-x86\native\libSkiaSharp.pdb
 D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool..CD9FCD4B.Up2Date
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\UI\CoordSettingsDialog.baml
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\UI\CoordSettingsDialog.g.cs

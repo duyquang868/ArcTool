@@ -5,19 +5,20 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using ArcTool.Core.Models;
 using ArcTool.Core.Services;
+using ArcTool.UI;
 using RevitTaskDialog = Autodesk.Revit.UI.TaskDialog;
 
 namespace ArcTool.Core.Commands
 {
     /// <summary>
-    /// Registers the ArcTool coordinate shared parameters for Structural Columns.
-    /// This command exists to lock the project-side parameter contract before any coordinate extraction or updater workflow is introduced.
+    /// Registers the ArcTool coordinate shared parameters for supported 3D element categories.
+    /// Detail Items use RegisterDetailItemCoordTypeCommand so the two operator pipelines stay separate.
     /// </summary>
     [Transaction(TransactionMode.Manual)]
     public class RegisterCoordParamsCommand : IExternalCommand
     {
         /// <summary>
-        /// Ensures the shared parameter definitions exist and are bound to Structural Columns.
+        /// Ensures the shared parameter definitions exist and are bound to supported 3D coordinate categories.
         /// The command is intentionally idempotent so support teams can rerun it safely without creating duplicate bindings.
         /// </summary>
         /// <param name="commandData">Revit command context used to access the active document and application services.</param>
@@ -34,6 +35,76 @@ namespace ArcTool.Core.Commands
                 message = "No active document is available.";
                 return Result.Failed;
             }
+
+            // ── PHASE E: Open settings dialog first ───────────────────────────────
+            // Read current settings to pre-populate the dialog.
+            string currentAxis = doc.ProjectInformation
+                .LookupParameter("AT_CoordAxisMapping")?.AsString() ?? "VN-2000";
+            string currentUnit = doc.ProjectInformation
+                .LookupParameter("AT_CoordUnit")?.AsString() ?? "Meters";
+            string currentFilter = doc.ProjectInformation
+                .LookupParameter("AT_CoordTriggerFilter")?.AsString() ?? "StructuralColumns";
+            var dialog = new CoordSettingsDialog(currentAxis, currentUnit, currentFilter);
+            var helper = new System.Windows.Interop.WindowInteropHelper(dialog);
+            helper.Owner = Autodesk.Windows.ComponentManager.ApplicationWindow;
+            if (dialog.ShowDialog() != true)
+            {
+                return Result.Cancelled;
+            }
+
+            // ── SAVE SETTINGS TO PROJECT INFORMATION ─────────────────────────────
+            // Settings write requires a Transaction. Wrap in its own small transaction
+            // before the shared parameter registration transaction below.
+            // Saving settings and registering parameters are intentionally two separate
+            // transactions so a settings-save failure does not roll back existing bindings.
+            using (var txSettings = new Transaction(doc, "ArcTool: Save Coordinate Settings"))
+            {
+                txSettings.Start();
+                try
+                {
+                    // Write Axis Mapping to Project Information
+                    Parameter axisParam = doc.ProjectInformation
+                        .LookupParameter("AT_CoordAxisMapping");
+                    if (axisParam != null && !axisParam.IsReadOnly)
+                    {
+                        axisParam.Set(dialog.SelectedAxisMappingKey);
+                    }
+
+                    // Write Output Unit to Project Information
+                    Parameter unitParam = doc.ProjectInformation
+                        .LookupParameter("AT_CoordUnit");
+                    if (unitParam != null && !unitParam.IsReadOnly)
+                    {
+                        unitParam.Set(dialog.SelectedOutputUnitKey);
+                    }
+
+                    // Write Trigger Filter to Project Information
+                    Parameter triggerParam = doc.ProjectInformation
+                        .LookupParameter("AT_CoordTriggerFilter");
+                    if (triggerParam != null && !triggerParam.IsReadOnly)
+                    {
+                        triggerParam.Set(dialog.SelectedTriggerFilterKey);
+                    }
+
+                    txSettings.Commit();
+                }
+                catch (Exception ex)
+                {
+                    txSettings.RollBack();
+                    // Non-fatal: log and continue with param registration.
+                    // Settings can be edited again on the next run.
+                    doc.Application.WriteJournalComment(
+                        $"[ArcTool RegisterCoordParamsCommand] Settings save failed: {ex.Message}",
+                        false);
+                }
+            }
+
+            // Log the settings change.
+            CoordinateLogService.LogSettingsChange(
+                doc,
+                currentAxis, dialog.SelectedAxisMappingKey,
+                currentUnit, dialog.SelectedOutputUnitKey);
+            // ── END PHASE E INSERTION ─────────────────────────────────────────────
 
             string sharedParametersFilename = doc.Application.SharedParametersFilename;
             if (string.IsNullOrWhiteSpace(sharedParametersFilename) || !File.Exists(sharedParametersFilename))
@@ -104,10 +175,15 @@ namespace ArcTool.Core.Commands
 
             try
             {
-                EnsureParameterBinding(doc, coordinateGroup, CoordParamNames.CoordX);
-                EnsureParameterBinding(doc, coordinateGroup, CoordParamNames.CoordY);
-                EnsureParameterBinding(doc, coordinateGroup, CoordParamNames.CoordZ);
+                CoordinateParameterBindingService.EnsureCoordinateParameters(
+                    doc,
+                    coordinateGroup,
+                    CoordV1Scope.ElementTypeCategories,
+                    CoordV1Scope.GetElementTypeCategoryLabel());
                 CoordinateProjectSettingsService.EnsureProjectInformationParameters(doc, coordinateGroup);
+                WriteProjectInfoString(doc, "AT_CoordAxisMapping", dialog.SelectedAxisMappingKey);
+                WriteProjectInfoString(doc, "AT_CoordUnit", dialog.SelectedOutputUnitKey);
+                WriteProjectInfoString(doc, "AT_CoordTriggerFilter", dialog.SelectedTriggerFilterKey);
             }
             catch (InvalidOperationException ex)
             {
@@ -151,22 +227,24 @@ namespace ArcTool.Core.Commands
                 return Result.Failed;
             }
 
+            RefreshUpdaterRegistration(doc);
+
             RevitTaskDialog.Show(
                 "ArcTool — Coordinate Parameters",
-                "Coordinate parameters registered successfully.\n" +
-                "AT_CoordX / AT_CoordY / AT_CoordZ are now available on Structural Columns.\n" +
-                "AT_CoordAxisMapping / AT_CoordUnit are now available on Project Information.");
+                "Element coordinate registration complete.\n" +
+                $"AT_CoordX / AT_CoordY / AT_CoordZ are now available on {CoordV1Scope.GetElementTypeCategoryLabel()}.\n" +
+                "AT_CoordAxisMapping / AT_CoordUnit / AT_CoordTriggerFilter are now available on Project Information.");
 
             return Result.Succeeded;
         }
 
         /// <summary>
-        /// Checks whether a named shared parameter is already bound as an instance parameter to Structural Columns.
+        /// Checks whether a named shared parameter is already bound as an instance parameter to all supported coordinate categories.
         /// Using the forward-iterator pattern avoids unsupported assumptions about BindingMap enumeration behavior in Revit.
         /// </summary>
         /// <param name="doc">Active Revit document whose binding map is being inspected.</param>
         /// <param name="paramName">Shared-parameter definition name to look for.</param>
-        /// <returns>true when the parameter is already bound to Structural Columns as an instance parameter; otherwise false.</returns>
+        /// <returns>true when the parameter is already bound to all supported coordinate categories as an instance parameter; otherwise false.</returns>
         private bool IsAlreadyBound(Document doc, string paramName)
         {
             DefinitionBindingMapIterator iterator = doc.ParameterBindings.ForwardIterator();
@@ -184,6 +262,7 @@ namespace ArcTool.Core.Commands
                     return false;
                 }
 
+                int foundCategoryCount = 0;
                 foreach (Category category in instanceBinding.Categories)
                 {
                     if (category == null)
@@ -191,20 +270,20 @@ namespace ArcTool.Core.Commands
                         continue;
                     }
 
-                    if (category.BuiltInCategory == CoordV1Scope.TargetCategory)
+                    if (CoordV1Scope.IsSupportedCategory(category.BuiltInCategory))
                     {
-                        return true;
+                        foundCategoryCount++;
                     }
                 }
 
-                return false;
+                return foundCategoryCount == CoordV1Scope.TargetCategories.Length;
             }
 
             return false;
         }
 
         /// <summary>
-        /// Ensures a coordinate parameter definition exists and that its binding includes Structural Columns.
+        /// Ensures a coordinate parameter definition exists and that its binding includes all supported coordinate categories.
         /// Merging categories through ReInsert prevents duplicate bindings while still repairing partial pre-existing bindings.
         /// </summary>
         /// <param name="doc">Active Revit document that will receive the parameter binding.</param>
@@ -242,8 +321,8 @@ namespace ArcTool.Core.Commands
         }
 
         /// <summary>
-        /// Attempts to merge Structural Columns into an existing instance binding for the same parameter definition.
-        /// ReInsert is required when the definition already exists in the binding map but the target category is missing.
+        /// Attempts to merge supported coordinate categories into an existing instance binding for the same parameter definition.
+        /// ReInsert is required when the definition already exists in the binding map but a target category is missing.
         /// </summary>
         /// <param name="doc">Active Revit document whose binding map will be updated.</param>
         /// <param name="definition">Shared-parameter definition to repair if it already exists in the binding map.</param>
@@ -266,14 +345,8 @@ namespace ArcTool.Core.Commands
                     throw new InvalidOperationException($"Parameter '{paramName}' exists but is not an instance binding.");
                 }
 
-                Category targetCategory = doc.Settings.Categories.get_Item(CoordV1Scope.TargetCategory);
-                if (targetCategory == null)
-                {
-                    throw new InvalidOperationException("Could not resolve the Structural Columns category.");
-                }
-
                 CategorySet mergedCategories = doc.Application.Create.NewCategorySet();
-                bool hasTargetCategory = false;
+                int foundCategoryCount = 0;
 
                 foreach (Category category in existingBinding.Categories)
                 {
@@ -283,18 +356,27 @@ namespace ArcTool.Core.Commands
                     }
 
                     mergedCategories.Insert(category);
-                    if (category.BuiltInCategory == CoordV1Scope.TargetCategory)
+                    if (CoordV1Scope.IsSupportedCategory(category.BuiltInCategory))
                     {
-                        hasTargetCategory = true;
+                        foundCategoryCount++;
                     }
                 }
 
-                if (hasTargetCategory)
+                if (foundCategoryCount == CoordV1Scope.TargetCategories.Length)
                 {
                     return true;
                 }
 
-                mergedCategories.Insert(targetCategory);
+                foreach (BuiltInCategory targetCategoryId in CoordV1Scope.TargetCategories)
+                {
+                    Category targetCategory = doc.Settings.Categories.get_Item(targetCategoryId);
+                    if (targetCategory == null)
+                    {
+                        throw new InvalidOperationException($"Could not resolve supported coordinate category '{targetCategoryId}'.");
+                    }
+
+                    mergedCategories.Insert(targetCategory);
+                }
                 InstanceBinding mergedBinding = doc.Application.Create.NewInstanceBinding(mergedCategories);
                 if (!doc.ParameterBindings.ReInsert(definition, mergedBinding))
                 {
@@ -308,7 +390,7 @@ namespace ArcTool.Core.Commands
         }
 
         /// <summary>
-        /// Registers a new instance binding for Structural Columns when no binding exists yet.
+        /// Registers a new instance binding for supported coordinate categories when no binding exists yet.
         /// Isolating first-time registration from repair logic keeps idempotence behavior explicit and easier to reason about.
         /// </summary>
         /// <param name="doc">Active Revit document that will receive the new binding.</param>
@@ -316,20 +398,45 @@ namespace ArcTool.Core.Commands
         /// <param name="paramName">Parameter name used in failure messages.</param>
         private static void RegisterNewBinding(Document doc, Definition definition, string paramName)
         {
-            Category targetCategory = doc.Settings.Categories.get_Item(CoordV1Scope.TargetCategory);
-            if (targetCategory == null)
-            {
-                throw new InvalidOperationException("Could not resolve the Structural Columns category.");
-            }
-
             CategorySet categorySet = doc.Application.Create.NewCategorySet();
-            categorySet.Insert(targetCategory);
+            foreach (BuiltInCategory targetCategoryId in CoordV1Scope.TargetCategories)
+            {
+                Category targetCategory = doc.Settings.Categories.get_Item(targetCategoryId);
+                if (targetCategory == null)
+                {
+                    throw new InvalidOperationException($"Could not resolve supported coordinate category '{targetCategoryId}'.");
+                }
+
+                categorySet.Insert(targetCategory);
+            }
 
             InstanceBinding binding = doc.Application.Create.NewInstanceBinding(categorySet);
             if (!doc.ParameterBindings.Insert(definition, binding))
             {
-                throw new InvalidOperationException($"Failed to bind '{paramName}' to Structural Columns.");
+                throw new InvalidOperationException($"Failed to bind '{paramName}' to {CoordV1Scope.GetSupportedCategoryLabel()}.");
             }
+        }
+
+        private static void WriteProjectInfoString(Document doc, string paramName, string value)
+        {
+            Parameter parameter = doc.ProjectInformation?.LookupParameter(paramName);
+            if (parameter == null || parameter.IsReadOnly || parameter.StorageType != StorageType.String)
+            {
+                return;
+            }
+
+            parameter.Set(value);
+        }
+
+        private static void RefreshUpdaterRegistration(Document doc)
+        {
+            AddInId addInId = App.AddInId;
+            if (addInId == null)
+            {
+                return;
+            }
+
+            CoordinateUpdaterService.RegisterForDocument(doc, addInId);
         }
 
         /// <summary>

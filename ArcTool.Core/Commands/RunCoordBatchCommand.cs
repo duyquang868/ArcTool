@@ -13,7 +13,7 @@ using RevitTaskDialog = Autodesk.Revit.UI.TaskDialog;
 namespace ArcTool.Core.Commands
 {
     /// <summary>
-    /// Revit external command that runs the Coordinate V1 batch write workflow for structural columns.
+    /// Revit external command that runs the coordinate batch write workflow for supported coordinate elements.
     /// The command owns user-facing guards, transaction scope, axis-mapping selection, and the post-run summary dialog.
     /// </summary>
     [Transaction(TransactionMode.Manual)]
@@ -48,42 +48,20 @@ namespace ArcTool.Core.Commands
                 return Result.Failed;
             }
 
-            try
+            CoordinateProjectSettings settings = CoordinateProjectSettingsService.LoadOrDefault(doc);
+            IReadOnlyList<CoordTriggerFilter> registeredFilters = CoordinateExtractionService.GetRegisteredTriggerFilters(doc);
+            if (registeredFilters.Count == 0)
             {
-                FamilyInstance? firstColumn = new FilteredElementCollector(doc)
-                    .OfClass(typeof(FamilyInstance))
-                    .OfCategory(BuiltInCategory.OST_StructuralColumns)
-                    .Cast<FamilyInstance>()
-                    .FirstOrDefault();
-
-                if (firstColumn == null)
-                {
-                    RevitTaskDialog.Show("ArcTool — Coordinate Batch", "No Structural Columns found in the document.");
-                    return Result.Succeeded;
-                }
-
-                Parameter? coordX = firstColumn.LookupParameter(CoordParamNames.CoordX);
-                if (coordX == null)
-                {
-                    RevitTaskDialog.Show("ArcTool — Coordinate Batch",
-                        "Shared parameters are not registered.\n\n" +
-                        "Run 'Register Coord Params' first, then run this command again.");
-                    return Result.Failed;
-                }
-            }
-            catch (Exception ex)
-            {
-                message = ex.Message;
-                RevitTaskDialog.Show("ArcTool Error",
-                    $"Could not verify Structural Column coordinate parameters.\n\n{ex.Message}");
+                RevitTaskDialog.Show(
+                    "ArcTool — Coordinate Batch",
+                    "Shared parameters are not registered for any coordinate scope.\n\n" +
+                    "Run 'Register Element Type' for 3D elements or 'Register Detail Type' for Detail Items first, then run this command again.");
                 return Result.Failed;
             }
 
-            CoordinateProjectSettings settings = CoordinateProjectSettingsService.LoadOrDefault(doc);
-
             CoordBatchSummary summary;
 
-            using var tx = new Transaction(doc, "ArcTool: Write Column Coordinates");
+            using var tx = new Transaction(doc, "ArcTool: Write Coordinates");
             tx.Start();
 
             try
@@ -100,8 +78,10 @@ namespace ArcTool.Core.Commands
                 return Result.Failed;
             }
 
+            CoordinateLogService.LogBatch(doc, summary);
+
             string body = $"Coordinate write complete.\n\n" +
-                $"  Total columns found:  {summary.TotalCollected}\n" +
+                $"  Total elements found: {summary.TotalCollected}\n" +
                 $"  Written (new/changed): {summary.WrittenCount}\n" +
                 $"  Skipped (no change):   {summary.SkippedCount}\n" +
                 $"  Unsupported geometry:  {summary.UnsupportedCount}\n" +
@@ -125,6 +105,17 @@ namespace ArcTool.Core.Commands
 
             RevitTaskDialog.Show("ArcTool — Coordinate Batch", body);
             return Result.Succeeded;
+        }
+
+        private static FamilyInstance? FindFirstSupportedFamilyInstance(RevitDocument doc, CoordTriggerFilter triggerFilter)
+        {
+            BuiltInCategory category = CoordV1Scope.GetCategory(triggerFilter);
+            return new FilteredElementCollector(doc)
+                .OfClass(typeof(FamilyInstance))
+                .OfCategory(category)
+                .Cast<FamilyInstance>()
+                .FirstOrDefault(instance => triggerFilter != CoordTriggerFilter.DetailItems
+                    || CoordinateDetailItemRegistryService.IsRegisteredType(doc, instance));
         }
     }
 }

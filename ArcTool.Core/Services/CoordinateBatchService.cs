@@ -47,7 +47,7 @@ namespace ArcTool.Core.Services
     /// <summary>
     /// Aggregate result of a full coordinate batch run.
     /// </summary>
-    /// <param name="TotalCollected">Total number of structural columns returned by the extraction service.</param>
+    /// <param name="TotalCollected">Total number of supported coordinate elements returned by the extraction service.</param>
     /// <param name="WrittenCount">Number of elements whose coordinate parameters were written.</param>
     /// <param name="SkippedCount">Number of elements skipped because stored values were already current.</param>
     /// <param name="UnsupportedCount">Number of elements skipped because their geometry is unsupported.</param>
@@ -62,7 +62,7 @@ namespace ArcTool.Core.Services
         IReadOnlyList<CoordWriteResult> Details);
 
     /// <summary>
-    /// Runs the Coordinate V1 batch write pipeline against structural columns.
+    /// Runs the coordinate batch write pipeline against all registered supported coordinate categories.
     /// This service owns extraction, conversion, skip checking, writeback, and reporting, but not transaction or UI boundaries.
     /// </summary>
     public static class CoordinateBatchService
@@ -71,7 +71,7 @@ namespace ArcTool.Core.Services
         private const int ParameterDecimalPlaces = 4;
 
         /// <summary>
-        /// Runs the full batch pipeline on all Structural Columns in the document.
+        /// Runs the full batch pipeline on all registered supported coordinate elements in the document.
         /// The caller must open the transaction before calling this method.
         /// Per-element failures are recorded in the returned summary so the batch can continue.
         /// </summary>
@@ -89,7 +89,7 @@ namespace ArcTool.Core.Services
                 throw new ArgumentNullException(nameof(doc));
             }
 
-            IReadOnlyList<CoordResult> extractionResults = CoordinateExtractionService.ExtractAll(doc);
+            IReadOnlyList<CoordResult> extractionResults = CoordinateExtractionService.ExtractAllRegistered(doc);
             var details = new List<CoordWriteResult>(extractionResults.Count);
 
             foreach (CoordResult result in extractionResults)

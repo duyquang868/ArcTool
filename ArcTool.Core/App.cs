@@ -14,9 +14,17 @@ namespace ArcTool.Core
     {
         private AddInId _addInId;
 
+        /// <summary>
+        /// The AddInId captured during OnStartup(). Used by commands that need to
+        /// call CoordinateUpdaterService from outside the document-event context.
+        /// Phase D proved that deriving AddInId from document event sender is unreliable.
+        /// </summary>
+        internal static AddInId AddInId { get; private set; }
+
         public Result OnStartup(UIControlledApplication application)
         {
             _addInId = application.ActiveAddInId;
+            App.AddInId = application.ActiveAddInId;
 
             string tabName = "ArcTool";
             string voidPanelName = "Void Tools";
@@ -144,14 +152,24 @@ namespace ArcTool.Core
 
             PushButtonData registerCoordParamsBtnData = new PushButtonData(
                 "btnRegisterCoordParams",
-                "Register\nCoord Params",
+                "Register\nElement Type",
                 assemblyPath,
                 "ArcTool.Core.Commands.RegisterCoordParamsCommand"
             );
 
-            registerCoordParamsBtnData.ToolTip = "Creates AT_CoordX / AT_CoordY / AT_CoordZ shared parameters and binds them to Structural Columns. Safe to run multiple times.";
+            registerCoordParamsBtnData.ToolTip = "Open coordinate settings and register AT_CoordX / AT_CoordY / AT_CoordZ for supported 3D elements: Structural Columns and Structural Foundations. Safe to run multiple times.";
 
             coordinatePanel.AddItem(registerCoordParamsBtnData);
+
+            PushButtonData registerDetailItemBtnData = new PushButtonData(
+                "btnRegisterDetailItemCoordType",
+                "Register\nDetail Type",
+                assemblyPath,
+                "ArcTool.Core.Commands.RegisterDetailItemCoordTypeCommand");
+            registerDetailItemBtnData.ToolTip =
+                "Select one Detail Item instance and register its type name for coordinate processing. " +
+                "The Detail Item registry is stored as JSON next to the RVT file and must be copied with the model.";
+            coordinatePanel.AddItem(registerDetailItemBtnData);
 
             PushButtonData runBatchBtnData = new PushButtonData(
                 "btnRunCoordBatch",
@@ -159,11 +177,23 @@ namespace ArcTool.Core
                 assemblyPath,
                 "ArcTool.Core.Commands.RunCoordBatchCommand");
             runBatchBtnData.ToolTip =
-                "Reads coordinates of all Structural Columns and writes them into " +
+                "Reads coordinates for all registered coordinate elements and writes them into " +
                 "AT_CoordX / AT_CoordY / AT_CoordZ shared parameters. " +
                 "Skips elements whose values have not changed. " +
-                "Run 'Register Coord Params' first if this is a new project.";
+                "Run 'Register Element Type' for 3D elements, or 'Register Detail Type' for Detail Items, if this is a new project.";
             coordinatePanel.AddItem(runBatchBtnData);
+
+            PushButtonData toggleBtnData = new PushButtonData(
+                "btnToggleCoordUpdater",
+                "Auto\nUpdate",
+                assemblyPath,
+                "ArcTool.Core.Commands.ToggleCoordUpdaterCommand");
+            toggleBtnData.ToolTip =
+                "Enable or disable real-time coordinate auto-update for the current document. " +
+                "When enabled, AT_CoordX / AT_CoordY / AT_CoordZ are updated automatically " +
+                "whenever a registered coordinate element is moved or modified. " +
+                "Current state is shown when you click the button.";
+            coordinatePanel.AddItem(toggleBtnData);
 
             application.ControlledApplication.DocumentOpened += OnDocumentOpened;
             application.ControlledApplication.DocumentCreated += OnDocumentCreated;

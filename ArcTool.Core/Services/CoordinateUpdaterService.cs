@@ -24,7 +24,7 @@ namespace ArcTool.Core.Services
         /// <summary>
         /// Register the CoordinateUpdater for a specific document.
         /// Safe to call multiple times — guards against double-registration.
-        /// Skips silently if AT_CoordX is not bound to OST_StructuralColumns.
+        /// Skips silently if AT_CoordX is not bound to the supported coordinate categories.
         /// Writes one journal comment regardless of outcome for traceability.
         /// </summary>
         public static void RegisterForDocument(Document doc, AddInId addInId)
@@ -47,49 +47,33 @@ namespace ArcTool.Core.Services
                 UpdaterId updaterId = new UpdaterId(addInId, UpdaterGuid);
                 if (UpdaterRegistry.IsUpdaterRegistered(updaterId, doc))
                 {
-                    doc.Application.WriteJournalComment(
-                        "[ArcTool CoordinateUpdaterService] Updater already registered for document — skipping.",
-                        false);
-                    return;
+                    UpdaterRegistry.UnregisterUpdater(updaterId, doc);
                 }
 
-                FamilyInstance? probeColumn = new FilteredElementCollector(doc)
-                    .OfClass(typeof(FamilyInstance))
-                    .OfCategory(BuiltInCategory.OST_StructuralColumns)
-                    .Cast<FamilyInstance>()
-                    .FirstOrDefault();
-
-                if (probeColumn == null)
+                var registeredFilters = CoordinateExtractionService.GetRegisteredTriggerFilters(doc);
+                if (registeredFilters.Count == 0)
                 {
                     doc.Application.WriteJournalComment(
-                        "[ArcTool CoordinateUpdaterService] No Structural Columns found — updater registration skipped.",
+                        "[ArcTool CoordinateUpdaterService] No registered coordinate categories found — updater registration skipped.",
                         false);
                     return;
                 }
-
-                if (probeColumn.LookupParameter(CoordParamNames.CoordX) == null)
-                {
-                    doc.Application.WriteJournalComment(
-                        "[ArcTool CoordinateUpdaterService] AT_CoordX not found on Structural Columns. " +
-                        "Run Register Coord Params before the updater can activate.",
-                        false);
-                    return;
-                }
-
-                ElementFilter elementFilter = new LogicalAndFilter(
-                    new ElementCategoryFilter(BuiltInCategory.OST_StructuralColumns),
-                    new ElementClassFilter(typeof(FamilyInstance)));
 
                 CoordinateUpdater updater = new CoordinateUpdater(addInId);
                 UpdaterRegistry.RegisterUpdater(updater, doc, false);
-                UpdaterRegistry.AddTrigger(
-                    updaterId,
-                    doc,
-                    elementFilter,
-                    Element.GetChangeTypeGeometry());
 
+                foreach (CoordTriggerFilter triggerFilter in registeredFilters)
+                {
+                    UpdaterRegistry.AddTrigger(
+                        updaterId,
+                        doc,
+                        BuildSupportedCategoryFilter(triggerFilter),
+                        Element.GetChangeTypeGeometry());
+                }
+
+                string categoryList = string.Join(", ", registeredFilters.Select(CoordV1Scope.GetCategoryLabel));
                 doc.Application.WriteJournalComment(
-                    "[ArcTool CoordinateUpdaterService] Updater registered successfully.",
+                    $"[ArcTool CoordinateUpdaterService] Updater registered successfully for: {categoryList}.",
                     false);
             }
             catch (Exception ex)
@@ -98,6 +82,22 @@ namespace ArcTool.Core.Services
                     $"[ArcTool CoordinateUpdaterService] Registration failed: {ex.Message}",
                     false);
             }
+        }
+
+        private static FamilyInstance? FindFirstSupportedFamilyInstance(Document doc, CoordTriggerFilter triggerFilter)
+        {
+            BuiltInCategory category = CoordV1Scope.GetCategory(triggerFilter);
+            return new FilteredElementCollector(doc)
+                .OfClass(typeof(FamilyInstance))
+                .OfCategory(category)
+                .Cast<FamilyInstance>()
+                .FirstOrDefault(instance => triggerFilter != CoordTriggerFilter.DetailItems
+                    || CoordinateDetailItemRegistryService.IsRegisteredType(doc, instance));
+        }
+
+        private static ElementFilter BuildSupportedCategoryFilter(CoordTriggerFilter triggerFilter)
+        {
+            return new ElementCategoryFilter(CoordV1Scope.GetCategory(triggerFilter));
         }
 
         /// <summary>

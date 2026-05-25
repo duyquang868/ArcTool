@@ -7,8 +7,8 @@ using Autodesk.Revit.DB;
 namespace ArcTool.Core.Services
 {
     /// <summary>
-    /// Dynamic updater for Coordinate Feature V1.
-    /// Processes only modified Structural Column instances and writes coordinate parameters inside Revit's active updater transaction.
+    /// Dynamic updater for the coordinate feature.
+    /// Processes modified supported family instances and writes coordinate parameters inside Revit's active updater transaction.
     /// </summary>
     public sealed class CoordinateUpdater : IUpdater
     {
@@ -56,14 +56,14 @@ namespace ArcTool.Core.Services
 
         public string GetAdditionalInformation()
         {
-            return "Writes AT_CoordX / AT_CoordY / AT_CoordZ into Structural Columns " +
-                   "when their location changes. Part of ArcTool V1 Coordinate Feature.";
+            return "Writes AT_CoordX / AT_CoordY / AT_CoordZ into supported coordinate elements " +
+                   "when their location changes. Part of ArcTool Coordinate Feature.";
         }
 
         public ChangePriority GetChangePriority()
         {
             // FreeStandingComponents (9) runs after structural walls/floors are resolved,
-            // so the column location is stable before coordinate writeback.
+            // so the instance location is stable before coordinate writeback.
             return ChangePriority.FreeStandingComponents;
         }
 
@@ -110,17 +110,18 @@ namespace ArcTool.Core.Services
                 return;
             }
 
-            if (elem is not FamilyInstance column)
+            if (elem is not FamilyInstance instance)
             {
                 return;
             }
 
-            if (column.Category?.Id.Value != (long)CoordV1Scope.TargetCategory)
+            BuiltInCategory? category = GetBuiltInCategory(instance);
+            if (category == null || !CoordinateParameterBindingService.IsCoordinateCategoryRegistered(doc, category.Value))
             {
                 return;
             }
 
-            CoordResult result = CoordinateExtractionService.Extract(column);
+            CoordResult result = CoordinateExtractionService.Extract(instance);
             if (!result.IsSupported)
             {
                 return;
@@ -136,9 +137,9 @@ namespace ArcTool.Core.Services
             double newY = ConvertFromStorageMillimeters(converted.NorthSouthMm, parameterUnit);
             double newZ = ConvertFromStorageMillimeters(converted.ElevationMm, parameterUnit);
 
-            double storedX = ReadParam(column, CoordParamNames.CoordX);
-            double storedY = ReadParam(column, CoordParamNames.CoordY);
-            double storedZ = ReadParam(column, CoordParamNames.CoordZ);
+            double storedX = ReadParam(instance, CoordParamNames.CoordX);
+            double storedY = ReadParam(instance, CoordParamNames.CoordY);
+            double storedZ = ReadParam(instance, CoordParamNames.CoordZ);
 
             if (!double.IsNaN(storedX) && !double.IsNaN(storedY) && !double.IsNaN(storedZ))
             {
@@ -153,10 +154,29 @@ namespace ArcTool.Core.Services
             }
 
             // Execute() runs inside Revit's already-open user transaction, so opening another Transaction here would be invalid.
-            // Undo reverts both the column edit and these parameter writes as one action; this is intentional behavior for Phase D.
-            WriteParam(column, CoordParamNames.CoordX, newX);
-            WriteParam(column, CoordParamNames.CoordY, newY);
-            WriteParam(column, CoordParamNames.CoordZ, newZ);
+            // Undo reverts both the instance edit and these parameter writes as one action; this is intentional behavior for Phase D.
+            WriteParam(instance, CoordParamNames.CoordX, newX);
+            WriteParam(instance, CoordParamNames.CoordY, newY);
+            WriteParam(instance, CoordParamNames.CoordZ, newZ);
+        }
+
+        private static BuiltInCategory? GetBuiltInCategory(Element element)
+        {
+            if (element?.Category == null)
+            {
+                return null;
+            }
+
+            long categoryValue = element.Category.Id.Value;
+            foreach (BuiltInCategory targetCategory in CoordV1Scope.TargetCategories)
+            {
+                if (categoryValue == (long)targetCategory)
+                {
+                    return targetCategory;
+                }
+            }
+
+            return null;
         }
 
         private static double ReadParam(Element element, string paramName)

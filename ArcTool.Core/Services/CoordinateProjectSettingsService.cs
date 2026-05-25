@@ -11,9 +11,11 @@ namespace ArcTool.Core.Services
     /// </summary>
     /// <param name="AxisMapping">Project axis mapping used to route East/West and North/South into CoordX and CoordY.</param>
     /// <param name="ParameterUnit">Unit used when writing numeric values into AT_CoordX / AT_CoordY / AT_CoordZ.</param>
+    /// <param name="TriggerFilter">Supported element category filter used by batch and updater workflows.</param>
     public sealed record CoordinateProjectSettings(
         CoordAxisMapping AxisMapping,
-        CoordParameterUnit ParameterUnit);
+        CoordParameterUnit ParameterUnit,
+        CoordTriggerFilter TriggerFilter);
 
     /// <summary>
     /// Reads and registers ArcTool coordinate settings stored on the Revit Project Information element.
@@ -30,6 +32,11 @@ namespace ArcTool.Core.Services
         /// Default coordinate parameter unit for current ArcTool coordinate projects.
         /// </summary>
         public const CoordParameterUnit DefaultParameterUnit = CoordParameterUnit.Meters;
+
+        /// <summary>
+        /// Default trigger filter for current ArcTool coordinate projects.
+        /// </summary>
+        public const CoordTriggerFilter DefaultTriggerFilter = CoordTriggerFilter.StructuralColumns;
 
         /// <summary>
         /// Ensures AT_CoordAxisMapping and AT_CoordUnit exist as Project Information shared parameters and have default values.
@@ -51,6 +58,7 @@ namespace ArcTool.Core.Services
 
             EnsureParameterBinding(doc, group, CoordProjectSettingParamNames.AxisMapping);
             EnsureParameterBinding(doc, group, CoordProjectSettingParamNames.Unit);
+            EnsureParameterBinding(doc, group, CoordProjectSettingParamNames.TriggerFilter);
             EnsureDefaultSettingValues(doc);
         }
 
@@ -72,10 +80,12 @@ namespace ArcTool.Core.Services
 
             string axisMappingKey = ReadString(projectInfo, CoordProjectSettingParamNames.AxisMapping);
             string unitKey = ReadString(projectInfo, CoordProjectSettingParamNames.Unit);
+            string triggerFilterKey = ReadString(projectInfo, CoordProjectSettingParamNames.TriggerFilter);
 
             return new CoordinateProjectSettings(
                 ParseAxisMapping(axisMappingKey),
-                ParseParameterUnit(unitKey));
+                ParseParameterUnit(unitKey),
+                ParseTriggerFilter(triggerFilterKey));
         }
 
         /// <summary>
@@ -106,6 +116,21 @@ namespace ArcTool.Core.Services
                 CoordParameterUnit.Millimeters => CoordParameterUnitKeys.Millimeters,
                 CoordParameterUnit.Feet => CoordParameterUnitKeys.Feet,
                 _ => CoordParameterUnitKeys.Meters
+            };
+        }
+
+        /// <summary>
+        /// Converts a runtime trigger filter enum into the stable key stored in Project Information.
+        /// </summary>
+        /// <param name="triggerFilter">Trigger filter value to convert.</param>
+        /// <returns>Stable Project Information key.</returns>
+        public static string ToTriggerFilterKey(CoordTriggerFilter triggerFilter)
+        {
+            return triggerFilter switch
+            {
+                CoordTriggerFilter.StructuralFoundations => CoordTriggerFilterKeys.StructuralFoundations,
+                CoordTriggerFilter.DetailItems => CoordTriggerFilterKeys.DetailItems,
+                _ => CoordTriggerFilterKeys.StructuralColumns
             };
         }
 
@@ -157,6 +182,27 @@ namespace ArcTool.Core.Services
             return DefaultParameterUnit;
         }
 
+        /// <summary>
+        /// Parses a Project Information trigger filter key into a runtime-safe enum value.
+        /// Unknown or blank values fall back to the current ArcTool default.
+        /// </summary>
+        /// <param name="triggerFilterKey">Stored Project Information key.</param>
+        /// <returns>Parsed trigger filter value.</returns>
+        public static CoordTriggerFilter ParseTriggerFilter(string? triggerFilterKey)
+        {
+            if (string.Equals(triggerFilterKey, CoordTriggerFilterKeys.StructuralFoundations, StringComparison.OrdinalIgnoreCase))
+            {
+                return CoordTriggerFilter.StructuralFoundations;
+            }
+
+            if (string.Equals(triggerFilterKey, CoordTriggerFilterKeys.DetailItems, StringComparison.OrdinalIgnoreCase))
+            {
+                return CoordTriggerFilter.DetailItems;
+            }
+
+            return DefaultTriggerFilter;
+        }
+
         private static void EnsureDefaultSettingValues(Document doc)
         {
             ProjectInfo projectInfo = doc.ProjectInformation
@@ -171,6 +217,11 @@ namespace ArcTool.Core.Services
                 projectInfo,
                 CoordProjectSettingParamNames.Unit,
                 ToParameterUnitKey(DefaultParameterUnit));
+
+            WriteDefaultString(
+                projectInfo,
+                CoordProjectSettingParamNames.TriggerFilter,
+                ToTriggerFilterKey(DefaultTriggerFilter));
         }
 
         private static string ReadString(Element element, string paramName)

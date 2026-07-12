@@ -84,16 +84,6 @@ namespace ArcTool.Core.Services
             }
         }
 
-        private static FamilyInstance? FindFirstSupportedFamilyInstance(Document doc, CoordTriggerFilter triggerFilter)
-        {
-            BuiltInCategory category = CoordV1Scope.GetCategory(triggerFilter);
-            return new FilteredElementCollector(doc)
-                .OfClass(typeof(FamilyInstance))
-                .OfCategory(category)
-                .Cast<FamilyInstance>()
-                .FirstOrDefault(instance => triggerFilter != CoordTriggerFilter.DetailItems
-                    || CoordinateDetailItemRegistryService.IsRegisteredType(doc, instance));
-        }
 
         private static ElementFilter BuildSupportedCategoryFilter(CoordTriggerFilter triggerFilter)
         {

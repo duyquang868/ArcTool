@@ -1,7 +1,8 @@
 {
   "ExpandedNodes": [
-    ""
+    "",
+    "\\ArcTool.Core"
   ],
-  "SelectedNode": "\\ArcTool.slnx",
+  "SelectedNode": "\\ArcTool.Core\\App.config",
   "PreviewInSolutionExplorer": false
 }

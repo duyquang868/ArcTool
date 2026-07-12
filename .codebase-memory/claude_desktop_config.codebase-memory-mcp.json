@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "codebase-memory-mcp": {
+      "command": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\.codebase-memory\\run-cbm.cmd",
+      "args": []
+    }
+  }
+}

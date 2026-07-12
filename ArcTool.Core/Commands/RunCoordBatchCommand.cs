@@ -107,15 +107,5 @@ namespace ArcTool.Core.Commands
             return Result.Succeeded;
         }
 
-        private static FamilyInstance? FindFirstSupportedFamilyInstance(RevitDocument doc, CoordTriggerFilter triggerFilter)
-        {
-            BuiltInCategory category = CoordV1Scope.GetCategory(triggerFilter);
-            return new FilteredElementCollector(doc)
-                .OfClass(typeof(FamilyInstance))
-                .OfCategory(category)
-                .Cast<FamilyInstance>()
-                .FirstOrDefault(instance => triggerFilter != CoordTriggerFilter.DetailItems
-                    || CoordinateDetailItemRegistryService.IsRegisteredType(doc, instance));
-        }
     }
 }

@@ -39,6 +39,7 @@ The feature was accepted by the user in Revit and closed on 2026-05-25.
 ### Host wiring
 - `App.cs`
 - `CoordSettingsDialog.xaml`
+- `CoordSettingsDialog.xaml.cs`
 
 ## 3. Shared-parameter and settings contract
 
@@ -71,8 +72,10 @@ Default persisted values are:
 Responsibilities:
 - ensure the shared parameter file is available through Revit
 - create or reuse the ArcTool coordinate definition group
+- delegate element coordinate binding to `CoordinateParameterBindingService`
 - bind `AT_CoordX/Y/Z` to `Structural Columns` and `Structural Foundations`
-- ensure Project Information coordinate settings exist
+- delegate Project Information settings binding to `CoordinateProjectSettingsService`
+- write accepted settings once inside the registration transaction
 - keep registration idempotent
 - refresh updater registration after a successful setup change
 
@@ -165,7 +168,7 @@ Locked updater behavior:
 - trigger registration is rebuilt when registration state changes
 - runtime processing resolves all registered scopes together instead of one active scope only
 
-The implementation intentionally avoids a combined logical trigger filter for multiple categories. The safer production model is one supported category trigger per registered category.
+The implementation intentionally avoids a combined logical trigger filter for multiple categories. Revit 2026 updater triggers should stay within supported category/parameter filter forms, so the production model is one category-only `ElementCategoryFilter` trigger per registered category. Runtime execution still filters through registered extraction/writeback rules, so broader category triggers do not define final write scope.
 
 ## 10. AddInId lifecycle decision
 
@@ -215,3 +218,21 @@ Final acceptance evidence:
 - cumulative registered-scope behavior worked for Columns, Foundations, and registered Detail Items
 
 The user confirmed in Revit that the full feature behaved as intended. The subsystem is therefore closed. Future work should be framed only as bug fixing, deployment hardening, packaging, release QA, or explicit scope expansion.
+
+## 14. Post-closure cleanup record
+
+A later cleanup pass removed stale logic that was no longer load-bearing after the final all-registered-scope model was accepted.
+
+Cleanup results:
+- command-layer duplicate coordinate binding helpers were removed from `RegisterCoordParamsCommand.cs`
+- element coordinate binding remains centralized in `CoordinateParameterBindingService.cs`
+- Project Information settings binding remains centralized in `CoordinateProjectSettingsService.cs`
+- the duplicate standalone settings transaction was removed from `RegisterCoordParamsCommand.cs`
+- `RunCoordBatchCommand.cs` no longer contains first-supported-instance probing
+- `CoordinateUpdaterService.cs` no longer contains first-supported-instance probing
+- updater registration now uses category-only trigger filters built from registered categories
+
+Preserved intentionally:
+- similar helper names inside `CoordinateParameterBindingService.cs` and `CoordinateProjectSettingsService.cs` are not duplicate dead code; they serve different binding targets
+- `AT_CoordTriggerFilter` remains persisted for settings compatibility, but does not narrow runtime batch/updater scope
+- broad category triggers are acceptable because final execution scope is enforced by extraction and registration rules

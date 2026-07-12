@@ -1,0 +1,21 @@
+{
+  "serverInfo": {
+    "name": "posh-mcp",
+    "version": "1.0.0"
+  },
+  "modules": [
+    {
+      "name": "CodebaseMemoryWorkflow",
+      "path": "CodebaseMemoryWorkflow.psm1",
+      "cmdlets": [
+        "Set-CbmEnvironment",
+        "Stop-CbmProcess",
+        "Test-CbmOldCache",
+        "Invoke-CbmFullIndex",
+        "Get-CbmIndexStatus",
+        "Search-CbmGraph",
+        "Start-CbmUI"
+      ]
+    }
+  ]
+}

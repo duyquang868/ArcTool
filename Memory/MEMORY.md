@@ -1,0 +1,12 @@
+- [CLAUDE.md English / chat Vietnamese](feedback_claude_md_and_chat_language.md) — Keep CLAUDE.md in English; keep chat responses in Vietnamese.
+- [Closed dossier policy](feedback_closed_dossier_policy.md) — Section 7 is only for recently closed features; older ones belong in dedicated dossier files.
+- [Backend scope preference](backend_scope_preference.md) — Report unsupported backend scope immediately; do not add placeholder UI fields.
+- [Tool approval before editing](feedback_tool_approval_before_editing.md) — Ask before editing files when tools are blocked or approval to modify files is still unclear.
+- [CLAUDE.md Code map review](feedback_claude_md_code_map_review.md) — Review every section 2 Code map directory/file before updating CLAUDE.md.
+- [QD roadmap persistence](project_qd_roadmap_persistence.md) — Keep detailed QD roadmap in its own file/dossier; CLAUDE.md only gets a short pointer/status.
+- [Repo-local codebase-memory workflow](project_codebase_memory_repo_local_workflow.md) — Launch CBM through .codebase-memory/run-cbm.cmd, use graph-first cross-file reasoning, and re-index at every meaningful closure.
+- [Verify file tail after edits](feedback_verify_file_tail_after_edits.md) — Inspect final file tail/structure after source edits; avoid append-based repairs that duplicate class endings.
+- [Nullable Revit API locals](feedback_nullable_annotations_revit_api.md) — In #nullable-enabled files, assign possibly-null Revit API results to nullable locals and narrow explicitly.
+- [QD projection pivot](project_qd_projection_pivot.md) — QD main flow pivots to wall-axis projection (ADR-2026-06-11); this session edits contract+engine only, keeps Grid/intersection code.
+- [QD Phase 2.6 smoke fix](project_qd_phase26_smoke_fix.md) — Wall-end anchors use physical solid cap min/max stations; chain readiness requires distinct stations; summary uses mm.
+- [Chief Architect / Gemma worker workflow](feedback_chief_architect_gemma_worker_workflow.md) — Claude designs and reviews; Gemma 4 generates code via MCP; Claude runs compile-fix loop before applying source edits.

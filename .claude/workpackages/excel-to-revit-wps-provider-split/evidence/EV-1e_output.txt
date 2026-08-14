@@ -1,0 +1,844 @@
+
+==============================================================================
+== STEP 0 - probe metadata
+==============================================================================
+timestamp_local     : 2026-08-09 18:46:01 +07:00
+machine             : DESKTOP-4791VV0
+powershell_version  : 5.1.26100.8875
+process_is_64bit    : True
+probe_variant       : EV-1e (workbook/document surface discovery)
+thread_culture      : en-US
+ComProbe helper     : COMPILED OK
+source_workbook     : C:\Users\ADMIN\Desktop\PA4\BULONG.xlsx
+source_exists       : True
+scratch_copy        : C:\Users\ADMIN\AppData\Local\Temp\ArcTool_EV1e_ca4e47e5680949a1b68addc3048f5d50.xlsx
+scratch_exists      : True
+
+==============================================================================
+== STAGE A - CreateInstance(KET.Application) + ITypeInfo dump
+==============================================================================
+KET.Application resolved
+CreateInstance ok   : System.__ComObject
+
+--- ITypeInfo dump of the application object (max 250 funcs) ---
+GetTypeInfoCount = 1
+type name = _Application
+type doc  = 
+guid      = 000208d5-0000-0000-c000-000000000046
+typekind  = TKIND_DISPATCH
+cFuncs    = 475
+cVars     = 0
+FUNC name=QueryInterface memid=1610612736 invkind=INVOKE_FUNC cParams=2
+FUNC name=AddRef memid=1610612737 invkind=INVOKE_FUNC cParams=0
+FUNC name=Release memid=1610612738 invkind=INVOKE_FUNC cParams=0
+FUNC name=GetTypeInfoCount memid=1610678272 invkind=INVOKE_FUNC cParams=1
+FUNC name=GetTypeInfo memid=1610678273 invkind=INVOKE_FUNC cParams=3
+FUNC name=GetIDsOfNames memid=1610678274 invkind=INVOKE_FUNC cParams=5
+FUNC name=Invoke memid=1610678275 invkind=INVOKE_FUNC cParams=8
+FUNC name=Application memid=148 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Creator memid=149 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Parent memid=150 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ActiveCell memid=305 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ActiveChart memid=183 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ActiveDialog memid=815 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ActiveMenuBar memid=758 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ActivePrinter memid=306 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ActivePrinter memid=306 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=ActiveSheet memid=307 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ActiveWindow memid=759 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ActiveWorkbook memid=308 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=AddIns memid=549 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Assistant memid=1438 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Calculate memid=279 invkind=INVOKE_FUNC cParams=0
+FUNC name=Cells memid=238 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Charts memid=121 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Columns memid=241 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=CommandBars memid=1439 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DDEAppReturnCode memid=332 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DDEExecute memid=333 invkind=INVOKE_FUNC cParams=2
+FUNC name=DDEInitiate memid=334 invkind=INVOKE_FUNC cParams=2
+FUNC name=DDEPoke memid=335 invkind=INVOKE_FUNC cParams=3
+FUNC name=DDERequest memid=336 invkind=INVOKE_FUNC cParams=2
+FUNC name=DDETerminate memid=337 invkind=INVOKE_FUNC cParams=1
+FUNC name=DialogSheets memid=764 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Evaluate memid=1 invkind=INVOKE_FUNC cParams=1
+FUNC name=_Evaluate memid=-5 invkind=INVOKE_FUNC cParams=1
+FUNC name=ExecuteExcel4Macro memid=350 invkind=INVOKE_FUNC cParams=1
+FUNC name=Intersect memid=766 invkind=INVOKE_FUNC cParams=30
+FUNC name=MenuBars memid=589 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Modules memid=582 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Names memid=442 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Range memid=197 invkind=INVOKE_PROPERTYGET cParams=2
+FUNC name=Rows memid=258 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Run memid=259 invkind=INVOKE_FUNC cParams=31
+FUNC name=_Run2 memid=806 invkind=INVOKE_FUNC cParams=31
+FUNC name=Selection memid=147 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=SendKeys memid=383 invkind=INVOKE_FUNC cParams=2
+FUNC name=Sheets memid=485 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ShortcutMenus memid=776 invkind=INVOKE_PROPERTYGET cParams=1
+FUNC name=ThisWorkbook memid=778 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Toolbars memid=552 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Union memid=779 invkind=INVOKE_FUNC cParams=30
+FUNC name=Windows memid=430 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Workbooks memid=572 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=WorksheetFunction memid=1440 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Worksheets memid=494 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Excel4IntlMacroSheets memid=581 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Excel4MacroSheets memid=579 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ActivateMicrosoftApp memid=1095 invkind=INVOKE_FUNC cParams=1
+FUNC name=AddChartAutoFormat memid=216 invkind=INVOKE_FUNC cParams=3
+FUNC name=AddCustomList memid=780 invkind=INVOKE_FUNC cParams=2
+FUNC name=AlertBeforeOverwriting memid=930 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=AlertBeforeOverwriting memid=930 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=AltStartupPath memid=313 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=AltStartupPath memid=313 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=AskToUpdateLinks memid=992 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=AskToUpdateLinks memid=992 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=EnableAnimations memid=1180 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=EnableAnimations memid=1180 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=AutoCorrect memid=1145 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Build memid=314 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=CalculateBeforeSave memid=315 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=CalculateBeforeSave memid=315 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=Calculation memid=316 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Calculation memid=316 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=Caller memid=317 invkind=INVOKE_PROPERTYGET cParams=1
+FUNC name=CanPlaySounds memid=318 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=CanRecordSounds memid=319 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Caption memid=139 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Caption memid=139 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=CellDragAndDrop memid=320 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=CellDragAndDrop memid=320 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=CentimetersToPoints memid=1086 invkind=INVOKE_FUNC cParams=1
+FUNC name=CheckSpelling memid=505 invkind=INVOKE_FUNC cParams=3
+FUNC name=ClipboardFormats memid=321 invkind=INVOKE_PROPERTYGET cParams=1
+FUNC name=DisplayClipboardWindow memid=322 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DisplayClipboardWindow memid=322 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=ColorButtons memid=365 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ColorButtons memid=365 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=CommandUnderlines memid=323 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=CommandUnderlines memid=323 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=ConstrainNumeric memid=324 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ConstrainNumeric memid=324 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=ConvertFormula memid=325 invkind=INVOKE_FUNC cParams=5
+FUNC name=CopyObjectsWithCells memid=991 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=CopyObjectsWithCells memid=991 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=Cursor memid=1161 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Cursor memid=1161 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=CustomListCount memid=787 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=CutCopyMode memid=330 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=CutCopyMode memid=330 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=DataEntryMode memid=331 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DataEntryMode memid=331 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=Dummy1 memid=1782 invkind=INVOKE_FUNC cParams=4
+FUNC name=Dummy2 memid=1783 invkind=INVOKE_FUNC cParams=8
+FUNC name=Dummy3 memid=1784 invkind=INVOKE_FUNC cParams=0
+FUNC name=Dummy4 memid=1785 invkind=INVOKE_FUNC cParams=15
+FUNC name=Dummy5 memid=1786 invkind=INVOKE_FUNC cParams=13
+FUNC name=Dummy6 memid=1787 invkind=INVOKE_FUNC cParams=0
+FUNC name=Dummy7 memid=1788 invkind=INVOKE_FUNC cParams=0
+FUNC name=Dummy8 memid=1789 invkind=INVOKE_FUNC cParams=1
+FUNC name=Dummy9 memid=1790 invkind=INVOKE_FUNC cParams=0
+FUNC name=Dummy10 memid=1791 invkind=INVOKE_FUNC cParams=1
+FUNC name=Dummy11 memid=1792 invkind=INVOKE_FUNC cParams=0
+FUNC name=_Default memid=0 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DefaultFilePath memid=1038 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DefaultFilePath memid=1038 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=DeleteChartAutoFormat memid=217 invkind=INVOKE_FUNC cParams=1
+FUNC name=DeleteCustomList memid=783 invkind=INVOKE_FUNC cParams=1
+FUNC name=Dialogs memid=761 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DisplayAlerts memid=343 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DisplayAlerts memid=343 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=DisplayFormulaBar memid=344 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DisplayFormulaBar memid=344 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=DisplayFullScreen memid=1061 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DisplayFullScreen memid=1061 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=DisplayNoteIndicator memid=345 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DisplayNoteIndicator memid=345 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=DisplayCommentIndicator memid=1196 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DisplayCommentIndicator memid=1196 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=DisplayExcel4Menus memid=927 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DisplayExcel4Menus memid=927 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=DisplayRecentFiles memid=926 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DisplayRecentFiles memid=926 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=DisplayScrollBars memid=346 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DisplayScrollBars memid=346 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=DisplayStatusBar memid=347 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DisplayStatusBar memid=347 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=DoubleClick memid=349 invkind=INVOKE_FUNC cParams=0
+FUNC name=EditDirectlyInCell memid=929 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=EditDirectlyInCell memid=929 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=EnableAutoComplete memid=1179 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=EnableAutoComplete memid=1179 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=EnableCancelKey memid=1096 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=EnableCancelKey memid=1096 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=EnableSound memid=1197 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=EnableSound memid=1197 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=EnableTipWizard memid=1064 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=EnableTipWizard memid=1064 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=FileConverters memid=931 invkind=INVOKE_PROPERTYGET cParams=2
+FUNC name=FileSearch memid=1200 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=FileFind memid=1201 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=_FindFile memid=1068 invkind=INVOKE_FUNC cParams=0
+FUNC name=FixedDecimal memid=351 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=FixedDecimal memid=351 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=FixedDecimalPlaces memid=352 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=FixedDecimalPlaces memid=352 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=GetCustomListContents memid=786 invkind=INVOKE_FUNC cParams=1
+FUNC name=GetCustomListNum memid=785 invkind=INVOKE_FUNC cParams=1
+FUNC name=GetOpenFilename memid=1075 invkind=INVOKE_FUNC cParams=5
+FUNC name=GetSaveAsFilename memid=1076 invkind=INVOKE_FUNC cParams=5
+FUNC name=Goto memid=475 invkind=INVOKE_FUNC cParams=2
+FUNC name=Height memid=123 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Height memid=123 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=Help memid=354 invkind=INVOKE_FUNC cParams=2
+FUNC name=IgnoreRemoteRequests memid=356 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=IgnoreRemoteRequests memid=356 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=InchesToPoints memid=1087 invkind=INVOKE_FUNC cParams=1
+FUNC name=InputBox memid=357 invkind=INVOKE_FUNC cParams=8
+FUNC name=Interactive memid=361 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Interactive memid=361 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=International memid=362 invkind=INVOKE_PROPERTYGET cParams=1
+FUNC name=Iteration memid=363 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Iteration memid=363 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=LargeButtons memid=364 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=LargeButtons memid=364 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=Left memid=127 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Left memid=127 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=LibraryPath memid=366 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=_MacroOptions memid=1135 invkind=INVOKE_FUNC cParams=10
+FUNC name=MailLogoff memid=945 invkind=INVOKE_FUNC cParams=0
+FUNC name=MailLogon memid=943 invkind=INVOKE_FUNC cParams=3
+FUNC name=MailSession memid=942 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=MailSystem memid=971 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=MathCoprocessorAvailable memid=367 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=MaxChange memid=368 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=MaxChange memid=368 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=MaxIterations memid=369 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=MaxIterations memid=369 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=MemoryFree memid=370 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=MemoryTotal memid=371 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=MemoryUsed memid=372 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=MouseAvailable memid=373 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=MoveAfterReturn memid=374 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=MoveAfterReturn memid=374 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=MoveAfterReturnDirection memid=1144 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=MoveAfterReturnDirection memid=1144 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=RecentFiles memid=1202 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Name memid=110 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=NextLetter memid=972 invkind=INVOKE_FUNC cParams=0
+FUNC name=NetworkTemplatesPath memid=388 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ODBCErrors memid=1203 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ODBCTimeout memid=1204 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ODBCTimeout memid=1204 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=OnCalculate memid=625 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=OnCalculate memid=625 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=OnData memid=629 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=OnData memid=629 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=OnDoubleClick memid=628 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=OnDoubleClick memid=628 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=OnEntry memid=627 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=OnEntry memid=627 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=OnKey memid=626 invkind=INVOKE_FUNC cParams=2
+FUNC name=OnRepeat memid=769 invkind=INVOKE_FUNC cParams=2
+FUNC name=OnSheetActivate memid=1031 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=OnSheetActivate memid=1031 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=OnSheetDeactivate memid=1081 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=OnSheetDeactivate memid=1081 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=OnTime memid=624 invkind=INVOKE_FUNC cParams=4
+FUNC name=OnUndo memid=770 invkind=INVOKE_FUNC cParams=2
+FUNC name=OnWindow memid=623 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=OnWindow memid=623 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=OperatingSystem memid=375 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=OrganizationName memid=376 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Path memid=291 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=PathSeparator memid=377 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=PreviousSelections memid=378 invkind=INVOKE_PROPERTYGET cParams=1
+FUNC name=PivotTableSelection memid=1205 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=PivotTableSelection memid=1205 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=PromptForSummaryInfo memid=1062 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=PromptForSummaryInfo memid=1062 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=Quit memid=302 invkind=INVOKE_FUNC cParams=0
+FUNC name=RecordMacro memid=773 invkind=INVOKE_FUNC cParams=2
+FUNC name=RecordRelative memid=379 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ReferenceStyle memid=380 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ReferenceStyle memid=380 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=RegisteredFunctions memid=775 invkind=INVOKE_PROPERTYGET cParams=2
+FUNC name=RegisterXLL memid=30 invkind=INVOKE_FUNC cParams=1
+FUNC name=Repeat memid=301 invkind=INVOKE_FUNC cParams=0
+FUNC name=ResetTipWizard memid=928 invkind=INVOKE_FUNC cParams=0
+FUNC name=RollZoom memid=1206 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=RollZoom memid=1206 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=Save memid=283 invkind=INVOKE_FUNC cParams=1
+FUNC name=SaveWorkspace memid=212 invkind=INVOKE_FUNC cParams=1
+FUNC name=ScreenUpdating memid=382 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ScreenUpdating memid=382 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=SetDefaultChart memid=219 invkind=INVOKE_FUNC cParams=2
+FUNC name=SheetsInNewWorkbook memid=993 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=SheetsInNewWorkbook memid=993 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=ShowChartTipNames memid=1207 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ShowChartTipNames memid=1207 invkind=INVOKE_PROPERTYPUT cParams=1
+... 225 more funcs not dumped
+
+
+==============================================================================
+== STAGE B - GetIDsOfNames DISPID map (known-name vs UNKNOWN_NAME)
+==============================================================================
+  Workbooks          -> dispid=572
+  ActiveWorkbook     -> dispid=308
+  Documents          -> UNKNOWN_NAME
+  ActiveDocument     -> UNKNOWN_NAME
+  ActiveWindow       -> dispid=759
+  Windows            -> dispid=430
+  Sheets             -> dispid=485
+  Worksheets         -> dispid=494
+  ActiveSheet        -> dispid=307
+  ActiveCell         -> dispid=305
+  Selection          -> dispid=147
+  RecentFiles        -> dispid=1202
+  Application        -> dispid=148
+  Parent             -> dispid=150
+  Books              -> UNKNOWN_NAME
+  WorkBook           -> UNKNOWN_NAME
+  Workbook           -> UNKNOWN_NAME
+  Document           -> UNKNOWN_NAME
+  ETApplication      -> UNKNOWN_NAME
+  Version            -> dispid=392
+  Visible            -> dispid=558
+  DisplayAlerts      -> dispid=343
+  Name               -> dispid=110
+  Path               -> dispid=291
+  Caption            -> dispid=139
+  Range              -> dispid=197
+  Cells              -> dispid=238
+  Open               -> UNKNOWN_NAME
+  OpenFile           -> UNKNOWN_NAME
+  OpenDocument       -> UNKNOWN_NAME
+  OpenWorkbook       -> UNKNOWN_NAME
+  Load               -> UNKNOWN_NAME
+  LoadFile           -> UNKNOWN_NAME
+  FileOpen           -> UNKNOWN_NAME
+  OpenText           -> UNKNOWN_NAME
+
+==============================================================================
+== STAGE C - reflection GetProperty matrix (null-checked), no document open yet
+==============================================================================
+  Workbooks          -> non-null <System.__ComObject>
+  ActiveWorkbook     -> returned NULL
+  Documents          -> ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+  ActiveDocument     -> ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+  ActiveWindow       -> returned NULL
+  Windows            -> non-null <System.__ComObject>
+  Sheets             -> ERR: Unspecified error (Exception from HRESULT: 0x80004005 (E_FAIL))
+  Worksheets         -> ERR: Unspecified error (Exception from HRESULT: 0x80004005 (E_FAIL))
+  ActiveSheet        -> returned NULL
+  ActiveCell         -> returned NULL
+  Selection          -> returned NULL
+  RecentFiles        -> non-null <System.__ComObject>
+  Application        -> non-null <System.__ComObject>
+  Parent             -> non-null <System.__ComObject>
+  Books              -> ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+  WorkBook           -> ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+  Workbook           -> ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+  Document           -> ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+  ETApplication      -> ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+  Version            -> non-null <System.String>
+  Visible            -> non-null <System.Boolean>
+  DisplayAlerts      -> non-null <System.Boolean>
+  Name               -> non-null <System.String>
+  Path               -> non-null <System.String>
+  Caption            -> non-null <System.String>
+  Range              -> ERR: Number of parameters specified does not match the expected number.
+  Cells              -> returned NULL
+
+==============================================================================
+== STAGE D - application-level open surface via et.exe + ROT attach
+==============================================================================
+Rationale: ActiveWorkbook/ActiveWindow can only be non-null once a document is open.
+KET LocalServer32 launches the spreadsheet as a MODE of the WPS shell, so this stage
+tests whether the document surface appears after the app really owns a file.
+et_exe_exists       : True
+launched et.exe pid : 9476
+et pids before      : 2180,9608
+et pids after       : 2180,9608,29492
+
+--- ROT attach poll (up to 12 tries x 2s), checking the document surface each try ---
+  try#1 ActiveWorkbook   -> returned NULL
+  try#1 Workbooks        -> non-null <System.__ComObject>
+  try#1 ActiveWindow     -> returned NULL
+  try#1 Documents        -> ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+  try#1 ActiveDocument   -> ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+  try#1 Sheets           -> ERR: Unspecified error (Exception from HRESULT: 0x80004005 (E_FAIL))
+  try#1 Worksheets       -> ERR: Unspecified error (Exception from HRESULT: 0x80004005 (E_FAIL))
+  try#1 ActiveSheet      -> returned NULL
+  >>> document surface FOUND via Workbooks on try#1
+
+--- ITypeInfo dump of the ROT-attached application object (max 250 funcs) ---
+GetTypeInfoCount = 1
+type name = _Application
+type doc  = 
+guid      = 000208d5-0000-0000-c000-000000000046
+typekind  = TKIND_DISPATCH
+cFuncs    = 475
+cVars     = 0
+FUNC name=QueryInterface memid=1610612736 invkind=INVOKE_FUNC cParams=2
+FUNC name=AddRef memid=1610612737 invkind=INVOKE_FUNC cParams=0
+FUNC name=Release memid=1610612738 invkind=INVOKE_FUNC cParams=0
+FUNC name=GetTypeInfoCount memid=1610678272 invkind=INVOKE_FUNC cParams=1
+FUNC name=GetTypeInfo memid=1610678273 invkind=INVOKE_FUNC cParams=3
+FUNC name=GetIDsOfNames memid=1610678274 invkind=INVOKE_FUNC cParams=5
+FUNC name=Invoke memid=1610678275 invkind=INVOKE_FUNC cParams=8
+FUNC name=Application memid=148 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Creator memid=149 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Parent memid=150 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ActiveCell memid=305 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ActiveChart memid=183 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ActiveDialog memid=815 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ActiveMenuBar memid=758 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ActivePrinter memid=306 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ActivePrinter memid=306 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=ActiveSheet memid=307 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ActiveWindow memid=759 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ActiveWorkbook memid=308 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=AddIns memid=549 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Assistant memid=1438 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Calculate memid=279 invkind=INVOKE_FUNC cParams=0
+FUNC name=Cells memid=238 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Charts memid=121 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Columns memid=241 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=CommandBars memid=1439 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DDEAppReturnCode memid=332 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DDEExecute memid=333 invkind=INVOKE_FUNC cParams=2
+FUNC name=DDEInitiate memid=334 invkind=INVOKE_FUNC cParams=2
+FUNC name=DDEPoke memid=335 invkind=INVOKE_FUNC cParams=3
+FUNC name=DDERequest memid=336 invkind=INVOKE_FUNC cParams=2
+FUNC name=DDETerminate memid=337 invkind=INVOKE_FUNC cParams=1
+FUNC name=DialogSheets memid=764 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Evaluate memid=1 invkind=INVOKE_FUNC cParams=1
+FUNC name=_Evaluate memid=-5 invkind=INVOKE_FUNC cParams=1
+FUNC name=ExecuteExcel4Macro memid=350 invkind=INVOKE_FUNC cParams=1
+FUNC name=Intersect memid=766 invkind=INVOKE_FUNC cParams=30
+FUNC name=MenuBars memid=589 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Modules memid=582 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Names memid=442 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Range memid=197 invkind=INVOKE_PROPERTYGET cParams=2
+FUNC name=Rows memid=258 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Run memid=259 invkind=INVOKE_FUNC cParams=31
+FUNC name=_Run2 memid=806 invkind=INVOKE_FUNC cParams=31
+FUNC name=Selection memid=147 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=SendKeys memid=383 invkind=INVOKE_FUNC cParams=2
+FUNC name=Sheets memid=485 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ShortcutMenus memid=776 invkind=INVOKE_PROPERTYGET cParams=1
+FUNC name=ThisWorkbook memid=778 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Toolbars memid=552 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Union memid=779 invkind=INVOKE_FUNC cParams=30
+FUNC name=Windows memid=430 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Workbooks memid=572 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=WorksheetFunction memid=1440 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Worksheets memid=494 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Excel4IntlMacroSheets memid=581 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Excel4MacroSheets memid=579 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ActivateMicrosoftApp memid=1095 invkind=INVOKE_FUNC cParams=1
+FUNC name=AddChartAutoFormat memid=216 invkind=INVOKE_FUNC cParams=3
+FUNC name=AddCustomList memid=780 invkind=INVOKE_FUNC cParams=2
+FUNC name=AlertBeforeOverwriting memid=930 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=AlertBeforeOverwriting memid=930 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=AltStartupPath memid=313 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=AltStartupPath memid=313 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=AskToUpdateLinks memid=992 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=AskToUpdateLinks memid=992 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=EnableAnimations memid=1180 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=EnableAnimations memid=1180 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=AutoCorrect memid=1145 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Build memid=314 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=CalculateBeforeSave memid=315 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=CalculateBeforeSave memid=315 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=Calculation memid=316 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Calculation memid=316 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=Caller memid=317 invkind=INVOKE_PROPERTYGET cParams=1
+FUNC name=CanPlaySounds memid=318 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=CanRecordSounds memid=319 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Caption memid=139 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Caption memid=139 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=CellDragAndDrop memid=320 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=CellDragAndDrop memid=320 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=CentimetersToPoints memid=1086 invkind=INVOKE_FUNC cParams=1
+FUNC name=CheckSpelling memid=505 invkind=INVOKE_FUNC cParams=3
+FUNC name=ClipboardFormats memid=321 invkind=INVOKE_PROPERTYGET cParams=1
+FUNC name=DisplayClipboardWindow memid=322 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DisplayClipboardWindow memid=322 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=ColorButtons memid=365 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ColorButtons memid=365 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=CommandUnderlines memid=323 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=CommandUnderlines memid=323 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=ConstrainNumeric memid=324 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ConstrainNumeric memid=324 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=ConvertFormula memid=325 invkind=INVOKE_FUNC cParams=5
+FUNC name=CopyObjectsWithCells memid=991 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=CopyObjectsWithCells memid=991 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=Cursor memid=1161 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Cursor memid=1161 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=CustomListCount memid=787 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=CutCopyMode memid=330 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=CutCopyMode memid=330 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=DataEntryMode memid=331 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DataEntryMode memid=331 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=Dummy1 memid=1782 invkind=INVOKE_FUNC cParams=4
+FUNC name=Dummy2 memid=1783 invkind=INVOKE_FUNC cParams=8
+FUNC name=Dummy3 memid=1784 invkind=INVOKE_FUNC cParams=0
+FUNC name=Dummy4 memid=1785 invkind=INVOKE_FUNC cParams=15
+FUNC name=Dummy5 memid=1786 invkind=INVOKE_FUNC cParams=13
+FUNC name=Dummy6 memid=1787 invkind=INVOKE_FUNC cParams=0
+FUNC name=Dummy7 memid=1788 invkind=INVOKE_FUNC cParams=0
+FUNC name=Dummy8 memid=1789 invkind=INVOKE_FUNC cParams=1
+FUNC name=Dummy9 memid=1790 invkind=INVOKE_FUNC cParams=0
+FUNC name=Dummy10 memid=1791 invkind=INVOKE_FUNC cParams=1
+FUNC name=Dummy11 memid=1792 invkind=INVOKE_FUNC cParams=0
+FUNC name=_Default memid=0 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DefaultFilePath memid=1038 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DefaultFilePath memid=1038 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=DeleteChartAutoFormat memid=217 invkind=INVOKE_FUNC cParams=1
+FUNC name=DeleteCustomList memid=783 invkind=INVOKE_FUNC cParams=1
+FUNC name=Dialogs memid=761 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DisplayAlerts memid=343 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DisplayAlerts memid=343 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=DisplayFormulaBar memid=344 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DisplayFormulaBar memid=344 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=DisplayFullScreen memid=1061 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DisplayFullScreen memid=1061 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=DisplayNoteIndicator memid=345 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DisplayNoteIndicator memid=345 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=DisplayCommentIndicator memid=1196 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DisplayCommentIndicator memid=1196 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=DisplayExcel4Menus memid=927 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DisplayExcel4Menus memid=927 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=DisplayRecentFiles memid=926 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DisplayRecentFiles memid=926 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=DisplayScrollBars memid=346 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DisplayScrollBars memid=346 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=DisplayStatusBar memid=347 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=DisplayStatusBar memid=347 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=DoubleClick memid=349 invkind=INVOKE_FUNC cParams=0
+FUNC name=EditDirectlyInCell memid=929 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=EditDirectlyInCell memid=929 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=EnableAutoComplete memid=1179 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=EnableAutoComplete memid=1179 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=EnableCancelKey memid=1096 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=EnableCancelKey memid=1096 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=EnableSound memid=1197 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=EnableSound memid=1197 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=EnableTipWizard memid=1064 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=EnableTipWizard memid=1064 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=FileConverters memid=931 invkind=INVOKE_PROPERTYGET cParams=2
+FUNC name=FileSearch memid=1200 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=FileFind memid=1201 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=_FindFile memid=1068 invkind=INVOKE_FUNC cParams=0
+FUNC name=FixedDecimal memid=351 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=FixedDecimal memid=351 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=FixedDecimalPlaces memid=352 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=FixedDecimalPlaces memid=352 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=GetCustomListContents memid=786 invkind=INVOKE_FUNC cParams=1
+FUNC name=GetCustomListNum memid=785 invkind=INVOKE_FUNC cParams=1
+FUNC name=GetOpenFilename memid=1075 invkind=INVOKE_FUNC cParams=5
+FUNC name=GetSaveAsFilename memid=1076 invkind=INVOKE_FUNC cParams=5
+FUNC name=Goto memid=475 invkind=INVOKE_FUNC cParams=2
+FUNC name=Height memid=123 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Height memid=123 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=Help memid=354 invkind=INVOKE_FUNC cParams=2
+FUNC name=IgnoreRemoteRequests memid=356 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=IgnoreRemoteRequests memid=356 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=InchesToPoints memid=1087 invkind=INVOKE_FUNC cParams=1
+FUNC name=InputBox memid=357 invkind=INVOKE_FUNC cParams=8
+FUNC name=Interactive memid=361 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Interactive memid=361 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=International memid=362 invkind=INVOKE_PROPERTYGET cParams=1
+FUNC name=Iteration memid=363 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Iteration memid=363 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=LargeButtons memid=364 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=LargeButtons memid=364 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=Left memid=127 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Left memid=127 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=LibraryPath memid=366 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=_MacroOptions memid=1135 invkind=INVOKE_FUNC cParams=10
+FUNC name=MailLogoff memid=945 invkind=INVOKE_FUNC cParams=0
+FUNC name=MailLogon memid=943 invkind=INVOKE_FUNC cParams=3
+FUNC name=MailSession memid=942 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=MailSystem memid=971 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=MathCoprocessorAvailable memid=367 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=MaxChange memid=368 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=MaxChange memid=368 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=MaxIterations memid=369 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=MaxIterations memid=369 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=MemoryFree memid=370 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=MemoryTotal memid=371 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=MemoryUsed memid=372 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=MouseAvailable memid=373 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=MoveAfterReturn memid=374 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=MoveAfterReturn memid=374 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=MoveAfterReturnDirection memid=1144 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=MoveAfterReturnDirection memid=1144 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=RecentFiles memid=1202 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Name memid=110 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=NextLetter memid=972 invkind=INVOKE_FUNC cParams=0
+FUNC name=NetworkTemplatesPath memid=388 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ODBCErrors memid=1203 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ODBCTimeout memid=1204 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ODBCTimeout memid=1204 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=OnCalculate memid=625 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=OnCalculate memid=625 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=OnData memid=629 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=OnData memid=629 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=OnDoubleClick memid=628 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=OnDoubleClick memid=628 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=OnEntry memid=627 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=OnEntry memid=627 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=OnKey memid=626 invkind=INVOKE_FUNC cParams=2
+FUNC name=OnRepeat memid=769 invkind=INVOKE_FUNC cParams=2
+FUNC name=OnSheetActivate memid=1031 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=OnSheetActivate memid=1031 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=OnSheetDeactivate memid=1081 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=OnSheetDeactivate memid=1081 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=OnTime memid=624 invkind=INVOKE_FUNC cParams=4
+FUNC name=OnUndo memid=770 invkind=INVOKE_FUNC cParams=2
+FUNC name=OnWindow memid=623 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=OnWindow memid=623 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=OperatingSystem memid=375 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=OrganizationName memid=376 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Path memid=291 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=PathSeparator memid=377 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=PreviousSelections memid=378 invkind=INVOKE_PROPERTYGET cParams=1
+FUNC name=PivotTableSelection memid=1205 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=PivotTableSelection memid=1205 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=PromptForSummaryInfo memid=1062 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=PromptForSummaryInfo memid=1062 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=Quit memid=302 invkind=INVOKE_FUNC cParams=0
+FUNC name=RecordMacro memid=773 invkind=INVOKE_FUNC cParams=2
+FUNC name=RecordRelative memid=379 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ReferenceStyle memid=380 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ReferenceStyle memid=380 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=RegisteredFunctions memid=775 invkind=INVOKE_PROPERTYGET cParams=2
+FUNC name=RegisterXLL memid=30 invkind=INVOKE_FUNC cParams=1
+FUNC name=Repeat memid=301 invkind=INVOKE_FUNC cParams=0
+FUNC name=ResetTipWizard memid=928 invkind=INVOKE_FUNC cParams=0
+FUNC name=RollZoom memid=1206 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=RollZoom memid=1206 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=Save memid=283 invkind=INVOKE_FUNC cParams=1
+FUNC name=SaveWorkspace memid=212 invkind=INVOKE_FUNC cParams=1
+FUNC name=ScreenUpdating memid=382 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ScreenUpdating memid=382 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=SetDefaultChart memid=219 invkind=INVOKE_FUNC cParams=2
+FUNC name=SheetsInNewWorkbook memid=993 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=SheetsInNewWorkbook memid=993 invkind=INVOKE_PROPERTYPUT cParams=1
+FUNC name=ShowChartTipNames memid=1207 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=ShowChartTipNames memid=1207 invkind=INVOKE_PROPERTYPUT cParams=1
+... 225 more funcs not dumped
+
+
+==============================================================================
+== STAGE E - downstream surface on the discovered document object
+==============================================================================
+document surface via : Workbooks
+document type        : System.__ComObject
+
+--- ITypeInfo dump of the document surface (max 250 funcs) ---
+GetTypeInfoCount = 1
+type name = Workbooks
+type doc  = 
+guid      = 000208db-0000-0000-c000-000000000046
+typekind  = TKIND_DISPATCH
+cFuncs    = 26
+cVars     = 0
+FUNC name=QueryInterface memid=1610612736 invkind=INVOKE_FUNC cParams=2
+FUNC name=AddRef memid=1610612737 invkind=INVOKE_FUNC cParams=0
+FUNC name=Release memid=1610612738 invkind=INVOKE_FUNC cParams=0
+FUNC name=GetTypeInfoCount memid=1610678272 invkind=INVOKE_FUNC cParams=1
+FUNC name=GetTypeInfo memid=1610678273 invkind=INVOKE_FUNC cParams=3
+FUNC name=GetIDsOfNames memid=1610678274 invkind=INVOKE_FUNC cParams=5
+FUNC name=Invoke memid=1610678275 invkind=INVOKE_FUNC cParams=8
+FUNC name=Application memid=148 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Creator memid=149 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Parent memid=150 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Add memid=181 invkind=INVOKE_FUNC cParams=1
+FUNC name=Close memid=277 invkind=INVOKE_FUNC cParams=0
+FUNC name=Count memid=118 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=Item memid=170 invkind=INVOKE_PROPERTYGET cParams=1
+FUNC name=_NewEnum memid=-4 invkind=INVOKE_PROPERTYGET cParams=0
+FUNC name=_Open memid=682 invkind=INVOKE_FUNC cParams=13
+FUNC name=__OpenText memid=683 invkind=INVOKE_FUNC cParams=14
+FUNC name=_Default memid=0 invkind=INVOKE_PROPERTYGET cParams=1
+FUNC name=_OpenText memid=1773 invkind=INVOKE_FUNC cParams=16
+FUNC name=Open memid=1923 invkind=INVOKE_FUNC cParams=15
+FUNC name=OpenText memid=1924 invkind=INVOKE_FUNC cParams=18
+FUNC name=OpenDatabase memid=2067 invkind=INVOKE_FUNC cParams=5
+FUNC name=CheckOut memid=2069 invkind=INVOKE_FUNC cParams=1
+FUNC name=CanCheckOut memid=2070 invkind=INVOKE_FUNC cParams=1
+FUNC name=_OpenXML memid=2071 invkind=INVOKE_FUNC cParams=2
+FUNC name=OpenXML memid=2280 invkind=INVOKE_FUNC cParams=3
+
+  Name           -> ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+  FullName       -> ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+  Path           -> ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+  Worksheets     -> ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+  Sheets         -> ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+  Names          -> ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+  ActiveSheet    -> ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+  Count          -> non-null <System.Int32>
+  Item           -> ERR: Number of parameters specified does not match the expected number.
+  Application    -> non-null <System.__ComObject>
+  Parent         -> non-null <System.__ComObject>
+
+==============================================================================
+== STAGE F - cleanup
+==============================================================================
+document Close failed: Exception calling "InvokeMember" with "5" argument(s): "Number of parameters specified does not match the expected number."
+ReleaseComObject(document) ok
+app Quit() ok
+ReleaseComObject(app) ok
+app Quit() ok
+ReleaseComObject(app) ok
+et.exe pid 9476 already exited
+scratch copy deleted
+
+==============================================================================
+== SUMMARY - full matrix
+==============================================================================
+
+Stage Member                Result   Detail                                                                      
+----- ------                ------   ------                                                                      
+A     CreateInstance        OK       System.__ComObject                                                          
+B     dispid:Workbooks      KNOWN    dispid=572                                                                  
+B     dispid:ActiveWorkbook KNOWN    dispid=308                                                                  
+B     dispid:Documents      UNKNOWN  UNKNOWN_NAME                                                                
+B     dispid:ActiveDocument UNKNOWN  UNKNOWN_NAME                                                                
+B     dispid:ActiveWindow   KNOWN    dispid=759                                                                  
+B     dispid:Windows        KNOWN    dispid=430                                                                  
+B     dispid:Sheets         KNOWN    dispid=485                                                                  
+B     dispid:Worksheets     KNOWN    dispid=494                                                                  
+B     dispid:ActiveSheet    KNOWN    dispid=307                                                                  
+B     dispid:ActiveCell     KNOWN    dispid=305                                                                  
+B     dispid:Selection      KNOWN    dispid=147                                                                  
+B     dispid:RecentFiles    KNOWN    dispid=1202                                                                 
+B     dispid:Application    KNOWN    dispid=148                                                                  
+B     dispid:Parent         KNOWN    dispid=150                                                                  
+B     dispid:Books          UNKNOWN  UNKNOWN_NAME                                                                
+B     dispid:WorkBook       UNKNOWN  UNKNOWN_NAME                                                                
+B     dispid:Workbook       UNKNOWN  UNKNOWN_NAME                                                                
+B     dispid:Document       UNKNOWN  UNKNOWN_NAME                                                                
+B     dispid:ETApplication  UNKNOWN  UNKNOWN_NAME                                                                
+B     dispid:Version        KNOWN    dispid=392                                                                  
+B     dispid:Visible        KNOWN    dispid=558                                                                  
+B     dispid:DisplayAlerts  KNOWN    dispid=343                                                                  
+B     dispid:Name           KNOWN    dispid=110                                                                  
+B     dispid:Path           KNOWN    dispid=291                                                                  
+B     dispid:Caption        KNOWN    dispid=139                                                                  
+B     dispid:Range          KNOWN    dispid=197                                                                  
+B     dispid:Cells          KNOWN    dispid=238                                                                  
+B     dispid:Open           UNKNOWN  UNKNOWN_NAME                                                                
+B     dispid:OpenFile       UNKNOWN  UNKNOWN_NAME                                                                
+B     dispid:OpenDocument   UNKNOWN  UNKNOWN_NAME                                                                
+B     dispid:OpenWorkbook   UNKNOWN  UNKNOWN_NAME                                                                
+B     dispid:Load           UNKNOWN  UNKNOWN_NAME                                                                
+B     dispid:LoadFile       UNKNOWN  UNKNOWN_NAME                                                                
+B     dispid:FileOpen       UNKNOWN  UNKNOWN_NAME                                                                
+B     dispid:OpenText       UNKNOWN  UNKNOWN_NAME                                                                
+C     Workbooks             NON-NULL non-null <System.__ComObject>                                               
+C     ActiveWorkbook        NULL/ERR returned NULL                                                               
+C     Documents             NULL/ERR ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+C     ActiveDocument        NULL/ERR ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+C     ActiveWindow          NULL/ERR returned NULL                                                               
+C     Windows               NON-NULL non-null <System.__ComObject>                                               
+C     Sheets                NULL/ERR ERR: Unspecified error (Exception from HRESULT: 0x80004005 (E_FAIL))        
+C     Worksheets            NULL/ERR ERR: Unspecified error (Exception from HRESULT: 0x80004005 (E_FAIL))        
+C     ActiveSheet           NULL/ERR returned NULL                                                               
+C     ActiveCell            NULL/ERR returned NULL                                                               
+C     Selection             NULL/ERR returned NULL                                                               
+C     RecentFiles           NON-NULL non-null <System.__ComObject>                                               
+C     Application           NON-NULL non-null <System.__ComObject>                                               
+C     Parent                NON-NULL non-null <System.__ComObject>                                               
+C     Books                 NULL/ERR ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+C     WorkBook              NULL/ERR ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+C     Workbook              NULL/ERR ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+C     Document              NULL/ERR ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+C     ETApplication         NULL/ERR ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+C     Version               NON-NULL non-null <System.String>                                                    
+C     Visible               NON-NULL non-null <System.Boolean>                                                   
+C     DisplayAlerts         NON-NULL non-null <System.Boolean>                                                   
+C     Name                  NON-NULL non-null <System.String>                                                    
+C     Path                  NON-NULL non-null <System.String>                                                    
+C     Caption               NON-NULL non-null <System.String>                                                    
+C     Range                 NULL/ERR ERR: Number of parameters specified does not match the expected number.     
+C     Cells                 NULL/ERR returned NULL                                                               
+D     rot:ActiveWorkbook    NULL/ERR returned NULL                                                               
+D     rot:Workbooks         NON-NULL non-null <System.__ComObject>                                               
+D     rot:ActiveWindow      NULL/ERR returned NULL                                                               
+D     rot:Documents         NULL/ERR ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+D     rot:ActiveDocument    NULL/ERR ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+D     rot:Sheets            NULL/ERR ERR: Unspecified error (Exception from HRESULT: 0x80004005 (E_FAIL))        
+D     rot:Worksheets        NULL/ERR ERR: Unspecified error (Exception from HRESULT: 0x80004005 (E_FAIL))        
+D     rot:ActiveSheet       NULL/ERR returned NULL                                                               
+E     Workbooks.Name        NULL/ERR ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+E     Workbooks.FullName    NULL/ERR ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+E     Workbooks.Path        NULL/ERR ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+E     Workbooks.Worksheets  NULL/ERR ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+E     Workbooks.Sheets      NULL/ERR ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+E     Workbooks.Names       NULL/ERR ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+E     Workbooks.ActiveSheet NULL/ERR ERR: Unknown name. (Exception from HRESULT: 0x80020006 (DISP_E_UNKNOWNNAME))
+E     Workbooks.Count       NON-NULL non-null <System.Int32>                                                     
+E     Workbooks.Item        NULL/ERR ERR: Number of parameters specified does not match the expected number.     
+E     Workbooks.Application NON-NULL non-null <System.__ComObject>                                               
+E     Workbooks.Parent      NON-NULL non-null <System.__ComObject>                                               
+
+
+
+
+==============================================================================
+== SUMMARY - NON-NULL / KNOWN only (this is the fix-relevant list)
+==============================================================================
+
+Stage Member                Result   Detail                       
+----- ------                ------   ------                       
+A     CreateInstance        OK       System.__ComObject           
+B     dispid:Workbooks      KNOWN    dispid=572                   
+B     dispid:ActiveWorkbook KNOWN    dispid=308                   
+B     dispid:ActiveWindow   KNOWN    dispid=759                   
+B     dispid:Windows        KNOWN    dispid=430                   
+B     dispid:Sheets         KNOWN    dispid=485                   
+B     dispid:Worksheets     KNOWN    dispid=494                   
+B     dispid:ActiveSheet    KNOWN    dispid=307                   
+B     dispid:ActiveCell     KNOWN    dispid=305                   
+B     dispid:Selection      KNOWN    dispid=147                   
+B     dispid:RecentFiles    KNOWN    dispid=1202                  
+B     dispid:Application    KNOWN    dispid=148                   
+B     dispid:Parent         KNOWN    dispid=150                   
+B     dispid:Version        KNOWN    dispid=392                   
+B     dispid:Visible        KNOWN    dispid=558                   
+B     dispid:DisplayAlerts  KNOWN    dispid=343                   
+B     dispid:Name           KNOWN    dispid=110                   
+B     dispid:Path           KNOWN    dispid=291                   
+B     dispid:Caption        KNOWN    dispid=139                   
+B     dispid:Range          KNOWN    dispid=197                   
+B     dispid:Cells          KNOWN    dispid=238                   
+C     Workbooks             NON-NULL non-null <System.__ComObject>
+C     Windows               NON-NULL non-null <System.__ComObject>
+C     RecentFiles           NON-NULL non-null <System.__ComObject>
+C     Application           NON-NULL non-null <System.__ComObject>
+C     Parent                NON-NULL non-null <System.__ComObject>
+C     Version               NON-NULL non-null <System.String>     
+C     Visible               NON-NULL non-null <System.Boolean>    
+C     DisplayAlerts         NON-NULL non-null <System.Boolean>    
+C     Name                  NON-NULL non-null <System.String>     
+C     Path                  NON-NULL non-null <System.String>     
+C     Caption               NON-NULL non-null <System.String>     
+D     rot:Workbooks         NON-NULL non-null <System.__ComObject>
+E     Workbooks.Count       NON-NULL non-null <System.Int32>      
+E     Workbooks.Application NON-NULL non-null <System.__ComObject>
+E     Workbooks.Parent      NON-NULL non-null <System.__ComObject>
+
+
+
+
+==============================================================================
+== VERDICT
+==============================================================================
+EV-1e VERDICT: document surface FOUND via "Workbooks"
+EV-1e PROBE COMPLETE

@@ -1,4 +1,5 @@
-﻿using Autodesk.Revit.Attributes;
+﻿using ArcTool.UI;
+using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Selection;
@@ -33,12 +34,17 @@ namespace ArcTool.Core.Commands
                     return Result.Failed;
                 }
 
-                FamilySymbol selectedVoidSymbol = null;
-                using (var form = new FamilySelectionForm(genericModelSymbols))
+                CreateVoidModeToolbar toolbar = new CreateVoidModeToolbar(genericModelSymbols);
+                var helper = new System.Windows.Interop.WindowInteropHelper(toolbar);
+                helper.Owner = Autodesk.Windows.ComponentManager.ApplicationWindow;
+
+                bool? toolbarResult = toolbar.ShowDialog();
+                if (toolbarResult != true || toolbar.SelectedSymbol == null || !toolbar.IsBulkMode.HasValue)
                 {
-                    if (form.ShowDialog() == System.Windows.Forms.DialogResult.OK) selectedVoidSymbol = form.SelectedSymbol;
-                    else return Result.Cancelled;
+                    return Result.Cancelled;
                 }
+
+                FamilySymbol selectedVoidSymbol = toolbar.SelectedSymbol;
 
                 using (Transaction t = new Transaction(doc, "Activate Symbol"))
                 {
@@ -47,27 +53,29 @@ namespace ArcTool.Core.Commands
                     t.Commit();
                 }
 
-                // --- BƯỚC 2: CHỌN FILE LINK ---
-                Reference linkRef = uidoc.Selection.PickObject(ObjectType.Element, new LinkSelectionFilter(), "Bước 1: Chọn File Link chứa dầm");
-                RevitLinkInstance linkInstance = doc.GetElement(linkRef) as RevitLinkInstance;
-                Document linkDoc = linkInstance.GetLinkDocument();
-                Transform linkTransform = linkInstance.GetTotalTransform();
+                // --- BƯỚC 2 & 3: CHỌN LINK HOẶC DẦM CỤ THỂ TRONG LINK ---
+                LinkedBeamSelection selection = toolbar.IsBulkMode.Value
+                    ? PromptForLinkBulkMode(uidoc, doc)
+                    : PromptForLinkedBeamsMode(uidoc, doc);
 
-                // --- BƯỚC 3: LẤY TẤT CẢ DẦM TRONG LINK ---
-                List<Element> linkedBeams = new FilteredElementCollector(linkDoc)
-                    .OfCategory(BuiltInCategory.OST_StructuralFraming)
-                    .WhereElementIsNotElementType()
-                    .ToElements()
-                    .ToList();
+                if (selection == null) return Result.Cancelled;
+
+                RevitLinkInstance linkInstance = selection.LinkInstance;
+                Document linkDoc = selection.LinkDocument;
+                Transform linkTransform = selection.LinkTransform;
+                List<Element> linkedBeams = selection.LinkedBeams;
 
                 if (linkedBeams.Count == 0)
                 {
-                    Autodesk.Revit.UI.TaskDialog.Show("Info", "File Link này không chứa dầm nào.");
+                    string infoMessage = selection.IsSingleBeamMode
+                        ? "Không lấy được dầm đã chọn trong file Link."
+                        : "File Link này không chứa dầm nào.";
+                    Autodesk.Revit.UI.TaskDialog.Show("Info", infoMessage);
                     return Result.Cancelled;
                 }
 
-                // --- BƯỚC 4: TẠO VOID HÀNG LOẠT ---
-                using (Transaction t = new Transaction(doc, "ArcTool: Create All Voids"))
+                // --- BƯỚC 4: TẠO VOID ---
+                using (Transaction t = new Transaction(doc, "ArcTool: Create Voids"))
                 {
                     t.Start();
 
@@ -155,7 +163,8 @@ namespace ArcTool.Core.Commands
 
                     Autodesk.Revit.UI.TaskDialog.Show("Success",
                         $"Đã hoàn tất!\n" +
-                        $"- Tổng số dầm trong Link: {totalBeams}\n" +
+                        $"- Chế độ: {selection.ModeLabel}\n" +
+                        $"- Số dầm được xử lý: {totalBeams}\n" +
                         $"- Số Void đã tạo thành công: {successCount}\n" +
                         $"- Lỗi/Bỏ qua: {errorCount}\n\n" +
                         $"Tiếp theo: Hãy dùng lệnh 'Multi-Cut Walls' để cắt tường.");
@@ -178,6 +187,137 @@ namespace ArcTool.Core.Commands
         // ====================================================
         //              CÁC HÀM HỖ TRỢ (ĐÃ TỐI ƯU HÓA)
         // ====================================================
+
+        /// <summary>
+        /// Kết quả phân giải nguồn dầm: hoặc toàn bộ dầm của File Link,
+        /// hoặc chỉ các dầm cụ thể mà người dùng đã Tab-chọn trong Link.
+        /// </summary>
+        private class LinkedBeamSelection
+        {
+            public RevitLinkInstance LinkInstance { get; set; }
+            public Document LinkDocument { get; set; }
+            public Transform LinkTransform { get; set; }
+            public List<Element> LinkedBeams { get; set; }
+            public bool IsSingleBeamMode { get; set; }
+
+            public string ModeLabel => IsSingleBeamMode
+                ? "Dầm chỉ định trong Link (Tab)"
+                : "Toàn bộ dầm trong Link";
+        }
+
+
+        /// <summary>
+        /// Logic cũ: chọn File Link và lấy toàn bộ dầm trong đó.
+        /// </summary>
+        private LinkedBeamSelection PromptForLinkBulkMode(UIDocument uidoc, Document doc)
+        {
+            Reference linkRef;
+            try
+            {
+                linkRef = uidoc.Selection.PickObject(
+                    ObjectType.Element,
+                    new LinkSelectionFilter(doc),
+                    "Bước 1: Chọn File Link chứa dầm");
+            }
+            catch (Autodesk.Revit.Exceptions.OperationCanceledException)
+            {
+                return null;
+            }
+
+            RevitLinkInstance linkInstance = doc.GetElement(linkRef) as RevitLinkInstance;
+            Document linkDoc = linkInstance?.GetLinkDocument();
+            if (linkDoc == null)
+            {
+                Autodesk.Revit.UI.TaskDialog.Show("ArcTool Error", "Không đọc được nội dung File Link đã chọn.");
+                return null;
+            }
+
+            return new LinkedBeamSelection
+            {
+                LinkInstance = linkInstance,
+                LinkDocument = linkDoc,
+                LinkTransform = linkInstance.GetTotalTransform(),
+                IsSingleBeamMode = false,
+                LinkedBeams = new FilteredElementCollector(linkDoc)
+                    .OfCategory(BuiltInCategory.OST_StructuralFraming)
+                    .WhereElementIsNotElementType()
+                    .ToElements()
+                    .ToList()
+            };
+        }
+
+        /// <summary>
+        /// Logic mới: dùng LinkedElement để pick dầm cụ thể trong File Link.
+        /// </summary>
+        private LinkedBeamSelection PromptForLinkedBeamsMode(UIDocument uidoc, Document doc)
+        {
+            IList<Reference> pickedRefs;
+            try
+            {
+                pickedRefs = uidoc.Selection.PickObjects(
+                    ObjectType.LinkedElement,
+                    new LinkedBeamSelectionFilter(doc),
+                    "Bước 1: Chọn các dầm cụ thể trong File Link, rồi bấm Finish");
+            }
+            catch (Autodesk.Revit.Exceptions.OperationCanceledException)
+            {
+                return null;
+            }
+
+            if (pickedRefs == null || pickedRefs.Count == 0) return null;
+
+            RevitLinkInstance targetLink = null;
+            Document targetLinkDoc = null;
+            List<Element> beams = new List<Element>();
+            HashSet<long> seenBeamIds = new HashSet<long>();
+
+            foreach (Reference r in pickedRefs)
+            {
+                RevitLinkInstance li = doc.GetElement(r.ElementId) as RevitLinkInstance;
+                Document ld = li?.GetLinkDocument();
+                if (li == null || ld == null) continue;
+
+                if (targetLink == null)
+                {
+                    targetLink = li;
+                    targetLinkDoc = ld;
+                }
+                else if (targetLink.Id.Value != li.Id.Value)
+                {
+                    continue;
+                }
+
+                Element beam = ld.GetElement(r.LinkedElementId);
+                if (!IsStructuralFramingInstance(beam)) continue;
+                if (seenBeamIds.Add(beam.Id.Value)) beams.Add(beam);
+            }
+
+            if (targetLink == null || targetLinkDoc == null)
+            {
+                Autodesk.Revit.UI.TaskDialog.Show("ArcTool Error", "Không xác định được File Link của dầm đã chọn.");
+                return null;
+            }
+
+            return new LinkedBeamSelection
+            {
+                LinkInstance = targetLink,
+                LinkDocument = targetLinkDoc,
+                LinkTransform = targetLink.GetTotalTransform(),
+                IsSingleBeamMode = true,
+                LinkedBeams = beams
+            };
+        }
+
+        /// <summary>
+        /// Chỉ chấp nhận dầm (Structural Framing dạng FamilyInstance).
+        /// </summary>
+        private static bool IsStructuralFramingInstance(Element elem)
+        {
+            if (!(elem is FamilyInstance)) return false;
+
+            Category cat = elem.Category;
+            return cat != null && cat.Id.Value == (long)BuiltInCategory.OST_StructuralFraming;
+        }
 
         /// <summary>
         /// Lấy giá trị tham số bằng LookupParameter (tối ưu hơn duyệt tất cả tham số)
@@ -252,10 +392,45 @@ namespace ArcTool.Core.Commands
             return null;
         }
 
+        /// <summary>
+        /// Chỉ cho phép chọn thẳng Revit Link Instance cho chế độ bulk.
+        /// </summary>
         public class LinkSelectionFilter : ISelectionFilter
         {
+            public LinkSelectionFilter(Document hostDoc)
+            {
+            }
+
             public bool AllowElement(Element elem) => elem is RevitLinkInstance;
             public bool AllowReference(Reference reference, XYZ position) => false;
+        }
+
+        /// <summary>
+        /// Cho phép chọn dầm cụ thể bên trong File Link bằng ObjectType.LinkedElement.
+        /// </summary>
+        public class LinkedBeamSelectionFilter : ISelectionFilter
+        {
+            private readonly Document _hostDoc;
+
+            public LinkedBeamSelectionFilter(Document hostDoc)
+            {
+                _hostDoc = hostDoc;
+            }
+
+            public bool AllowElement(Element elem) => elem is RevitLinkInstance;
+
+            public bool AllowReference(Reference reference, XYZ position)
+            {
+                if (reference == null || _hostDoc == null) return false;
+                if (reference.LinkedElementId == ElementId.InvalidElementId) return false;
+
+                RevitLinkInstance linkInstance = _hostDoc.GetElement(reference.ElementId) as RevitLinkInstance;
+                Document linkDoc = linkInstance?.GetLinkDocument();
+                if (linkDoc == null) return false;
+
+                Element linkedElem = linkDoc.GetElement(reference.LinkedElementId);
+                return IsStructuralFramingInstance(linkedElem);
+            }
         }
 
         public class FamilySelectionForm : System.Windows.Forms.Form

@@ -99,3 +99,13 @@ D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-window
 D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.AssemblyInfo.cs
 D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.csproj.CoreCompileInputs.cache
 D:\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\ArcTool.Core.sourcelink.json
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\ClosedXML.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\ClosedXML.Parser.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\DocumentFormat.OpenXml.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\DocumentFormat.OpenXml.Framework.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\ExcelNumberFormat.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\RBush.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\SixLabors.Fonts.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\bin\x64\Debug\net8.0-windows\System.IO.Packaging.dll
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\UI\CreateVoidModeToolbar.baml
+D:\Quang mini\OneDrive - MSFT\Plugin Revit\ArcTool\ArcTool.Core\obj\x64\Debug\net8.0-windows\UI\CreateVoidModeToolbar.g.cs

@@ -17,6 +17,13 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <!-- Retired Quick Dimension source is preserved in-repo under Archive/QuickDimension
+	       for history, but excluded from the active build surface (SDK-style projects
+	       glob-include **/*.cs by default). -->
+	  <Compile Remove="Archive\QuickDimension\**\*.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
 	  <COMReference Include="Microsoft.Office.Interop.Excel">
 	    <WrapperTool>tlbimp</WrapperTool>
 	    <VersionMinor>9</VersionMinor>
@@ -30,6 +37,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Autodesk.Revit.SDK" Version="2026.0.0.9999" />
+		<PackageReference Include="ClosedXML" Version="0.105.0" />
 		<PackageReference Include="PDFtoImage" Version="5.2.1" />
 		<PackageReference Include="SkiaSharp" Version="3.119.2" />
 		<PackageReference Include="Svg.Skia" Version="3.4.1" />

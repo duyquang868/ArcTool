@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<gemma_learning_log
+    project="ArcTool"
+    schema_version="1.0"
+    created_utc="2026-07-13T00:00:00Z"
+    updated_utc="2026-07-13T00:00:00Z">
+
+  <metadata>
+    <purpose>
+      Structured compile-fix and code-review learning log for Gemma 4.
+    </purpose>
+    <owner_roles>
+      <architect>Claude</architect>
+      <worker>Gemma 4</worker>
+    </owner_roles>
+    <rules>
+      <rule>Entries must be factual and based on actual Claude review, compiler output, test output, or Revit smoke-test evidence.</rule>
+      <rule>Do not store secrets, credentials, full proprietary files, irrelevant source dumps, or unrelated chat content.</rule>
+      <rule>Prefer minimal code snippets that isolate the mistake and the correction.</rule>
+      <rule>Each entry must include a reusable lesson suitable for future RAG retrieval.</rule>
+      <rule>Claude reviews and appends entries; Gemma drafts entries after correction turns.</rule>
+    </rules>
+    <allowed_values>
+      <error_types>
+        <error_type>compile_error</error_type>
+        <error_type>api_misuse</error_type>
+        <error_type>contract_violation</error_type>
+        <error_type>architecture_boundary_violation</error_type>
+        <error_type>over_editing</error_type>
+        <error_type>missing_edge_case</error_type>
+        <error_type>incorrect_assumption</error_type>
+        <error_type>test_failure</error_type>
+        <error_type>revit_runtime_risk</error_type>
+        <error_type>style_or_consistency_issue</error_type>
+      </error_types>
+      <phases>
+        <phase>initial_generation</phase>
+        <phase>compile-fix</phase>
+        <phase>review-fix</phase>
+        <phase>runtime-smoke-fix</phase>
+        <phase>documentation-sync</phase>
+      </phases>
+      <statuses>
+        <status>rejected</status>
+        <status>corrected_pending_review</status>
+        <status>accepted</status>
+        <status>accepted_with_risk</status>
+        <status>superseded</status>
+      </statuses>
+    </allowed_values>
+  </metadata>
+
+  <entries>
+    <learning_entry id="2026-07-17-01" phase="initial_generation" error_type="contract_violation" status="corrected_pending_review">
+      <task>Draft QuickDimensionWallMidRunProbe.cs models for the Session 2.7 log-only mid-run experiment.</task>
+      <mistake>First draft invented enum QuickDimensionWallMidRunRelation { None, Intersecting, Parallel, Coincident } and a result model with Distance/Relation/IsValid, ignoring the explicit contract.</mistake>
+      <root_cause>Generated generic geometry-relation names from priors instead of using the exact enum values and fields dictated by the architect's spec.</root_cause>
+      <correction>Re-issued with exact required enum values (Ignored, EndJoinOnly, GeometryJoinOnly, MidRunCrossing, NonJoinedProximity, ParallelNonJoined) and the exact provenance/evidence fields; Gemma produced the correct enum + minimal result stub, Claude assembled the full value models.</correction>
+      <lesson>When a spec lists exact enum members and model fields, reproduce them verbatim. Never substitute generic domain vocabulary for a contract-specified name set.</lesson>
+      <notes>Larger service-file generations timed out on the 12B QAT model (60s MCP limit); Claude authored the service integration glue from Gemma's verified helper bodies, per the compile-fix/integration clause of the workflow.</notes>
+    </learning_entry>
+  </entries>
+
+</gemma_learning_log>

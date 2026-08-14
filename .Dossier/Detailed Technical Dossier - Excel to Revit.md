@@ -30,9 +30,13 @@ Out of scope:
 
 ### 3.1. Files
 - `ArcTool.Core/Commands/ExcelToRevitCommand.cs`
-- `ArcTool.Core/Services/ExcelInteropService.cs`
 - `ArcTool.Core/Services/ArcToolSettingsService.cs`
 - `ArcTool.Core/Services/ExcelSyncEngine.cs`
+- `ArcTool.Core/Services/Excel/ISpreadsheetPdfExporter.cs`
+- `ArcTool.Core/Services/Excel/MsExcelWorkbookPdfExporter.cs`
+- `ArcTool.Core/Services/Excel/WpsWorkbookPdfExporter.cs`
+- `ArcTool.Core/Services/Excel/SpreadsheetImageExportService.cs`
+- `ArcTool.Core/Services/Excel/PdfRasterImageService.cs`
 - `ArcTool.Core/UI/ExcelToRevitWindow.xaml`
 - `ArcTool.Core/UI/ExcelToRevitWindow.xaml.cs`
 - `ArcTool.Core/Models/ExcelMapping.cs`
@@ -42,7 +46,11 @@ Out of scope:
 - `ExcelToRevitWindow`: UI layer, row load/save, sheet/range lookup, update triggering, and AutoSync orchestration.
 - `ExcelMapping`: JSON contract plus per-row runtime helper.
 - `ArcToolSettingsService`: JSON persistence next to `.rvt`, atomic write, and file status helpers.
-- `ExcelInteropService`: Excel COM plus the Excel → PDF → PNG → crop export pipeline.
+- `ISpreadsheetPdfExporter`: engine contract whose convergence point is the PDF artifact.
+- `MsExcelWorkbookPdfExporter`: primary MS Excel COM exporter; opens the source workbook directly and exports a resolved region to PDF.
+- `WpsWorkbookPdfExporter`: late-bound WPS fallback exporter; same PDF contract, no Interop dependency.
+- `SpreadsheetImageExportService`: coordinator that selects the engine, exports PDF, rasterizes to PNG, and cleans up the temp PDF.
+- `PdfRasterImageService`: shared PDF → PNG render/crop stage.
 - `ExcelSyncEngine`: core Excel → Revit sync pipeline, transaction boundary, image create/update, and mapping state persistence.
 
 ---
@@ -53,10 +61,13 @@ Out of scope:
 ExcelToRevitCommand
   -> ExcelToRevitWindow
      -> ArcToolSettingsService.LoadMappings()
-     -> ExcelInteropService.GetSheetNames()/GetNamedRanges()
+     -> SpreadsheetImageExportService.GetSheetNames()/GetNamedRanges()
      -> ExcelSyncEngine.CheckForChanges()
      -> ExcelSyncEngine.ExecuteUpdate()
-        -> ExcelInteropService.ExportRegion()
+        -> SpreadsheetImageExportService.ExportRegion()
+           -> MsExcelWorkbookPdfExporter (preferred)
+           -> WpsWorkbookPdfExporter (fallback)
+           -> PdfRasterImageService.RenderPdfToCroppedPng()
         -> Revit Transaction 1: create image
         -> Revit Transaction 2: resize image
         -> ArcToolSettingsService.SaveMappings()
@@ -75,7 +86,8 @@ The original pipeline used `CopyPicture`, clipboard operations, and chart workar
 The final production pipeline is:
 
 ```text
-Excel sheet/range
+Excel sheet/range on source workbook
+  -> direct COM region resolution (NamedRange -> PrintArea -> UsedRange)
   -> ExportAsFixedFormat(PDF)
   -> PDFtoImage (PDFium, 300 DPI)
   -> PNG
@@ -84,7 +96,12 @@ Excel sheet/range
   -> ImageInstance.Create
 ```
 
-When reading old bugs or old notes, always prioritize the current code. Any note that still refers to `CopyPicture`, `_activeSheet` swapping inside `ExportRegion()`, or `FIXED_SCALE_FACTOR 35x` is historical data and is no longer a production invariant.
+Engine policy after 2026-08-10:
+- `MsExcelWorkbookPdfExporter` is the primary engine.
+- `WpsWorkbookPdfExporter` is the fallback engine when MS Excel cannot open/export.
+- The temporary ClosedXML workbook-shaping branch is not part of the live pipeline anymore.
+
+When reading old bugs or old notes, always prioritize the current code. Any note that still refers to `CopyPicture`, `_activeSheet` swapping inside `ExportRegion()`, `FIXED_SCALE_FACTOR 35x`, or the temporary ClosedXML snapshot pipeline is historical data and is no longer a production invariant.
 
 ---
 
@@ -461,6 +478,26 @@ Do not waste time searching for a production-grade `Legend.Create()` API. The ab
 ---
 
 ## 13. Remaining known limitations
+
+### 13.0. Open compatibility gap — WPS Excel (found 2026-08-08)
+The feature only works when **Microsoft Excel** is installed. It does not work on a machine with **WPS Office/WPS Spreadsheet** and no MS Excel.
+
+Root cause confirmed by re-reading current code (not a data-import problem):
+- `ExcelInteropService.OpenFile()` hard-instantiates `new Application()` (`Microsoft.Office.Interop.Excel`).
+- `ExportRangeInternal()` calls `ws.ExportAsFixedFormat(XlFixedFormatType.xlTypePDF, ...)` — this is the actual blocking dependency, not the later raster stage.
+- Everything after the PDF file exists (`PDFtoImage` → PNG → SkiaSharp crop, section 10) is already engine-agnostic and does not need to change.
+- `ClosedXML` / OpenXML SDK / NPOI cannot replace this, because they read `.xlsx` data — they are not rendering engines and cannot reproduce the PDF export.
+
+Locked architecture direction (user directive, not yet implemented):
+- WPS COM/automation must live in its own separate logic file and must never touch the MS Excel logic file (`ExcelInteropService.cs`).
+- The two branches (MS Excel COM vs WPS COM) converge only at the point of producing the PDF artifact.
+- WPS branch must use late binding (`Type.GetTypeFromProgID` + `Activator.CreateInstance`), ProgID fallback order `KET.Application` → `ET.Application` → `Kingsoft.ET.Application`; never assume `Excel.Application` maps to WPS. Must use numeric constants instead of `Xl*` typed enums (no compile-time Interop reference).
+- Proposed file split: `ISpreadsheetPdfExporter`, `Services/Excel/MsExcelWorkbookPdfExporter.cs` (existing Interop behavior), `Services/Excel/WpsWorkbookPdfExporter.cs` (new, late-bound only), `Services/Excel/PdfRasterImageService.cs` (extracted shared PDFtoImage/SkiaSharp stage, currently `ExcelInteropService.cs:129-355`), `Services/Excel/SpreadsheetImageExportService.cs` (coordinator/provider selection).
+- Call sites to rewire once split lands: `ExcelSyncEngine.cs:160`, `ExcelToRevitWindow.xaml.cs:423`, `ExcelToRevitWindow.xaml.cs:468` (3+ files → requires an `arctool-work-package`, not a direct edit).
+- Accepted trade-off: this swaps one app dependency for a choice of two; the feature still won't run on a machine with neither MS Excel nor a working WPS COM install.
+- Residual risks not yet validated: WPS COM registration reported broken on some builds (12.1.0.22529 / 12.1.0.22525); PDF fidelity vs Excel (page setup, print area, font substitution, merged cells, margins, line weight); named-range scope semantics under WPS; protected-sheet PageSetup behavior.
+- Full carry-forward detail: `Memory/project_excel_to_revit_wps_provider_split.md`.
+
 - The feature still depends on Excel COM; it is not a pure OpenXML pipeline.
 - There is no background file watcher; changes are only checked when the dialog opens.
 - If JSON save fails after the Revit model has committed, sync state can drift until the next successful update.

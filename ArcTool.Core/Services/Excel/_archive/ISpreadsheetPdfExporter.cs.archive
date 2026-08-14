@@ -1,0 +1,93 @@
+using System;
+using System.Collections.Generic;
+
+namespace ArcTool.Core.Services.Excel
+{
+    /// <summary>
+    /// Identifies which spreadsheet automation engine backs a given
+    /// <see cref="ISpreadsheetPdfExporter"/> session. Discriminator only — does not carry any
+    /// engine-specific type, COM interop reference, or ProgID. Named to avoid collision with
+    /// any <c>Autodesk.Revit.DB</c> type.
+    /// </summary>
+    public enum SpreadsheetEngine
+    {
+        /// <summary>Microsoft Excel, accessed through early-bound Interop.</summary>
+        MsExcel,
+
+        /// <summary>WPS Spreadsheet (Kingsoft WPS Office), accessed through late-bound COM only.</summary>
+        Wps
+    }
+
+    /// <summary>
+    /// Engine-agnostic session over a single open spreadsheet workbook, covering the sequence
+    /// open → enumerate sheets/named ranges → export a region to PDF. Exactly one concrete
+    /// implementation exists per <see cref="SpreadsheetEngine"/> (MS Excel via early-bound
+    /// Interop, WPS via late-bound COM only); neither implementation's engine-specific types may
+    /// appear anywhere in this contract. Callers must call <see cref="IDisposable.Dispose"/> when
+    /// done to release the underlying COM session in the correct child-before-parent order.
+    /// </summary>
+    public interface ISpreadsheetPdfExporter : IDisposable
+    {
+        /// <summary>
+        /// The engine that backs this session. Exposed so a caller (e.g. a coordinator that
+        /// auto-detects the available engine) can log or report which engine actually served a
+        /// given export without tracking a separate flag. Callers that do not care about the
+        /// engine may ignore this property; it costs nothing when unused.
+        /// </summary>
+        SpreadsheetEngine Engine { get; }
+
+        /// <summary>
+        /// Opens the workbook at <paramref name="filePath"/> and prepares the session for
+        /// enumeration and export. Never throws: any failure to activate the engine, locate the
+        /// file, or open the workbook is swallowed internally and reported by returning
+        /// <c>false</c>. On failure the session is not usable and the caller should not call any
+        /// other member before disposing.
+        /// </summary>
+        /// <param name="filePath">Full path to the workbook file to open.</param>
+        /// <returns><c>true</c> if the workbook opened successfully; otherwise <c>false</c>.</returns>
+        bool Open(string filePath);
+
+        /// <summary>
+        /// Returns the names of every worksheet in the open workbook, in workbook order. Never
+        /// throws and never returns <c>null</c>: on any failure while enumerating, the failure is
+        /// swallowed internally and an empty list is returned instead, so callers that populate a
+        /// UI dropdown directly from this list do not need a null check or a try/catch.
+        /// </summary>
+        /// <returns>A non-null, possibly empty list of worksheet names.</returns>
+        IReadOnlyList<string> GetSheetNames();
+
+        /// <summary>
+        /// Returns the names of every named range scoped to <paramref name="sheetName"/> in the
+        /// open workbook. Never throws and never returns <c>null</c>: on any failure while
+        /// enumerating, the failure is swallowed internally and an empty list is returned instead,
+        /// so callers that populate a UI dropdown directly from this list do not need a null check
+        /// or a try/catch.
+        /// </summary>
+        /// <param name="sheetName">The worksheet whose named ranges should be listed.</param>
+        /// <returns>A non-null, possibly empty list of named-range names.</returns>
+        IReadOnlyList<string> GetNamedRanges(string sheetName);
+
+        /// <summary>
+        /// Resolves the printable region for <paramref name="sheetName"/> and
+        /// <paramref name="regionName"/>, normalizes page setup, and exports that region to a PDF
+        /// file at <paramref name="outputPdfPath"/>. Region resolution follows a fixed fallback
+        /// order: first a named range matching <paramref name="regionName"/>, then the sheet's
+        /// existing print area, then the sheet's used range if neither of the above is available.
+        /// Never throws: any failure to resolve a region or export it is swallowed internally and
+        /// reported by returning <c>false</c>.
+        /// <para>
+        /// Ownership of the produced PDF file: this method only writes the file at
+        /// <paramref name="outputPdfPath"/> and returns; it never deletes it, before or after a
+        /// successful export. The caller that supplied <paramref name="outputPdfPath"/> owns the
+        /// file's entire lifetime, including deleting it once it is no longer needed (typically
+        /// after handing it to the raster stage). This method must not be relied upon to clean up
+        /// its own output.
+        /// </para>
+        /// </summary>
+        /// <param name="sheetName">The worksheet containing the region to export.</param>
+        /// <param name="regionName">The named range identifying the region, if any.</param>
+        /// <param name="outputPdfPath">Full path where the exported PDF should be written.</param>
+        /// <returns><c>true</c> if the PDF was written successfully; otherwise <c>false</c>.</returns>
+        bool ExportRegionToPdf(string sheetName, string regionName, string outputPdfPath);
+    }
+}

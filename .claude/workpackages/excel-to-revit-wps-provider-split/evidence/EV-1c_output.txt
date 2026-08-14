@@ -1,0 +1,83 @@
+﻿
+==============================================================================
+== STEP 0 - probe metadata
+==============================================================================
+timestamp_local        : 2026-08-09 16:35:00 +07:00
+machine                : DESKTOP-4791VV0
+powershell_version     : 5.1.26100.8875
+process_is_64bit       : True
+probe_variant          : EV-1c (root-cause diagnostic)
+thread_culture         : en-US
+thread_ui_culture      : en-US
+os_ui_culture          : en-US
+source_workbook        : C:\Users\ADMIN\Desktop\PA4\BULONG.xlsx
+source_workbook_exists : True
+ComTypeInfoDumper       : COMPILE FAILED -> c:\Users\ADMIN\AppData\Local\Temp\wzodwp3u.0.cs(50) : 'TYPEATTR' is an ambiguous reference between 'System.Runtime.InteropServices.TYPEATTR' and 'System.Runtime.InteropServices.ComTypes.TYPEATTR'
+
+c:\Users\ADMIN\AppData\Local\Temp\wzodwp3u.0.cs(49) :             ti.GetTypeAttr(out pAttr);
+
+c:\Users\ADMIN\AppData\Local\Temp\wzodwp3u.0.cs(50) : >>>             TYPEATTR attr = (TYPEATTR)Marshal.PtrToStructure(pAttr, typeof(TYPEATTR));
+
+c:\Users\ADMIN\AppData\Local\Temp\wzodwp3u.0.cs(51) :             sb.AppendLine("type guid       = " + attr.guid);
+
+Microsoft.VisualBasic   : loaded OK
+
+==============================================================================
+== STEP 1 - scratch copy of the test workbook
+==============================================================================
+scratch_copy       : C:\Users\ADMIN\AppData\Local\Temp\ArcTool_EV1c_scratch_bd847199036646c48d72c76a452cfbcc.xlsx
+scratch_exists     : True
+scratch_fwd_slash  : C:/Users/ADMIN/AppData/Local/Temp/ArcTool_EV1c_scratch_bd847199036646c48d72c76a452cfbcc.xlsx
+
+==============================================================================
+== ROUND 1 (headless) - Visible = False
+==============================================================================
+KET.Application resolved.
+CreateInstance ok  : System.__ComObject
+Visible = False set ok
+DisplayAlerts = false set ok
+Application.Version = 12.0
+Workbooks get returned null
+
+==============================================================================
+== ROUND 2 (visible) - Visible = True
+==============================================================================
+KET.Application resolved.
+CreateInstance ok  : System.__ComObject
+Visible = True set ok
+DisplayAlerts = false set ok
+Application.Version = 12.0
+Workbooks get returned null
+
+==============================================================================
+== STEP 9 - full result matrix
+==============================================================================
+
+Test                                       Result Detail            
+----                                       ------ ------            
+round 1 (headless) : CreateInstance        OK     System.__ComObject
+round 1 (headless) : GetProperty Workbooks FAIL   returned null     
+round 2 (visible) : CreateInstance         OK     System.__ComObject
+round 2 (visible) : GetProperty Workbooks  FAIL   returned null     
+
+
+
+
+==============================================================================
+== STEP 10 - successes only
+==============================================================================
+
+Test                                Result Detail            
+----                                ------ ------            
+round 1 (headless) : CreateInstance OK     System.__ComObject
+round 2 (visible) : CreateInstance  OK     System.__ComObject
+
+
+
+
+==============================================================================
+== STEP 11 - cleanup
+==============================================================================
+scratch copy deleted
+
+EV-1c PROBE COMPLETE

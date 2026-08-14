@@ -1,0 +1,329 @@
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using Microsoft.Office.Interop.Excel;
+
+namespace ArcTool.Core.Services.Excel
+{
+    /// <summary>
+    /// MS Excel provider for <see cref="ISpreadsheetPdfExporter"/>. Early-bound Interop only
+    /// (<c>Microsoft.Office.Interop.Excel</c>, embedded interop types via the project's
+    /// <c>COMReference</c>) — this file must never reference WPS, any WPS ProgID, or any
+    /// late-binding path (contract R8/R11). Ported from the legacy single-provider implementation;
+    /// see <c>.claude/workpackages/excel-to-revit-wps-provider-split/results/T3.1_result.md</c> for
+    /// the old-line → new-member mapping.
+    /// <para>
+    /// This session stops at the PDF. The raster stage (PDF → PNG at 300 DPI, white-margin crop)
+    /// now lives in <c>PdfRasterImageService</c> and is not part of this file. The PDF path passed
+    /// to <see cref="ExportRegionToPdf"/> is created and deleted by the coordinator
+    /// (<c>SpreadsheetImageExportService</c>) — this provider only writes to that path and never
+    /// deletes it, before or after export, successful or not.
+    /// </para>
+    /// </summary>
+    public class MsExcelWorkbookPdfExporter : ISpreadsheetPdfExporter
+    {
+        private Microsoft.Office.Interop.Excel.Application _excelApp;
+        private Workbook _workbook;
+
+        /// <inheritdoc />
+        public SpreadsheetEngine Engine => SpreadsheetEngine.MsExcel;
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// Ported from the legacy single-provider implementation's OpenFile member (old file lines 32-48). Never throws —
+        /// any failure (bad path, COM activation failure, etc.) is swallowed and reported as
+        /// <c>false</c>; the caller (<c>ExcelSyncEngine</c>) remains responsible for translating
+        /// that into a user-facing throw, unchanged from today.
+        /// </remarks>
+        public bool Open(string filePath)
+        {
+            try
+            {
+                _excelApp = new Microsoft.Office.Interop.Excel.Application
+                {
+                    Visible       = false,
+                    DisplayAlerts = false
+                };
+                _workbook = _excelApp.Workbooks.Open(filePath);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// Ported from the legacy single-provider implementation's GetSheetNames member (old file lines 402-430), including
+        /// the swallow-and-return-empty-list behavior on failure and the per-worksheet COM release
+        /// inside the enumeration loop (child) before releasing the <c>Sheets</c> wrapper (parent).
+        /// </remarks>
+        public IReadOnlyList<string> GetSheetNames()
+        {
+            var names = new List<string>();
+            if (_workbook == null) return names;
+
+            // Sheets is a COM wrapper — must be released after use.
+            Sheets sheets = null;
+            try
+            {
+                sheets = _workbook.Worksheets;
+                foreach (Worksheet ws in sheets)
+                {
+                    names.Add(ws.Name);
+                    // Release each Worksheet immediately — do not accumulate COM handles.
+                    Marshal.ReleaseComObject(ws);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"MsExcelWorkbookPdfExporter.GetSheetNames Error: {ex.Message}");
+            }
+            finally
+            {
+                // Release the Sheets wrapper after enumeration completes.
+                if (sheets != null) Marshal.ReleaseComObject(sheets);
+            }
+
+            return names;
+        }
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// Ported from the legacy single-provider implementation's GetNamedRanges member (old file lines 443-494), including
+        /// the sheet-scope filter (<c>RefersToRange.Worksheet.Name == sheetName</c>), the
+        /// swallow-and-return-empty-list behavior, and the three-level child-before-parent COM
+        /// release order: <c>Range</c> → <c>Name</c> → <c>Names</c>.
+        /// </remarks>
+        public IReadOnlyList<string> GetNamedRanges(string sheetName)
+        {
+            var result = new List<string>();
+            if (_workbook == null || string.IsNullOrWhiteSpace(sheetName)) return result;
+
+            // Names is the COM wrapper over every Named Range in the workbook.
+            Names allNames = null;
+            try
+            {
+                allNames = _workbook.Names;
+                foreach (Name namedRange in allNames)
+                {
+                    try
+                    {
+                        // RefersToRange throws a COMException for complex-formula or deleted
+                        // named ranges — each item gets its own try/catch.
+                        Microsoft.Office.Interop.Excel.Range r = namedRange.RefersToRange;
+
+                        // Only keep named ranges scoped to the requested sheet. r.Worksheet can
+                        // throw for cross-sheet ranges — caught below.
+                        if (r?.Worksheet?.Name == sheetName)
+                        {
+                            result.Add(namedRange.Name);
+                        }
+
+                        // Release the Range COM object immediately after reading it.
+                        if (r != null) Marshal.ReleaseComObject(r);
+                    }
+                    catch
+                    {
+                        // Invalid named range (formula, deleted range, cross-sheet) — skip it.
+                        // One bad range must not block the rest.
+                    }
+                    finally
+                    {
+                        // Release the Name COM object each iteration — child before parent.
+                        Marshal.ReleaseComObject(namedRange);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"MsExcelWorkbookPdfExporter.GetNamedRanges Error: {ex.Message}");
+            }
+            finally
+            {
+                // Release the Names wrapper (parent) after every Name (child) is released.
+                if (allNames != null) Marshal.ReleaseComObject(allNames);
+            }
+
+            return result;
+        }
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// Ported from the legacy single-provider implementation's ExportRegion member (region resolution, old file lines
+        /// 512-582) plus the PageSetup normalization and <c>ExportAsFixedFormat</c> call from
+        /// the legacy single-provider implementation's ExportRangeInternal member (old file lines 201-229). The region
+        /// resolution order NamedRange → PrintArea → UsedRange is unchanged, as is every PageSetup
+        /// field and every <c>ExportAsFixedFormat</c> positional argument.
+        /// <para>
+        /// Two deliberate, interface-mandated deviations from the old <c>ExportRegion</c>, both
+        /// already locked by <c>results/T1.1_result.md</c> and by this interface's own documented
+        /// contract — not new decisions made in this file:
+        /// </para>
+        /// <list type="number">
+        /// <item>The legacy ExportRegion member re-threw on any exception (old line 574) so the caller
+        /// could show a dialog. This method never throws; it swallows and returns <c>false</c>,
+        /// per <see cref="ISpreadsheetPdfExporter.ExportRegionToPdf"/>'s documented contract.</item>
+        /// <item>The legacy ExportRangeInternal member generated its own temp PDF path under
+        /// <c>Path.GetTempPath()</c> and deleted it once rendering finished. This method writes
+        /// directly to the caller-supplied <paramref name="outputPdfPath"/> and never deletes it —
+        /// the coordinator now owns that file's entire lifetime.</item>
+        /// </list>
+        /// </remarks>
+        public bool ExportRegionToPdf(string sheetName, string regionName, string outputPdfPath)
+        {
+            if (_workbook == null || string.IsNullOrWhiteSpace(sheetName)) return false;
+
+            // ws/targetRange are local COM wrappers — always released in finally.
+            Worksheet ws          = null;
+            Microsoft.Office.Interop.Excel.Range targetRange = null;
+
+            try
+            {
+                ws = _workbook.Worksheets[sheetName] as Worksheet;
+                if (ws == null)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"MsExcelWorkbookPdfExporter.ExportRegionToPdf: Sheet '{sheetName}' not found.");
+                    return false;
+                }
+
+                // ── RESOLVE EXPORT REGION (NamedRange → PrintArea → UsedRange) ──
+
+                // 1. Named Range — only attempted when regionName has a value.
+                if (!string.IsNullOrWhiteSpace(regionName))
+                {
+                    try
+                    {
+                        targetRange = ws.Range[regionName];
+                    }
+                    catch
+                    {
+                        // Named Range does not exist on this sheet → fall back.
+                        System.Diagnostics.Debug.WriteLine(
+                            $"MsExcelWorkbookPdfExporter.ExportRegionToPdf: Named Range '{regionName}' not found on sheet '{sheetName}'. Falling back to Print Area.");
+                    }
+                }
+
+                // 2. Print Area — fallback when there is no Named Range.
+                if (targetRange == null)
+                {
+                    try
+                    {
+                        string printArea = ws.PageSetup.PrintArea;
+                        if (!string.IsNullOrEmpty(printArea))
+                            targetRange = ws.Range[printArea];
+                    }
+                    catch
+                    {
+                        // PageSetup unreadable (e.g. protected sheet) → fall back further.
+                        System.Diagnostics.Debug.WriteLine(
+                            $"MsExcelWorkbookPdfExporter.ExportRegionToPdf: Could not read Print Area of sheet '{sheetName}'. Falling back to UsedRange.");
+                    }
+                }
+
+                // 3. UsedRange — final fallback, always has a value if the sheet has data.
+                if (targetRange == null)
+                    targetRange = ws.UsedRange;
+
+                return ExportRangeToPdf(ws, targetRange, outputPdfPath);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"MsExcelWorkbookPdfExporter.ExportRegionToPdf Error: {ex.Message}");
+                return false;
+            }
+            finally
+            {
+                // Release order: targetRange (child) before ws (parent of the range).
+                if (targetRange != null) Marshal.ReleaseComObject(targetRange);
+                if (ws != null) Marshal.ReleaseComObject(ws);
+            }
+        }
+
+        /// <summary>
+        /// Normalizes PageSetup and exports <paramref name="range"/> directly to
+        /// <paramref name="outputPdfPath"/>. Ported from the legacy single-provider implementation's
+        /// ExportRangeInternal member (old file lines 201-229), minus the
+        /// raster stage (now <c>PdfRasterImageService</c>) and minus the old temp-file creation —
+        /// this method writes straight to the path the caller supplies and never deletes it.
+        /// </summary>
+        private bool ExportRangeToPdf(Worksheet ws, Microsoft.Office.Interop.Excel.Range range, string outputPdfPath)
+        {
+            try
+            {
+                PageSetup pageSetup = ws.PageSetup;
+                pageSetup.PrintArea      = range.Address[false, false];
+                pageSetup.Zoom           = false;
+                pageSetup.FitToPagesWide = 1;
+                pageSetup.FitToPagesTall = 1;
+                pageSetup.TopMargin      = 0;
+                pageSetup.BottomMargin   = 0;
+                pageSetup.LeftMargin     = 0;
+                pageSetup.RightMargin    = 0;
+
+                // xlPaperEsheet is unavailable in many Windows printer configurations → fallback.
+                try { pageSetup.PaperSize = XlPaperSize.xlPaperEsheet; }
+                catch
+                {
+                    try { pageSetup.PaperSize = XlPaperSize.xlPaperA3; }
+                    catch { /* Keep current paper size — FitToPages still handles it. */ }
+                }
+
+                ws.ExportAsFixedFormat(
+                    XlFixedFormatType.xlTypePDF,
+                    outputPdfPath,
+                    XlFixedFormatQuality.xlQualityStandard,
+                    false,
+                    false,
+                    1,
+                    1,
+                    false);
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"MsExcelWorkbookPdfExporter.ExportRangeToPdf Error: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <inheritdoc />
+        /// <remarks>
+        /// Ported from the legacy single-provider implementation's Dispose/ReleaseObject members (old file lines
+        /// 361-388). Release order is unchanged: <c>_workbook.Close(false)</c> → release workbook →
+        /// <c>_excelApp.Quit()</c> → release app → <c>GC.Collect()</c> +
+        /// <c>GC.WaitForPendingFinalizers()</c>.
+        /// </remarks>
+        public void Dispose()
+        {
+            // Release order: workbook → app.
+            if (_workbook != null)
+            {
+                try { _workbook.Close(false); } catch { }
+                ReleaseObject(_workbook);
+                _workbook = null;
+            }
+            if (_excelApp != null)
+            {
+                try { _excelApp.Quit(); } catch { }
+                ReleaseObject(_excelApp);
+                _excelApp = null;
+            }
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+        }
+
+        private void ReleaseObject(object obj)
+        {
+            try
+            {
+                if (obj != null) Marshal.ReleaseComObject(obj);
+            }
+            catch { }
+            // Do NOT null obj here — nulling the caller's own field is what has effect.
+        }
+    }
+}

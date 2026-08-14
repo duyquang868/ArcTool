@@ -24,6 +24,8 @@ Use `.Dossier` for bounded deep technical records, feature closure dossiers, roa
 
 A dossier is the correct destination when a finding is too long, too specific, or too narrative for `CLAUDE.md`.
 
+The permanent multi-agent package model lives in `.Dossier/Detailed Technical Dossier - Multi-Agent Work Package Workflow.md`; keep only its short operating rules in `CLAUDE.md`.
+
 ### 2.3 `memory/`
 
 Use the repository-local `memory/` directory for durable cross-session preferences, project constraints, and reference pointers that are not cleanly derivable from code or repository structure.
@@ -89,7 +91,7 @@ When a meaningful work session, phase, or section is ending:
 3. Check whether the fact already exists in `CLAUDE.md`, `.Dossier`, or `memory/`.
 4. Update the existing record in place if one already exists.
 5. Otherwise, persist it in exactly one primary durable location.
-6. If repository structure or architecture changed materially, refresh the project knowledge graph before closing.
+6. If repository structure or architecture changed materially, treat project knowledge-graph refresh as the final optional user-directed step after durable files are safe; it may run later from a fresh chat because it only reads persisted files.
 
 ---
 

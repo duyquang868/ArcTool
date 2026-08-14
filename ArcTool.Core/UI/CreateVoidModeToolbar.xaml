@@ -1,0 +1,64 @@
+<Window x:Class="ArcTool.UI.CreateVoidModeToolbar"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Create Void"
+        Width="220"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStyle="ToolWindow"
+        ShowInTaskbar="False"
+        Topmost="True"
+        WindowStartupLocation="CenterOwner">
+
+    <Border Background="#F5F5F5"
+            BorderBrush="#D1D1D1"
+            BorderThickness="1"
+            CornerRadius="6"
+            Padding="10">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0" Margin="0,0,0,8">
+                <RadioButton x:Name="CreateFromLinkRadio"
+                             Content="From Link"
+                             GroupName="CreateVoidMode"
+                             Margin="0,0,0,5"
+                             IsChecked="True"/>
+
+                <RadioButton x:Name="CreateFromSelectedBeamsRadio"
+                             Content="From Selected"
+                             GroupName="CreateVoidMode"/>
+            </StackPanel>
+
+            <ComboBox x:Name="FamilySymbolComboBox"
+                      Grid.Row="1"
+                      Height="26"
+                      Margin="0,0,0,10"
+                      IsEditable="False"
+                      IsReadOnly="True"
+                      IsTextSearchEnabled="True"
+                      DisplayMemberPath="DisplayName"
+                      SelectedValuePath="Symbol"
+                      HorizontalContentAlignment="Center"
+                      VerticalContentAlignment="Center"/>
+
+            <Button x:Name="StartButton"
+                    Grid.Row="2"
+                    Content="Start"
+                    Width="72"
+                    Height="26"
+                    HorizontalAlignment="Center"
+                    Click="StartButton_Click">
+                <Button.Resources>
+                    <Style TargetType="Border">
+                        <Setter Property="CornerRadius" Value="4"/>
+                    </Style>
+                </Button.Resources>
+            </Button>
+        </Grid>
+    </Border>
+</Window>

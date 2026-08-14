@@ -1,0 +1,127 @@
+﻿
+==============================================================================
+== STEP 0 - metadata
+==============================================================================
+timestamp_local   : 2026-08-09 16:59:58 +07:00
+probe_variant     : EV-1d (origin isolation)
+process_is_64bit  : True
+thread_culture    : en-US
+powershell_version : 5.1.26100.8875
+computer          : DESKTOP-4791VV0
+user              : ADMIN
+
+==============================================================================
+== STEP 1 - registry / COM registration for KET.Application
+==============================================================================
+ProgID            : KET.Application
+CLSID via Type    : {45540001-5750-5300-4b49-4e47534f4655}
+CLSID via registry: 
+HKCR\\CLSID\\{45540001-5750-5300-4b49-4e47534f4655}\\LocalServer32 = 
+HKCR\\CLSID\\{45540001-5750-5300-4b49-4e47534f4655}\\InprocServer32 = 
+HKCR\\CLSID\\{45540001-5750-5300-4b49-4e47534f4655}\\TypeLib = 
+
+==============================================================================
+== STEP 2 - active processes before COM activation
+==============================================================================
+et     pid=9608   mainWindow='' path='C:\Users\ADMIN\AppData\Local\Kingsoft\WPS Office\12.1.0.28032\office6\et.exe'
+wps    pid=2912   mainWindow='' path='C:\Users\ADMIN\AppData\Local\Kingsoft\WPS Office\12.1.0.28032\office6\wps.exe'
+wps    pid=3212   mainWindow='' path='C:\Users\ADMIN\AppData\Local\Kingsoft\WPS Office\12.1.0.28032\office6\wps.exe'
+wps    pid=12976  mainWindow='' path='C:\Users\ADMIN\AppData\Local\Kingsoft\WPS Office\12.1.0.28032\office6\wps.exe'
+wps    pid=25228  mainWindow='' path='C:\Users\ADMIN\AppData\Local\Kingsoft\WPSOFF~1\1210~1.280\office6\wps.exe'
+
+==============================================================================
+== STEP 3A - create new COM instance
+==============================================================================
+CreateInstance succeeded
+
+==============================================================================
+== STEP 3 - probe app: CreateInstance(KET.Application)
+==============================================================================
+app type            : System.__ComObject
+Application.Version : 12.0
+Visible=false set ok
+DisplayAlerts=false set ok
+reflection once      -> NULL
+ps-adapter once      -> NULL
+CallByName once      -> NULL
+
+==============================================================================
+== STEP 4 - readiness retry loop: CreateInstance(KET.Application)
+==============================================================================
+[17:00:06.330] retry #1 reflection -> NULL
+[17:00:06.914] retry #2 reflection -> NULL
+[17:00:07.497] retry #3 reflection -> NULL
+[17:00:08.080] retry #4 reflection -> NULL
+[17:00:08.664] retry #5 reflection -> NULL
+[17:00:09.248] retry #6 reflection -> NULL
+[17:00:09.830] retry #7 reflection -> NULL
+[17:00:10.414] retry #8 reflection -> NULL
+[17:00:10.997] retry #9 reflection -> NULL
+[17:00:11.580] retry #10 reflection -> NULL
+
+==============================================================================
+== STEP 5 - active processes during probe: CreateInstance(KET.Application)
+==============================================================================
+et     pid=1952   mainWindow='' path='C:\Users\ADMIN\AppData\Local\Kingsoft\WPS Office\12.1.0.28032\office6\et.exe'
+et     pid=9608   mainWindow='' path='C:\Users\ADMIN\AppData\Local\Kingsoft\WPS Office\12.1.0.28032\office6\et.exe'
+wps    pid=2912   mainWindow='' path='C:\Users\ADMIN\AppData\Local\Kingsoft\WPS Office\12.1.0.28032\office6\wps.exe'
+wps    pid=3212   mainWindow='' path='C:\Users\ADMIN\AppData\Local\Kingsoft\WPS Office\12.1.0.28032\office6\wps.exe'
+wps    pid=12976  mainWindow='' path='C:\Users\ADMIN\AppData\Local\Kingsoft\WPS Office\12.1.0.28032\office6\wps.exe'
+wps    pid=18424  mainWindow='' path='C:\Users\ADMIN\AppData\Local\Kingsoft\WPS Office\12.1.0.28032\office6\wps.exe'
+wps    pid=25228  mainWindow='' path='C:\Users\ADMIN\AppData\Local\Kingsoft\WPSOFF~1\1210~1.280\office6\wps.exe'
+
+==============================================================================
+== STEP 6 - cleanup owned app: CreateInstance(KET.Application)
+==============================================================================
+Quit() ok
+ReleaseComObject(app) ok
+
+==============================================================================
+== STEP 3B - attach to running object table
+==============================================================================
+Marshal.GetActiveObject succeeded
+
+==============================================================================
+== STEP 3 - probe app: GetActiveObject(KET.Application)
+==============================================================================
+app type            : System.__ComObject
+Application.Version : 12.0
+Visible=false set ok
+DisplayAlerts=false set ok
+reflection once      -> NULL
+ps-adapter once      -> NULL
+CallByName once      -> NULL
+
+==============================================================================
+== STEP 4 - readiness retry loop: GetActiveObject(KET.Application)
+==============================================================================
+[17:00:12.664] retry #1 reflection -> NULL
+[17:00:13.247] retry #2 reflection -> NULL
+[17:00:13.813] retry #3 reflection -> NULL
+[17:00:14.382] retry #4 reflection -> NULL
+[17:00:14.964] retry #5 reflection -> NULL
+[17:00:15.530] retry #6 reflection -> NULL
+[17:00:16.127] retry #7 reflection -> NULL
+[17:00:16.696] retry #8 reflection -> NULL
+[17:00:17.284] retry #9 reflection -> NULL
+[17:00:17.863] retry #10 reflection -> NULL
+
+==============================================================================
+== STEP 5 - active processes during probe: GetActiveObject(KET.Application)
+==============================================================================
+et     pid=9608   mainWindow='' path='C:\Users\ADMIN\AppData\Local\Kingsoft\WPS Office\12.1.0.28032\office6\et.exe'
+wps    pid=2912   mainWindow='' path='C:\Users\ADMIN\AppData\Local\Kingsoft\WPS Office\12.1.0.28032\office6\wps.exe'
+wps    pid=3212   mainWindow='' path='C:\Users\ADMIN\AppData\Local\Kingsoft\WPS Office\12.1.0.28032\office6\wps.exe'
+wps    pid=12976  mainWindow='' path='C:\Users\ADMIN\AppData\Local\Kingsoft\WPS Office\12.1.0.28032\office6\wps.exe'
+wps    pid=25228  mainWindow='' path='C:\Users\ADMIN\AppData\Local\Kingsoft\WPSOFF~1\1210~1.280\office6\wps.exe'
+
+==============================================================================
+== STEP 7 - active processes after cleanup
+==============================================================================
+et     pid=9608   mainWindow='' path='C:\Users\ADMIN\AppData\Local\Kingsoft\WPS Office\12.1.0.28032\office6\et.exe'
+wps    pid=2912   mainWindow='' path='C:\Users\ADMIN\AppData\Local\Kingsoft\WPS Office\12.1.0.28032\office6\wps.exe'
+wps    pid=3212   mainWindow='' path='C:\Users\ADMIN\AppData\Local\Kingsoft\WPS Office\12.1.0.28032\office6\wps.exe'
+wps    pid=12976  mainWindow='' path='C:\Users\ADMIN\AppData\Local\Kingsoft\WPS Office\12.1.0.28032\office6\wps.exe'
+wps    pid=25228  mainWindow='' path='C:\Users\ADMIN\AppData\Local\Kingsoft\WPSOFF~1\1210~1.280\office6\wps.exe'
+
+EV-1d PROBE COMPLETE

@@ -10,6 +10,7 @@ using Brush = System.Windows.Media.Brush;
 using Brushes = System.Windows.Media.Brushes;
 using ArcTool.Core.Models;
 using ArcTool.Core.Services;
+using ArcTool.Core.Services.Excel;
 using RevitTaskDialog = Autodesk.Revit.UI.TaskDialog;
 using Win32OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 using Autodesk.Revit.DB;
@@ -420,7 +421,7 @@ namespace ArcTool.UI
                 if (!ArcToolSettingsService.FileExists(row.Mapping))
                     return;
 
-                using (var excelService = new ExcelInteropService())
+                using (var excelService = new SpreadsheetImageExportService())
                 {
                     if (!excelService.OpenFile(row.FilePath))
                         return;
@@ -465,7 +466,7 @@ namespace ArcTool.UI
             if (!ArcToolSettingsService.FileExists(row.Mapping))
                 return;
 
-            using (var excelService = new ExcelInteropService())
+            using (var excelService = new SpreadsheetImageExportService())
             {
                 if (!excelService.OpenFile(row.FilePath))
                     return;

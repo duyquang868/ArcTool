@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using ArcTool.Core.Models;
+using ArcTool.Core.Services.Excel;
 using Autodesk.Revit.DB;
 using RevitView = Autodesk.Revit.DB.View;
 
@@ -157,7 +158,7 @@ namespace ArcTool.Core.Services
             try
             {
                 // ── BƯỚC 1: EXPORT EXCEL → TEMP PNG (ngoài Transaction) ──────────────
-                using (var svc = new ExcelInteropService())
+                using (var svc = new SpreadsheetImageExportService())
                 {
                     if (!svc.OpenFile(mapping.FilePath))
                     {
@@ -176,7 +177,7 @@ namespace ArcTool.Core.Services
                         throw new InvalidOperationException(
                             $"Không thể xuất hình từ Excel.\n\nSheet: {mapping.WorkSheet}\nRegion: {mapping.Region ?? "(PrintArea/UsedRange)"}\n\nNguyên nhân thường gặp: vùng dữ liệu rỗng, sheet/protected sheet không đọc được Print Area, hoặc pdfium.dll chưa được deploy đúng.");
                     }
-                } // Dispose() gọi → Excel đóng ngay
+                } // Dispose() gọi → phiên export spreadsheet đóng ngay
 
                 // Kiểm tra thêm: ExportRegion trả về true nhưng file không được tạo
                 // (edge case: chart export thành công nhưng PNG write bị block)

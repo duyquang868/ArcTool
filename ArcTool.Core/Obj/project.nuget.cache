@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "1h9RpfKMJR4=",
+  "dgSpecHash": "VR2/9dAVKUg=",
   "success": true,
   "projectFilePath": "D:\\Quang mini\\OneDrive - MSFT\\Plugin Revit\\ArcTool\\ArcTool.Core\\ArcTool.Core.csproj",
   "expectedPackageFiles": [
@@ -8,16 +8,24 @@
     "C:\\Users\\ADMIN\\.nuget\\packages\\bblanchon.pdfium.linux\\147.0.7690\\bblanchon.pdfium.linux.147.0.7690.nupkg.sha512",
     "C:\\Users\\ADMIN\\.nuget\\packages\\bblanchon.pdfium.macos\\147.0.7690\\bblanchon.pdfium.macos.147.0.7690.nupkg.sha512",
     "C:\\Users\\ADMIN\\.nuget\\packages\\bblanchon.pdfium.win32\\147.0.7690\\bblanchon.pdfium.win32.147.0.7690.nupkg.sha512",
+    "C:\\Users\\ADMIN\\.nuget\\packages\\closedxml\\0.105.0\\closedxml.0.105.0.nupkg.sha512",
+    "C:\\Users\\ADMIN\\.nuget\\packages\\closedxml.parser\\2.0.0\\closedxml.parser.2.0.0.nupkg.sha512",
+    "C:\\Users\\ADMIN\\.nuget\\packages\\documentformat.openxml\\3.1.1\\documentformat.openxml.3.1.1.nupkg.sha512",
+    "C:\\Users\\ADMIN\\.nuget\\packages\\documentformat.openxml.framework\\3.1.1\\documentformat.openxml.framework.3.1.1.nupkg.sha512",
+    "C:\\Users\\ADMIN\\.nuget\\packages\\excelnumberformat\\1.1.0\\excelnumberformat.1.1.0.nupkg.sha512",
     "C:\\Users\\ADMIN\\.nuget\\packages\\excss\\4.3.1\\excss.4.3.1.nupkg.sha512",
     "C:\\Users\\ADMIN\\.nuget\\packages\\pdftoimage\\5.2.1\\pdftoimage.5.2.1.nupkg.sha512",
+    "C:\\Users\\ADMIN\\.nuget\\packages\\rbush.signed\\4.0.0\\rbush.signed.4.0.0.nupkg.sha512",
     "C:\\Users\\ADMIN\\.nuget\\packages\\shimskiasharp\\3.4.1\\shimskiasharp.3.4.1.nupkg.sha512",
+    "C:\\Users\\ADMIN\\.nuget\\packages\\sixlabors.fonts\\1.0.0\\sixlabors.fonts.1.0.0.nupkg.sha512",
     "C:\\Users\\ADMIN\\.nuget\\packages\\skiasharp\\3.119.2\\skiasharp.3.119.2.nupkg.sha512",
     "C:\\Users\\ADMIN\\.nuget\\packages\\skiasharp.nativeassets.linux.nodependencies\\3.119.2\\skiasharp.nativeassets.linux.nodependencies.3.119.2.nupkg.sha512",
     "C:\\Users\\ADMIN\\.nuget\\packages\\skiasharp.nativeassets.macos\\3.119.2\\skiasharp.nativeassets.macos.3.119.2.nupkg.sha512",
     "C:\\Users\\ADMIN\\.nuget\\packages\\skiasharp.nativeassets.win32\\3.119.2\\skiasharp.nativeassets.win32.3.119.2.nupkg.sha512",
     "C:\\Users\\ADMIN\\.nuget\\packages\\svg.custom\\3.4.1\\svg.custom.3.4.1.nupkg.sha512",
     "C:\\Users\\ADMIN\\.nuget\\packages\\svg.model\\3.4.1\\svg.model.3.4.1.nupkg.sha512",
-    "C:\\Users\\ADMIN\\.nuget\\packages\\svg.skia\\3.4.1\\svg.skia.3.4.1.nupkg.sha512"
+    "C:\\Users\\ADMIN\\.nuget\\packages\\svg.skia\\3.4.1\\svg.skia.3.4.1.nupkg.sha512",
+    "C:\\Users\\ADMIN\\.nuget\\packages\\system.io.packaging\\8.0.1\\system.io.packaging.8.0.1.nupkg.sha512"
   ],
   "logs": []
 }

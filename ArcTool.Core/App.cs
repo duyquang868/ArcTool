@@ -110,66 +110,6 @@ namespace ArcTool.Core
             // Thêm nút vào Panel
             annotationPanel.AddItem(arrangeDimBtnData);
 
-            PushButtonData quickDimGridSpikeBtnData = new PushButtonData(
-                "btnQuickDimensionGridReferenceSpike",
-                "QD Grid\nSpike",
-                assemblyPath,
-                "ArcTool.Core.Commands.QuickDimensionGridReferenceSpikeCommand"
-            );
-            quickDimGridSpikeBtnData.ToolTip = "Phase 1.1 Quick Dimension research command: pick two plan-view points and test Grid reference strategies against temporary NewDimension calls. No dimension is kept.";
-            quickDimGridSpikeBtnData.LongDescription = "This is a reference feasibility spike, not the final Quick Dimension command. It tests new Reference(grid) and grid.Curve.Reference on visible straight grids in the active Plan View, then rolls back the temporary dimension transaction.";
-            annotationPanel.AddItem(quickDimGridSpikeBtnData);
-
-            PushButtonData quickDimWallSpikeBtnData = new PushButtonData(
-                "btnQuickDimensionWallReferenceSpike",
-                "QD Wall\nSpike",
-                assemblyPath,
-                "ArcTool.Core.Commands.QuickDimensionWallReferenceSpikeCommand"
-            );
-            quickDimWallSpikeBtnData.ToolTip = "Phase 1.2 Quick Dimension research command: pick two plan-view points and test Wall face reference strategies against temporary NewDimension calls. No dimension is kept.";
-            quickDimWallSpikeBtnData.LongDescription = "This is a reference feasibility spike, not the final Quick Dimension command. It tests HostObjectUtils.GetSideFaces() and Options.ComputeReferences strategies on visible walls in the active Plan View, then rolls back the temporary dimension transaction.";
-            annotationPanel.AddItem(quickDimWallSpikeBtnData);
-
-            PushButtonData quickDimMixedSpikeBtnData = new PushButtonData(
-                "btnQuickDimensionMixedReferenceSpike",
-                "QD Mixed\nSpike",
-                assemblyPath,
-                "ArcTool.Core.Commands.QuickDimensionMixedReferenceSpikeCommand"
-            );
-            quickDimMixedSpikeBtnData.ToolTip = "Phase 1.3 Quick Dimension research command: pick two plan-view points and test mixed Grid + Wall reference arrays against temporary NewDimension calls. No dimension is kept.";
-            quickDimMixedSpikeBtnData.LongDescription = "This is a reference feasibility spike, not the final Quick Dimension command. It tests whether Grid references (new Reference(grid)) and Wall face references (HostObjectUtils.GetSideFaces) can coexist in the same ReferenceArray. Tests sorted order, reversed order, grids-only, and walls-only scenarios.";
-            annotationPanel.AddItem(quickDimMixedSpikeBtnData);
-
-            PushButtonData quickDimDoorWindowSpikeBtnData = new PushButtonData(
-                "btnQuickDimensionDoorWindowReferenceSpike",
-                "QD Door/Win\nSpike",
-                assemblyPath,
-                "ArcTool.Core.Commands.QuickDimensionDoorWindowReferenceSpikeCommand"
-            );
-            quickDimDoorWindowSpikeBtnData.ToolTip = "Phase 1.4 Quick Dimension research command: pick two plan-view points and test Door/Window opening reference strategies against temporary NewDimension calls. No dimension is kept.";
-            quickDimDoorWindowSpikeBtnData.LongDescription = "This is a reference feasibility spike, not the final Quick Dimension command. It tests three strategies: (1) FamilyInstance.GetReferences(Left/Right), (2) Options.ComputeReferences + Face.Reference, (3) Host Wall opening geometry. Determines which strategy works for Door/Window opening dimensions in Revit 2026.";
-            annotationPanel.AddItem(quickDimDoorWindowSpikeBtnData);
-
-            PushButtonData quickDimFullMixedSpikeBtnData = new PushButtonData(
-                "btnQuickDimensionFullMixedReferenceSpike",
-                "QD Full\nMixed",
-                assemblyPath,
-                "ArcTool.Core.Commands.QuickDimensionFullMixedReferenceSpikeCommand"
-            );
-            quickDimFullMixedSpikeBtnData.ToolTip = "Phase 1.5 Quick Dimension research command: pick two plan-view points and test full mixed Grid + Wall + Door + Window reference arrays against temporary NewDimension calls. No dimension is kept.";
-            quickDimFullMixedSpikeBtnData.LongDescription = "This is the final Phase 1 reference feasibility spike. It tests whether all four source types (Grid, Wall, Door, Window) can coexist in the same ReferenceArray. Uses proven strategies from Sessions 1.1-1.4: Grid via new Reference(grid), Wall via HostObjectUtils.GetSideFaces, Door/Window via FamilyInstance.GetReferences with HostWallOpeningGeometry fallback.";
-            annotationPanel.AddItem(quickDimFullMixedSpikeBtnData);
-
-            PushButtonData quickDimReadOnlySummaryBtnData = new PushButtonData(
-                "btnQuickDimensionReadOnlySummary",
-                "QD ReadOnly\nSummary",
-                assemblyPath,
-                "ArcTool.Core.Commands.QuickDimensionReadOnlySummaryCommand"
-            );
-            quickDimReadOnlySummaryBtnData.ToolTip = "Phase 2.6 Quick Dimension read-only command: select one straight host Wall, pick a side, project wall ends and hosted Door/Window jambs onto the wall axis, and report sorted diagnostics. No dimension is created.";
-            quickDimReadOnlySummaryBtnData.LongDescription = "This is the Phase 2 read-only engine smoke command for the wall-axis projection model, not the final production dimension command. It collects only the selected wall's end anchors and hosted Door/Window jambs, performs source-aware sort/dedupe/summarize, and returns diagnostics only.";
-            annotationPanel.AddItem(quickDimReadOnlySummaryBtnData);
-
             // --- C. NHÓM LỆNH IMPORT EXCEL (MỚI THÊM PHASE 3) ---
             // Lấy hoặc tạo Panel "Excel Tools"
             string excelToolsName = "Excel Tools";
